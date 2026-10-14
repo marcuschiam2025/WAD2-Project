@@ -1,7 +1,15 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import AppNavBar from '@/components/layout/AppNavBar.vue'
+
+const route = useRoute()
+const showNav = computed(() => route.meta.layout === 'app')
 </script>
 
 <template>
-  <HelloWorld />
+  <div class="min-h-screen bg-background">
+    <AppNavBar v-if="showNav" />
+    <RouterView />
+  </div>
 </template>
