@@ -1,5 +1,5 @@
 #env
-atlas-credentials.env
+.env
 
 # Logs
 logs

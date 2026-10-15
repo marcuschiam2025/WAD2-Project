@@ -1,4 +1,4 @@
-// db_connection.js must be imported first: it loads atlas-credentials.env
+// db_connection.js must be imported first: it loads .env
 import { connectDB } from './db_connection.js';
 import app from './app.js';
 

@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
-dotenv.config({ path: './atlas-credentials.env' });
+dotenv.config({ path: './.env' });
 
 export async function connectDB() {
   try {
