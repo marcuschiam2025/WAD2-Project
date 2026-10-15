@@ -1,3 +1,6 @@
+#env
+atlas-credentials.env
+
 # Logs
 logs
 *.log
