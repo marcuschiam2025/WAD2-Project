@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { useUserStore } from '@backend/stores/user'
+import { useUserStore } from '@core/stores/user'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'

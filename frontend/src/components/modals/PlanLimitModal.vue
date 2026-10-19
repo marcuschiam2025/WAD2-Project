@@ -1,6 +1,6 @@
 <script setup>
 // Overlay / Plan Limit Warning
-import { MAX_PLANS } from '@backend/stores/planner'
+import { MAX_PLANS } from '@core/stores/planner'
 import AlertModal from './AlertModal.vue'
 import NoticeRow from './NoticeRow.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'

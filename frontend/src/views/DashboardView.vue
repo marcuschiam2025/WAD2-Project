@@ -1,8 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useUserStore } from '@backend/stores/user'
-import { useBiddingStore } from '@backend/stores/bidding'
-import { trackName } from '@backend/data/catalogue'
+import { useUserStore } from '@core/stores/user'
+import { useBiddingStore } from '@core/stores/bidding'
+import { trackName } from '@core/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'

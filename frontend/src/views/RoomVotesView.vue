@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRoomsStore } from '@backend/stores/rooms'
-import { days, slots, sections } from '@backend/data/bidding'
+import { useRoomsStore } from '@core/stores/rooms'
+import { days, slots, sections } from '@core/data/bidding'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'

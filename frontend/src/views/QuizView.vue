@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuizStore } from '@backend/stores/quiz'
-import { trackName } from '@backend/data/catalogue'
+import { useQuizStore } from '@core/stores/quiz'
+import { trackName } from '@core/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'

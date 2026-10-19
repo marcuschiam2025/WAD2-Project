@@ -1,9 +1,9 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useRoomsStore } from '@backend/stores/rooms'
-import { useUserStore } from '@backend/stores/user'
-import { moduleName } from '@backend/data/catalogue'
+import { useRoomsStore } from '@core/stores/rooms'
+import { useUserStore } from '@core/stores/user'
+import { moduleName } from '@core/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'

@@ -2,8 +2,8 @@
 // Plan settings for the active What-If plan: current semester, tracks, exchange terms, add semester, delete plan.
 // Not a separate Figma frame — it holds the controls the V2 planner moved behind the "Plan settings" button.
 import { computed } from 'vue'
-import { usePlannerStore } from '@backend/stores/planner'
-import { tracks } from '@backend/data/catalogue'
+import { usePlannerStore } from '@core/stores/planner'
+import { tracks } from '@core/data/catalogue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import SelectField from '@/components/ui/SelectField.vue'

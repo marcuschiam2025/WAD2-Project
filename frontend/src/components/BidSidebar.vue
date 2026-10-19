@@ -3,10 +3,10 @@
 // selected module, with the allocated-e$ footer and Save plan button always pinned to the bottom.
 import { computed, ref, watch } from 'vue'
 import { animate } from 'motion'
-import { useBiddingStore } from '@backend/stores/bidding'
-import { useUserStore } from '@backend/stores/user'
-import { moduleName } from '@backend/data/catalogue'
-import { days, slots, sections, weightage, rateBid, MIN_BID } from '@backend/data/bidding'
+import { useBiddingStore } from '@core/stores/bidding'
+import { useUserStore } from '@core/stores/user'
+import { moduleName } from '@core/data/catalogue'
+import { days, slots, sections, weightage, rateBid, MIN_BID } from '@core/data/bidding'
 import { ease } from '@/motion'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
@@ -22,7 +22,7 @@ const user = useUserStore()
 const tabs = ['Details', 'Simulate', 'History']
 const tab = ref('Simulate')
 
-// TODO(backend): sections / bid history / weightage come from @backend/data/bidding — swap for /api/bidding/…
+// TODO(backend): sections / bid history / weightage come from @core/data/bidding — swap for /api/bidding/…
 const section = computed(() => props.code && sections.find((s) => s.id === bidding.booked[props.code]))
 const details = computed(() => [
   ['Professor', section.value.prof],

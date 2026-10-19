@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { useBiddingStore } from '@backend/stores/bidding'
-import { moduleName } from '@backend/data/catalogue'
-import { sections } from '@backend/data/bidding'
+import { useBiddingStore } from '@core/stores/bidding'
+import { moduleName } from '@core/data/catalogue'
+import { sections } from '@core/data/bidding'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
@@ -10,7 +10,7 @@ import TimetableGrid from '@/components/TimetableGrid.vue'
 import TimetableModuleCard from '@/components/TimetableModuleCard.vue'
 import BidSidebar from '@/components/BidSidebar.vue'
 
-// TODO(backend): booked sections, bids and alternatives come from the bidding store / @backend/data/bidding
+// TODO(backend): booked sections, bids and alternatives come from the bidding store / @core/data/bidding
 const bidding = useBiddingStore()
 const dragging = ref(null)
 

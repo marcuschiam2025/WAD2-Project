@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useUserStore } from '@backend/stores/user'
+import { useUserStore } from '@core/stores/user'
 import { popEnter, popLeave } from '@/motion'
 import BrandLogo from './BrandLogo.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'

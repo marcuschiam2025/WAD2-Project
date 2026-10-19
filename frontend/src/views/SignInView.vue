@@ -1,6 +1,6 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@backend/stores/user'
+import { useUserStore } from '@core/stores/user'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
 import logo from '@/assets/bidmaxxer_logo.png'
 import iconInfo from '@/assets/v2/info-primary-16.svg'

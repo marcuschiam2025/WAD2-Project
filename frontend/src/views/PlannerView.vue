@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { usePlannerStore, effectiveCode } from '@backend/stores/planner'
-import { modules, tracks, trackName } from '@backend/data/catalogue'
+import { usePlannerStore, effectiveCode } from '@core/stores/planner'
+import { modules, tracks, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'

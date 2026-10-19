@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { animate } from 'motion'
-import { useQuizStore } from '@backend/stores/quiz'
+import { useQuizStore } from '@core/stores/quiz'
 import { ease } from '@/motion'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -10,7 +10,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 const router = useRouter()
 const quiz = useQuizStore()
 
-// TODO(backend): questions come from the quiz store (@backend/data/quiz) — swap for GET /api/quiz/questions
+// TODO(backend): questions come from the quiz store (@core/data/quiz) — swap for GET /api/quiz/questions
 const total = quiz.questions.length
 const question = computed(() => quiz.questions[quiz.current])
 const selected = computed(() => quiz.answers[quiz.current])

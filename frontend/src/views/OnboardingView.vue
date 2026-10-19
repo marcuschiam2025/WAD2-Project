@@ -2,8 +2,8 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { animate } from 'motion'
-import { useUserStore } from '@backend/stores/user'
-import { tracks } from '@backend/data/catalogue'
+import { useUserStore } from '@core/stores/user'
+import { tracks } from '@core/data/catalogue'
 import { ease } from '@/motion'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import SelectMenu from '@/components/ui/SelectMenu.vue'
@@ -21,7 +21,7 @@ const majors = [
 ].map((m) => ({ value: m, label: `BSc ${m}` }))
 
 const UNDECIDED = 'UNDECIDED'
-// TODO(backend): tracks come from @backend/data/catalogue — swap for GET /api/tracks?major=…
+// TODO(backend): tracks come from @core/data/catalogue — swap for GET /api/tracks?major=…
 const trackOptions = [
   ...tracks.map((t) => ({ value: t.code, label: t.name })),
   { value: UNDECIDED, label: 'Undecided', exclusive: true },

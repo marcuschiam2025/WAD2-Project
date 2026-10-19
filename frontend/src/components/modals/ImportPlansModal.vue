@@ -1,7 +1,7 @@
 <script setup>
 // Overlay / Import Plans
 import { ref } from 'vue'
-import { usePlannerStore } from '@backend/stores/planner'
+import { usePlannerStore } from '@core/stores/planner'
 import { planLabel } from '@/trackLabels'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
