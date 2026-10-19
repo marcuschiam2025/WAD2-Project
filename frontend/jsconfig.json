@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@backend/*": ["../backend/*"]
+    }
+  },
+  "include": ["src/**/*", "../backend/router/**/*", "../backend/stores/**/*", "../backend/services/**/*", "../backend/data/**/*", "../backend/utils/ics.js"]
+}

@@ -1,0 +1,6 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Back to room">
+<path d="M8 0.5H20C24.1421 0.5 27.5 3.85786 27.5 8V20C27.5 24.1421 24.1421 27.5 20 27.5H8C3.85786 27.5 0.5 24.1421 0.5 20V8L0.509766 7.61426C0.704063 3.77915 3.77915 0.704063 7.61426 0.509766L8 0.5Z" stroke="#E4E4E7"/>
+<path id="Back arrow" d="M14 6L6 14L14 22M6 14H22" stroke="#26262B" stroke-width="1.33"/>
+</g>
+</svg>
