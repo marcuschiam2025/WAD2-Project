@@ -56,7 +56,7 @@ function onEnter(el, done) {
     />
 
     <main class="flex flex-col items-center gap-8 px-16 pt-8 pb-12">
-      <section v-enter class="card flex w-[560px] max-w-full flex-col gap-4 p-6">
+      <section v-enter class="card flex w-[560px] max-w-full flex-col gap-4 p-6"> <!-- motion: question card fades in on mount -->
         <div class="flex gap-1">
           <span v-for="i in total" :key="i" class="relative h-1 flex-1 overflow-hidden rounded-full bg-muted">
             <span

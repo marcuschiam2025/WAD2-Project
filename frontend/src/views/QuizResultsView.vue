@@ -70,7 +70,7 @@ function retake() {
     />
 
     <main class="flex flex-col gap-2.5 px-16 pt-8 pb-8">
-      <div v-stagger class="flex flex-col gap-2.5">
+      <div v-stagger class="flex flex-col gap-2.5"> <!-- motion: result accordion rows stagger in -->
         <section
           v-for="(r, i) in attempt.results"
           :key="r.code"

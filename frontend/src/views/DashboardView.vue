@@ -66,7 +66,7 @@ const stats = computed(() => [
 
     <main class="flex items-start gap-4 px-16 pt-8 pb-12">
       <!-- Round card -->
-      <section v-enter class="card flex min-w-0 flex-1 flex-col gap-4 p-6">
+      <section v-enter class="card flex min-w-0 flex-1 flex-col gap-4 p-6"> <!-- motion: fade + slide up on mount -->
         <p class="text-overline text-muted-foreground">{{ round.label }}</p>
         <div class="flex items-baseline gap-2.5 whitespace-nowrap">
           <span class="font-mono text-[40px] leading-normal font-bold tracking-[-0.8px]">{{ countdown }}</span>
@@ -98,12 +98,12 @@ const stats = computed(() => [
       </section>
 
       <!-- For you today -->
-      <section v-enter="0.08" class="card flex w-[520px] shrink-0 flex-col p-5">
+      <section v-enter="0.08" class="card flex w-[520px] shrink-0 flex-col p-5"> <!-- motion: fade + slide up, 80ms delay -->
         <div class="flex items-center justify-between pb-3">
           <h2 class="text-h4">For you today</h2>
           <span class="text-[12px] text-muted-foreground">Sorted by due time</span>
         </div>
-        <ul v-stagger="0.12">
+        <ul v-stagger="0.12"> <!-- motion: each feed item staggers in 120ms apart -->
           <li v-for="item in feed" :key="item.id" class="flex items-start gap-3 border-t border-border py-3">
             <span
               class="flex w-[58px] shrink-0 justify-center rounded-sm bg-muted px-1.5 py-[3px] text-[10px] leading-normal font-semibold tracking-[0.4px] text-muted-foreground uppercase"

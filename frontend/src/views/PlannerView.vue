@@ -166,7 +166,7 @@ const requirements = computed(() =>
     </PageHeader>
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
-      <section v-enter class="card flex items-stretch overflow-hidden">
+      <section v-enter class="card flex items-stretch overflow-hidden"> <!-- motion: fade + slide up on mount -->
         <!-- Module basket -->
         <aside
           class="flex w-[260px] shrink-0 flex-col gap-3 border-r border-border p-4 transition-colors"
@@ -187,7 +187,7 @@ const requirements = computed(() =>
             <input v-model="query" placeholder="Search modules..." class="min-w-0 flex-1 bg-transparent text-[13px] outline-none" />
           </label>
 
-          <ul v-stagger class="flex flex-col gap-2">
+          <ul v-stagger class="flex flex-col gap-2"> <!-- motion: basket modules stagger in -->
             <li
               v-for="m in basket"
               :key="m.code"
@@ -356,7 +356,7 @@ const requirements = computed(() =>
       </section>
 
       <!-- Module requirements -->
-      <section v-enter="0.1" class="card flex flex-col gap-4 p-6">
+      <section v-enter="0.1" class="card flex flex-col gap-4 p-6"> <!-- motion: requirements strip fades in, 100ms delay -->
         <div class="flex items-center justify-between">
           <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
           <StatusPill v-if="!planner.hasAnyWarning" tone="success">On track</StatusPill>

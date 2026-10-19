@@ -85,7 +85,7 @@ function exportCopy(copy) {
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
       <!-- TODO(backend): remove once plans are real, this only labels the sample data -->
-      <div v-enter class="flex items-start gap-3 rounded-lg border border-primary bg-primary/10 px-3.5 py-3">
+      <div v-enter class="flex items-start gap-3 rounded-lg border border-primary bg-primary/10 px-3.5 py-3"> <!-- motion: info banner fades in on mount -->
         <img :src="iconInfo" alt="" class="mt-0.5 size-4" />
         <div class="flex flex-col gap-0.5 text-[13px] leading-normal">
           <p class="font-semibold text-primary">Example finalised state · sample copies</p>
@@ -93,7 +93,7 @@ function exportCopy(copy) {
         </div>
       </div>
 
-      <div v-stagger="0.05" class="grid grid-cols-3 gap-6">
+      <div v-stagger="0.05" class="grid grid-cols-3 gap-6"> <!-- motion: plan cards stagger in 50ms apart -->
         <article v-for="copy in copies" :key="copy.name" class="card flex flex-col gap-3 p-5">
           <div class="flex items-center justify-between">
             <h2 class="text-h3">{{ copy.name }}</h2>
@@ -114,7 +114,7 @@ function exportCopy(copy) {
         </article>
       </div>
 
-      <section v-enter="0.15" class="card overflow-hidden">
+      <section v-enter="0.15" class="card overflow-hidden"> <!-- motion: comparison table fades in, 150ms delay -->
         <div class="flex items-center justify-between px-5 py-4">
           <h2 class="text-h4">Module and session comparison</h2>
           <span class="text-[12px] text-muted-foreground">Y2 · Sem 2 · only cells that differ from Plan 1 are tinted</span>

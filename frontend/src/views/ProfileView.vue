@@ -72,7 +72,7 @@ function revokeAll() {
     <PageHeader overline="Account · Privacy · Connected apps" title="Profile & Settings" />
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
-      <section v-enter class="card flex items-center gap-4 p-6">
+      <section v-enter class="card flex items-center gap-4 p-6"> <!-- motion: profile header fades in on mount -->
         <UserAvatar :initials="user.profile.initials" :size="64" />
         <div class="flex flex-col gap-1 leading-normal">
           <p class="text-[18px] font-semibold">{{ user.profile.displayName }}</p>
@@ -87,7 +87,7 @@ function revokeAll() {
         <p class="text-[14px] text-muted-foreground">BidMaxxer only reads what it needs. Disconnect any app at any time.</p>
       </div>
 
-      <div v-stagger="0.05" class="flex items-start gap-4">
+      <div v-stagger="0.05" class="flex items-start gap-4"> <!-- motion: app cards stagger in 50ms apart -->
         <section v-for="app in apps" :key="app.key" class="card flex min-w-0 flex-1 flex-col gap-3 p-5">
           <div class="flex items-center gap-3">
             <span class="flex w-9 shrink-0 justify-center rounded-md bg-muted py-2 text-[13px] leading-normal font-bold">
@@ -125,7 +125,7 @@ function revokeAll() {
         </section>
       </div>
 
-      <section v-enter="0.15" class="card flex items-center justify-between gap-4 border-destructive! p-5">
+      <section v-enter="0.15" class="card flex items-center justify-between gap-4 border-destructive! p-5"> <!-- motion: danger zone fades in, 150ms delay -->
         <div class="flex flex-col gap-0.5 leading-normal">
           <p class="text-[15px] font-semibold">Revoke all access</p>
           <p class="text-[13px] text-muted-foreground">

@@ -48,7 +48,7 @@ function startAttempt() {
     />
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
-      <section v-enter class="card flex items-center justify-between gap-4 p-6">
+      <section v-enter class="card flex items-center justify-between gap-4 p-6"> <!-- motion: fade + slide up on mount -->
         <div class="flex flex-col gap-2">
           <h2 class="text-h3">Get your first track matches in 4 minutes</h2>
           <p class="text-[14px] text-muted-foreground">
@@ -66,7 +66,7 @@ function startAttempt() {
       </section>
 
       <h2 class="text-h4">What you'll see after you finish</h2>
-      <section v-enter="0.08" class="card flex flex-col gap-2.5 p-6">
+      <section v-enter="0.08" class="card flex flex-col gap-2.5 p-6"> <!-- motion: sample results fade in, 80ms delay -->
         <div class="flex items-center justify-between leading-normal">
           <h3 class="text-[15px] font-semibold">Sample track matches</h3>
           <span class="text-[12px] text-muted-foreground">Based on a sample profile</span>
@@ -86,11 +86,11 @@ function startAttempt() {
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
       <div class="flex items-start gap-4">
-        <section v-enter class="card flex min-w-0 flex-1 flex-col gap-3 p-6">
+        <section v-enter class="card flex min-w-0 flex-1 flex-col gap-3 p-6"> <!-- motion: top match card fades in -->
           <h2 class="text-h4">Top match</h2>
           <TrackMatchRow :rank="1" :track="trackName(top.code)" :pct="top.pct" bar-width="w-[200px]" />
         </section>
-        <section v-enter="0.05" class="card flex min-w-0 flex-1 flex-col gap-2 p-6">
+        <section v-enter="0.05" class="card flex min-w-0 flex-1 flex-col gap-2 p-6"> <!-- motion: latest attempt card fades in, 50ms delay -->
           <h2 class="text-h4">Latest attempt</h2>
           <p class="text-[16px] font-medium">{{ formatDate(quiz.latest.takenAt) }}</p>
           <p class="text-[13px] text-muted-foreground">{{ questionCount }} questions completed · {{ duration }}</p>
@@ -101,7 +101,7 @@ function startAttempt() {
         </section>
       </div>
 
-      <section v-enter="0.1" class="card flex flex-col gap-2.5 p-6">
+      <section v-enter="0.1" class="card flex flex-col gap-2.5 p-6"> <!-- motion: attempt history card fades in, 100ms delay -->
         <div class="flex items-center justify-between">
           <h2 class="text-h4">Attempt history</h2>
           <span class="text-[12px] text-muted-foreground">
@@ -124,7 +124,7 @@ function startAttempt() {
         </RouterLink>
       </section>
 
-      <section v-enter="0.15" class="card flex flex-col gap-2 p-6">
+      <section v-enter="0.15" class="card flex flex-col gap-2 p-6"> <!-- motion: new attempt CTA fades in, 150ms delay -->
         <h2 class="text-h4">Ready for a new attempt?</h2>
         <p class="text-[14px] text-muted-foreground">
           Start a fresh quiz and we re-run your track matches using your latest answers and completed modules.

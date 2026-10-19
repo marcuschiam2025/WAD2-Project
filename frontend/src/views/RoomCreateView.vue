@@ -74,7 +74,7 @@ const input = 'rounded-md border border-border bg-card px-3 py-[9px] text-[14px]
 
     <main class="flex justify-center px-16 pt-8 pb-12">
       <form
-        v-enter
+        v-enter <!-- motion: fade + slide up on mount -->
         class="flex w-[480px] max-w-full flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-md"
         @submit.prevent="canCreate && create()"
       >
@@ -117,7 +117,7 @@ const input = 'rounded-md border border-border bg-card px-3 py-[9px] text-[14px]
               </button>
             </div>
           </div>
-          <div v-if="members.length" v-stagger class="flex flex-wrap gap-2">
+          <div v-if="members.length" v-stagger class="flex flex-wrap gap-2"> <!-- motion: member chips stagger in as each is added -->
             <span
               v-for="id in members"
               :key="id"

@@ -81,7 +81,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
         </div>
       </div>
 
-      <div v-enter class="flex items-stretch gap-4">
+      <div v-enter class="flex items-stretch gap-4"> <!-- motion: fade + slide up on mount -->
         <div class="flex min-w-0 flex-1 flex-col gap-3">
           <TimetableGrid @cell-drop="onDrop">
             <template #cell="{ day, slot }">

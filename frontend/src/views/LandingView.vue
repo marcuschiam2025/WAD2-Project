@@ -30,7 +30,7 @@ const features = [
     </header>
 
     <main class="flex flex-1 flex-col gap-4 px-16 pt-12 pb-8">
-      <section v-enter class="card flex items-center gap-10 rounded-xl p-10">
+      <section v-enter class="card flex items-center gap-10 rounded-xl p-10"> <!-- motion: hero section fades in on mount -->
         <div class="flex w-[540px] shrink-0 flex-col items-start gap-3">
           <p class="text-[13px] font-semibold text-primary">Built for SMU students</p>
           <h1 class="text-[48px] leading-[54px] font-extrabold tracking-[-0.96px]">
@@ -48,7 +48,7 @@ const features = [
 
         <!-- Product visual -->
         <div class="flex min-w-0 flex-1 flex-col gap-2.5 rounded-lg border border-border bg-muted p-4">
-          <div v-stagger="0.15" class="flex gap-2">
+          <div v-stagger="0.15" class="flex gap-2"> <!-- motion: semester columns stagger in 150ms apart -->
             <div
               v-for="sem in semesters"
               :key="sem.label"
@@ -73,7 +73,7 @@ const features = [
         </div>
       </section>
 
-      <div v-stagger="0.2" class="flex items-start gap-3">
+      <div v-stagger="0.2" class="flex items-start gap-3"> <!-- motion: feature cards stagger in 200ms apart -->
         <article
           v-for="f in features"
           :key="f.title"

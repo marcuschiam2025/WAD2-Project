@@ -54,7 +54,7 @@ const isFinalised = computed(() => room.value.finalised)
     </section>
 
     <main class="px-16 pt-8 pb-12">
-      <div v-enter class="card flex items-stretch overflow-hidden">
+      <div v-enter class="card flex items-stretch overflow-hidden"> <!-- motion: fade + slide up on mount -->
         <aside class="flex w-[280px] shrink-0 flex-col gap-4 border-r border-border p-5">
           <div class="flex flex-col gap-1.5 leading-normal">
             <h2 class="text-[18px] font-semibold">{{ room.name }}</h2>
@@ -66,7 +66,7 @@ const isFinalised = computed(() => room.value.finalised)
 
           <div class="flex flex-col gap-2">
             <p class="text-overline text-muted-foreground">Ranking</p>
-            <ul v-stagger class="flex flex-col gap-2">
+            <ul v-stagger class="flex flex-col gap-2"> <!-- motion: ranking rows stagger in -->
               <li
                 v-for="r in ranking"
                 :key="r.section.id"

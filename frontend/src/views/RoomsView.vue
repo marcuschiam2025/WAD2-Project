@@ -61,7 +61,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
         </p>
       </div>
 
-      <section v-enter class="card overflow-hidden">
+      <section v-enter class="card overflow-hidden"> <!-- motion: fade + slide up on mount -->
         <div class="grid grid-cols-[minmax(0,2.6fr)_minmax(0,1.3fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.1fr)_40px] bg-muted text-overline text-muted-foreground">
           <span class="px-5 py-3">Room</span>
           <span class="px-2 py-3">Members</span>
@@ -70,7 +70,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
           <span class="px-2 py-3">Round closes</span>
           <span />
         </div>
-        <ul v-stagger="0.08">
+        <ul v-stagger="0.08"> <!-- motion: room rows stagger in 80ms apart -->
           <li v-for="(room, i) in rooms.rooms" :key="room.id" class="border-t border-border">
             <RouterLink
               :to="`/rooms/${room.id}`"

@@ -19,7 +19,7 @@ function continueWithGoogle() {
 <template>
   <main class="flex min-h-screen">
     <section class="flex w-1/2 flex-col justify-center gap-4 bg-card px-[120px]">
-      <div v-stagger class="flex w-[420px] max-w-full flex-col gap-4">
+      <div v-stagger class="flex w-[420px] max-w-full flex-col gap-4"> <!-- motion: sign-in form elements stagger in -->
         <BrandLogo large />
         <h1 class="text-[32px] leading-normal font-bold tracking-[-0.32px]">Sign in to plan your degree</h1>
         <p class="text-[15px] leading-[22px] text-muted-foreground">
@@ -46,8 +46,8 @@ function continueWithGoogle() {
 
     <!-- Art panel -->
     <section class="flex w-1/2 flex-col items-center justify-center gap-5 border-l border-border bg-primary/6 p-16">
-      <img v-enter="0.1" :src="logo" alt="" class="h-[374px] w-[260px] object-contain" />
-      <p v-enter="0.2" class="w-[440px] max-w-full text-center text-[20px] leading-7 font-semibold">
+      <img v-enter="0.1" :src="logo" alt="" class="h-[374px] w-[260px] object-contain" /> <!-- motion: hero image fades in, 100ms delay -->
+      <p v-enter="0.2" class="w-[440px] max-w-full text-center text-[20px] leading-7 font-semibold"> <!-- motion: testimonial fades in, 200ms delay -->
         "Planned all of Y3 in one evening, and my IS442 bid cleared with e$ 6 to spare."
       </p>
       <p class="text-center text-[13px] text-muted-foreground">Y3 Information Systems student</p>
