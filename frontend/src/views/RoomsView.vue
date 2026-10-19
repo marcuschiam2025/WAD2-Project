@@ -3,11 +3,13 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoomsStore } from '@backend/stores/rooms'
 import { useUserStore } from '@backend/stores/user'
+import { moduleName } from '@backend/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
-import RoomCard from '@/components/RoomCard.vue'
-import iconPlus from '@/assets/figma/plus-white.svg'
+import StatusPill from '@/components/ui/StatusPill.vue'
+import ProgressBar from '@/components/ui/ProgressBar.vue'
+import UserAvatar from '@/components/ui/UserAvatar.vue'
 
 const router = useRouter()
 const rooms = useRoomsStore()
@@ -27,31 +29,92 @@ function join() {
     joinError.value = 'No room found for that link or code.'
   }
 }
+
+// TODO(backend): votes / status / round come from GET /api/rooms (the sample derives them from room.votes)
+function summary(room) {
+  const voted = new Set(Object.values(room.votes).flat())
+  const count = room.finalised ? room.members.length : voted.size + (rooms.myVotes[room.id]?.length ? 1 : 0)
+  const total = room.members.length
+  const status = room.finalised ? 'finalised' : count === 0 ? 'not-started' : 'voting'
+  return { count, total, status }
+}
+const statusTone = { voting: 'warning', finalised: 'success', 'not-started': 'neutral' }
+const statusLabel = { voting: 'Voting', finalised: 'Finalised', 'not-started': 'Not started' }
+const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2h 15m', urgent: i === 0 })
 </script>
 
 <template>
   <div>
-    <PageHeader overline="COLLABORATIVE PLAN ROOMS · AY24/25 SEM 2" title="Collab Rooms">
+    <PageHeader overline="Collaborative plan rooms · AY24/25 Sem 2" title="Collab Rooms">
       <template #actions>
         <BaseButton variant="outline" @click="joining = true">Join with link</BaseButton>
-        <BaseButton to="/rooms/new"><img :src="iconPlus" alt="" class="size-4" /> Create room</BaseButton>
+        <BaseButton to="/rooms/new">Create room</BaseButton>
       </template>
     </PageHeader>
 
-    <main class="flex flex-col gap-6 px-16 pt-8 pb-16">
-      <div class="flex flex-col gap-1">
-        <h2 class="text-h3">Welcome back, {{ user.profile.firstName }} — here are your rooms.</h2>
-        <p class="text-small text-muted-foreground">
-          Plan the incoming semester with friends: import your What-If plans, see who is taking the same modules, and
-          line up bids together.
+    <main class="flex flex-col gap-4 px-16 pt-8 pb-12">
+      <div class="flex flex-col gap-0.5">
+        <h2 class="text-h3">Welcome back, {{ user.profile.firstName }}. Here are your rooms.</h2>
+        <p class="text-[14px] text-muted-foreground">
+          Plan the incoming semester with friends: import your What-If plans, see who is taking the same modules, and line
+          up bids together.
         </p>
       </div>
-      <div class="grid grid-cols-[repeat(auto-fill,minmax(320px,410px))] gap-5">
-        <RoomCard v-for="room in rooms.rooms" :key="room.id" :room="room" />
-      </div>
-      <p v-if="!rooms.rooms.length" class="text-small text-muted-foreground">
-        You're not in any rooms yet. Create one or join with an invite link.
-      </p>
+
+      <section v-enter class="card overflow-hidden">
+        <div class="grid grid-cols-[minmax(0,2.6fr)_minmax(0,1.3fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.1fr)_40px] bg-muted text-overline text-muted-foreground">
+          <span class="px-5 py-3">Room</span>
+          <span class="px-2 py-3">Members</span>
+          <span class="px-2 py-3">Votes</span>
+          <span class="px-2 py-3">Status</span>
+          <span class="px-2 py-3">Round closes</span>
+          <span />
+        </div>
+        <ul v-stagger="0.08">
+          <li v-for="(room, i) in rooms.rooms" :key="room.id" class="border-t border-border">
+            <RouterLink
+              :to="`/rooms/${room.id}`"
+              class="grid grid-cols-[minmax(0,2.6fr)_minmax(0,1.3fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.1fr)_40px] items-center transition-colors hover:bg-muted/60"
+            >
+              <div class="flex flex-col gap-1.5 px-5 py-4 leading-normal">
+                <span class="text-[15px] font-semibold">{{ room.name }}</span>
+                <span class="flex items-center gap-2 text-[13px] text-muted-foreground">
+                  <span class="rounded-sm bg-secondary px-1.5 py-px font-mono text-[11px] font-bold text-foreground">{{ room.module }}</span>
+                  {{ moduleName(room.module) }}
+                </span>
+              </div>
+              <div class="flex px-2 py-4">
+                <UserAvatar
+                  v-for="(id, mi) in room.members.slice(0, 4)"
+                  :key="id"
+                  :initials="rooms.person(id).initials"
+                  :you="rooms.person(id).you"
+                  :class="mi > 0 && '-ml-1 ring-2 ring-card'"
+                />
+              </div>
+              <div class="flex flex-col gap-1.5 px-2 py-4">
+                <span class="text-[13px] text-muted-foreground">{{ summary(room).count }} of {{ summary(room).total }} voted</span>
+                <ProgressBar
+                  :value="summary(room).count / summary(room).total"
+                  :color="summary(room).status === 'finalised' ? 'bg-success' : 'bg-primary'"
+                  track="h-1.5 w-[180px]"
+                />
+              </div>
+              <div class="px-2 py-4">
+                <StatusPill :tone="statusTone[summary(room).status]">{{ statusLabel[summary(room).status] }}</StatusPill>
+              </div>
+              <span
+                class="px-2 py-4 font-mono text-[12.5px] font-medium"
+                :class="roundCloses(i).urgent ? 'text-destructive' : 'text-muted-foreground'"
+              >{{ roundCloses(i).text }}</span>
+              <span class="px-2 py-4 text-center text-muted-foreground">···</span>
+            </RouterLink>
+          </li>
+        </ul>
+        <p v-if="!rooms.rooms.length" class="border-t border-border px-5 py-6 text-[13px] text-muted-foreground">
+          You're not in any rooms yet. Create one or join with an invite link.
+        </p>
+      </section>
     </main>
 
     <BaseModal v-if="joining" width="w-[440px]" @close="joining = false">
@@ -61,13 +124,13 @@ function join() {
         <input
           v-model="joinInput"
           placeholder="https://bidmaxxer.app/room/A1F3-yappers"
-          class="rounded-md border border-border px-3 py-[9px] text-[14px] outline-none focus:border-primary"
+          class="rounded-md border border-border px-3 py-[9px] text-[14px] outline-none focus:border-ring"
           @input="joinError = ''"
           @keyup.enter="join"
         />
         <span v-if="joinError" class="text-[12px] text-destructive">{{ joinError }}</span>
       </label>
-      <div class="flex justify-end gap-2.5">
+      <div class="flex justify-end gap-2">
         <BaseButton variant="ghost" @click="joining = false">Cancel</BaseButton>
         <BaseButton :disabled="!joinInput.trim()" @click="join">Join</BaseButton>
       </div>

@@ -3,29 +3,33 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizStore } from '@backend/stores/quiz'
 import { trackName } from '@backend/data/catalogue'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import StatusPill from '@/components/ui/StatusPill.vue'
 import TrackMatchRow from '@/components/TrackMatchRow.vue'
+import chevronRight from '@/assets/v2/chevron-right.svg'
 
 const router = useRouter()
 const quiz = useQuizStore()
 
+// Preview shown before the first attempt — a fixed sample profile, not the student's data
 const sample = [
   { track: 'Business Analytics', pct: 85 },
   { track: 'Smart-City Management & Technology', pct: 70 },
   { track: 'Product Development', pct: 60 },
 ]
 
-const top = computed(() => quiz.latest?.results[0])
 const questionCount = quiz.questions.length
+const duration = '4 minutes'
+
+// TODO(backend): attempts come from the quiz store; swap for GET /api/quiz/attempts
+const top = computed(() => quiz.latest?.results[0])
 
 function formatDate(d) {
-  return new Date(d).toLocaleString('en-SG', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).replace(',', ' ·')
+  const date = new Date(d)
+  const day = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${day} · ${time}`
 }
 
 function startAttempt() {
@@ -35,109 +39,101 @@ function startAttempt() {
 </script>
 
 <template>
-  <!-- First time -->
-  <main v-if="!quiz.attempts.length" class="flex flex-col gap-6 p-16">
-    <header class="flex flex-col gap-3">
-      <p class="text-overline text-muted-foreground">TRACK QUIZ</p>
-      <h1 class="text-h2">You haven’t taken the Track Quiz yet</h1>
-      <p class="text-body text-muted-foreground">
-        Answer {{ questionCount }} short questions and we’ll show you the IS tracks that best match your interests,
-        strengths and completed modules.
-      </p>
-    </header>
+  <!-- Track Quiz — First Time -->
+  <div v-if="!quiz.attempts.length">
+    <PageHeader
+      overline="Track Quiz"
+      title="You haven't taken the Track Quiz yet"
+      :subtitle="`Answer ${questionCount} short questions and we'll show you the IS tracks that best match your interests, strengths and completed modules.`"
+    />
 
-    <section class="card flex flex-col gap-5 p-6">
-      <div class="flex items-center justify-between gap-6">
+    <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
+      <section v-enter class="card flex items-center justify-between gap-4 p-6">
         <div class="flex flex-col gap-2">
           <h2 class="text-h3">Get your first track matches in 4 minutes</h2>
-          <p class="text-body text-muted-foreground">
-            No right answers — just choose what sounds most interesting to you. We’ll use your answers to rank the
-            tracks that fit your profile best.
+          <p class="text-[14px] text-muted-foreground">
+            No right answers. Choose what sounds most interesting and we rank the tracks that fit your profile.
           </p>
+          <div class="flex gap-2 pt-2">
+            <BaseButton @click="startAttempt">Attempt quiz</BaseButton>
+            <BaseButton variant="ghost" disabled>View past attempts</BaseButton>
+          </div>
         </div>
-        <div class="flex shrink-0 flex-col items-end gap-2">
-          <span class="rounded-full bg-secondary px-2.5 py-1.5 text-overline text-muted-foreground">{{ questionCount }} questions</span>
-          <span class="rounded-full bg-secondary px-2.5 py-1.5 text-overline text-muted-foreground">4 minutes</span>
+        <div class="flex gap-2">
+          <StatusPill>{{ questionCount }} questions</StatusPill>
+          <StatusPill>{{ duration }}</StatusPill>
         </div>
-      </div>
-      <div><BaseButton @click="startAttempt">Attempt quiz</BaseButton></div>
-    </section>
+      </section>
 
-    <section class="flex flex-col gap-4">
-      <h2 class="text-h4">What you’ll see after you finish</h2>
-      <div class="card flex flex-col gap-4 p-5">
+      <h2 class="text-h4">What you'll see after you finish</h2>
+      <section v-enter="0.08" class="card flex flex-col gap-2.5 p-6">
+        <div class="flex items-center justify-between leading-normal">
+          <h3 class="text-[15px] font-semibold">Sample track matches</h3>
+          <span class="text-[12px] text-muted-foreground">Based on a sample profile</span>
+        </div>
+        <TrackMatchRow v-for="(row, i) in sample" :key="row.track" :rank="i + 1" :track="row.track" :pct="row.pct" />
+      </section>
+    </main>
+  </div>
+
+  <!-- Track Quiz — Past Attempts -->
+  <div v-else>
+    <PageHeader
+      overline="Track Quiz"
+      title="Past attempts"
+      subtitle="Review your previous results and start a new attempt whenever you want to refresh your track matches."
+    />
+
+    <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
+      <div class="flex items-start gap-4">
+        <section v-enter class="card flex min-w-0 flex-1 flex-col gap-3 p-6">
+          <h2 class="text-h4">Top match</h2>
+          <TrackMatchRow :rank="1" :track="trackName(top.code)" :pct="top.pct" bar-width="w-[200px]" />
+        </section>
+        <section v-enter="0.05" class="card flex min-w-0 flex-1 flex-col gap-2 p-6">
+          <h2 class="text-h4">Latest attempt</h2>
+          <p class="text-[16px] font-medium">{{ formatDate(quiz.latest.takenAt) }}</p>
+          <p class="text-[13px] text-muted-foreground">{{ questionCount }} questions completed · {{ duration }}</p>
+          <div class="flex items-center justify-between rounded-md bg-muted px-3 py-2.5">
+            <p class="text-[13px]">{{ trackName(top.code) }} is your top match</p>
+            <BaseButton size="sm" variant="link" :to="`/quiz/results?attempt=${quiz.latest.id}`">Open</BaseButton>
+          </div>
+        </section>
+      </div>
+
+      <section v-enter="0.1" class="card flex flex-col gap-2.5 p-6">
         <div class="flex items-center justify-between">
-          <h3 class="text-h4">Sample track matches</h3>
-          <span class="text-small text-muted-foreground">Based on a sample profile</span>
+          <h2 class="text-h4">Attempt history</h2>
+          <span class="text-[12px] text-muted-foreground">
+            {{ quiz.attempts.length }} attempt{{ quiz.attempts.length === 1 ? '' : 's' }}
+          </span>
         </div>
-        <div class="flex flex-col gap-3">
-          <TrackMatchRow v-for="(row, i) in sample" :key="row.track" :rank="i + 1" :track="row.track" :pct="row.pct" />
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Past attempts -->
-  <main v-else class="flex flex-col gap-5 px-16 py-5">
-    <header class="flex flex-col gap-3">
-      <p class="text-overline text-muted-foreground">TRACK QUIZ</p>
-      <h1 class="text-h2">Past attempts</h1>
-      <p class="text-body text-muted-foreground">
-        Review your previous quiz results and start a new attempt whenever you want to refresh your track matches.
-      </p>
-    </header>
-
-    <div class="flex items-start gap-6">
-      <section class="card flex flex-1 flex-col gap-3 p-5">
-        <h2 class="text-h4">Top match</h2>
-        <TrackMatchRow :rank="1" :track="trackName(top.code)" :pct="top.pct" />
-      </section>
-      <section class="card flex flex-1 flex-col gap-3 p-5">
-        <h2 class="text-h4">Latest attempt</h2>
-        <div class="flex flex-col gap-1">
-          <p class="text-body">{{ formatDate(quiz.latest.takenAt) }}</p>
-          <p class="text-small text-muted-foreground">{{ questionCount }} questions completed · 4 minutes</p>
-        </div>
-        <div class="flex items-center gap-2 rounded-md bg-secondary px-3 py-2.5 text-[13px]">
-          <p class="flex-1">{{ trackName(top.code) }} is your top match</p>
-          <RouterLink :to="`/quiz/results?attempt=${quiz.latest.id}`" class="text-primary hover:underline">Open</RouterLink>
-        </div>
-      </section>
-    </div>
-
-    <section class="card flex flex-col gap-4 p-5">
-      <div class="flex items-center justify-between">
-        <h2 class="text-h4">Attempt history</h2>
-        <span class="text-small text-muted-foreground">{{ quiz.attempts.length }} attempt{{ quiz.attempts.length === 1 ? '' : 's' }}</span>
-      </div>
-      <div class="flex flex-col gap-3">
         <RouterLink
           v-for="a in quiz.attempts"
           :key="a.id"
           :to="`/quiz/results?attempt=${a.id}`"
-          class="flex items-center gap-4 rounded-md border border-border bg-card px-4 py-3.5 hover:border-primary"
+          class="group flex items-center gap-6 rounded-md border border-border px-3.5 py-3 transition-colors hover:border-primary"
         >
-          <div class="flex w-[180px] shrink-0 flex-col gap-0.5">
-            <p class="text-body">{{ formatDate(a.takenAt) }}</p>
-            <p class="text-small text-muted-foreground">{{ questionCount }} questions · 4 minutes</p>
+          <div class="flex w-[220px] shrink-0 flex-col gap-0.5 leading-normal">
+            <p class="text-[14px] font-medium">{{ formatDate(a.takenAt) }}</p>
+            <p class="text-[12px] text-muted-foreground">{{ questionCount }} questions · {{ duration }}</p>
           </div>
-          <p class="flex-1 text-body">{{ trackName(a.results[0].code) }} · {{ a.results[0].pct }}% match</p>
-          <span class="rounded-full bg-secondary px-2.5 py-1.5 text-overline text-muted-foreground">Completed</span>
+          <p class="min-w-0 flex-1 text-[14px]">{{ trackName(a.results[0].code) }} · {{ a.results[0].pct }}% match</p>
+          <StatusPill>Completed</StatusPill>
+          <img :src="chevronRight" alt="" class="size-4 transition-transform group-hover:translate-x-0.5" />
         </RouterLink>
-      </div>
-    </section>
+      </section>
 
-    <section class="card flex flex-col gap-4 p-5">
-      <div class="flex flex-col gap-2">
+      <section v-enter="0.15" class="card flex flex-col gap-2 p-6">
         <h2 class="text-h4">Ready for a new attempt?</h2>
-        <p class="text-body text-muted-foreground">
-          Start a fresh quiz and we’ll re-run your track matches using your latest answers and completed modules.
+        <p class="text-[14px] text-muted-foreground">
+          Start a fresh quiz and we re-run your track matches using your latest answers and completed modules.
         </p>
-      </div>
-      <div class="flex items-center gap-3">
-        <BaseButton @click="startAttempt">Start new attempt</BaseButton>
-        <BaseButton variant="ghost" :to="`/quiz/results?attempt=${quiz.latest.id}`">View latest results</BaseButton>
-      </div>
-    </section>
-  </main>
+        <div class="flex gap-2 pt-2">
+          <BaseButton @click="startAttempt">Start new attempt</BaseButton>
+          <BaseButton variant="ghost" :to="`/quiz/results?attempt=${quiz.latest.id}`">View sample results</BaseButton>
+        </div>
+      </section>
+    </main>
+  </div>
 </template>

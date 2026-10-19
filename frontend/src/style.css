@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 /*
- * BidMaxxer design tokens — taken from the Figma variables.
+ * BidMaxxer design tokens — taken from the Figma variables (Screens v2).
  * Use them as Tailwind utilities, e.g. bg-card, text-muted-foreground,
  * border-border, rounded-md, shadow-sm, font-mono.
  */
@@ -10,21 +10,17 @@
   --color-foreground: #26262b;
   --color-card: #ffffff;
   --color-border: #e4e4e7;
+  --color-ring: #2563eb;
   --color-muted: #f4f4f5;
   --color-muted-foreground: #71717a;
   --color-secondary: #f4f4f5;
+  --color-secondary-foreground: #26262b;
   --color-primary: #2563eb;
   --color-primary-foreground: #fafafa;
-  --color-primary-soft: #eff6ff;
-  --color-primary-soft-border: #dbeafe;
-  --color-brand: #4f46e5;
+  --color-info: #2563eb;
   --color-success: #16a34a;
-  --color-success-soft: #dcfce7;
   --color-warning: #ca8a04;
-  --color-warning-soft: #fdf3d7;
-  --color-warning-chip: #f2e6ce;
   --color-destructive: #dc2626;
-  --color-destructive-soft: #fee2e2;
 
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -45,16 +41,12 @@
   font-weight: 500;
   line-height: 16px;
   letter-spacing: 0.44px;
+  text-transform: uppercase;
 }
-@utility text-h1 {
-  font-size: 40px;
+@utility text-page-title {
+  font-size: 32px;
   font-weight: 700;
-  line-height: 48px;
-}
-@utility text-h2 {
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 36px;
+  letter-spacing: -0.48px;
 }
 @utility text-h3 {
   font-size: 20px;
@@ -65,14 +57,6 @@
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
-}
-@utility text-body {
-  font-size: 15px;
-  line-height: 22px;
-}
-@utility text-small {
-  font-size: 13px;
-  line-height: 18px;
 }
 
 /* Card surface used across almost every screen */
@@ -93,5 +77,8 @@
   }
   button {
     cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
   }
 }

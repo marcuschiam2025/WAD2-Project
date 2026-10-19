@@ -3,5 +3,6 @@ import { createPinia } from 'pinia'
 import './style.css'
 import App from './App.vue'
 import router from '@backend/router'
+import { vEnter, vStagger } from './motion'
 
-createApp(App).use(createPinia()).use(router).mount('#app')
+createApp(App).use(createPinia()).use(router).directive('enter', vEnter).directive('stagger', vStagger).mount('#app')

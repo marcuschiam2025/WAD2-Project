@@ -3,38 +3,63 @@ import { computed } from 'vue'
 import { useBiddingStore } from '@backend/stores/bidding'
 import { useUserStore } from '@backend/stores/user'
 import { moduleName } from '@backend/data/catalogue'
-import { sections } from '@backend/data/bidding'
+import { days, slots, sections } from '@backend/data/bidding'
 import { buildIcs, downloadFile } from '@backend/utils/ics'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import TimetableModuleCard from '@/components/TimetableModuleCard.vue'
+import StatusPill from '@/components/ui/StatusPill.vue'
 import arrowLeft from '@/assets/figma/arrow-left.svg'
-import iconInfo from '@/assets/figma/info-20.svg'
-import iconCheck from '@/assets/figma/check-white-12.svg'
-import iconDownload from '@/assets/figma/download-white-16.svg'
-import lockKeyhole from '@/assets/figma/lock-keyhole.svg'
+import iconInfo from '@/assets/figma/info-primary.svg'
+import iconLock from '@/assets/figma/lock-keyhole.svg'
 
 const bidding = useBiddingStore()
 const user = useUserStore()
 const TERM_START = new Date(2025, 0, 6) // Monday, week 1 of AY24/25 Term 2
 
-// Plan 1 is the booked timetable; Plans 2 and 3 are alternative snapshots with one section swapped
+// TODO(backend): replace with GET /api/bidding/plans — one finalised copy per plan (max 3).
+// `swap` is [module, sectionId] for the one section that differs from Plan 1; Plan 1 has none.
+const variants = [
+  { name: 'Plan 1', swap: null },
+  { name: 'Plan 2', swap: ['IS212', 'IS212-G1'] },
+  { name: 'Plan 3', swap: ['IS213', 'IS213-G4'] },
+]
+
+const when = (s) => `${days[s.day].slice(0, 3)} ${slots[s.slot].start}`
+
+// "moves to Thursday" when the day changes, otherwise "moves to section G4"
+function moveText(s, base) {
+  const before = sections.find((x) => x.id === base[s.module])
+  return before.day === s.day ? `${s.module} moves to section ${s.section}` : `${s.module} moves to ${days[s.day]}`
+}
+
 const copies = computed(() => {
   const base = { ...bidding.booked }
-  const variants = [
-    { name: 'Plan 1', note: 'Original timetable · booked sessions from the planner.', swap: null },
-    { name: 'Plan 2', note: 'Alternative snapshot · IS212 moves to Thursday, section G1.', swap: ['IS212', 'IS212-G1'] },
-    { name: 'Plan 3', note: 'Alternative snapshot · IS213 moves to the later Tuesday session, section G4.', swap: ['IS213', 'IS213-G4'] },
-  ]
   return variants.map((v) => {
     const booked = v.swap ? { ...base, [v.swap[0]]: v.swap[1] } : base
     const schedule = Object.values(booked)
       .map((id) => sections.find((s) => s.id === id))
       .sort((a, b) => a.day - b.day || a.slot - b.slot)
       .map((s) => ({ ...s, changed: booked[s.module] !== base[s.module] }))
-    return { ...v, schedule, original: !v.swap }
+    const changed = schedule.filter((s) => s.changed)
+    return {
+      ...v,
+      schedule,
+      original: !v.swap,
+      summary: v.swap ? `${changed.length} change from Plan 1 · ${moveText(changed[0], base)}` : 'Original timetable from the Bidding Planner',
+    }
   })
 })
+
+// One row per module; each plan column shows its section or "Same as Plan 1"
+const rows = computed(() =>
+  copies.value[0].schedule.map((base) => ({
+    module: base.module,
+    cells: copies.value.map((c, i) => {
+      const s = c.schedule.find((x) => x.module === base.module)
+      return { s, changed: s.changed, same: i > 0 && !s.changed }
+    }),
+  })),
+)
 
 function exportCopy(copy) {
   const ics = buildIcs(
@@ -47,16 +72,11 @@ function exportCopy(copy) {
 
 <template>
   <div>
-    <PageHeader
-      overline="AY24/25 · SEM 2 · ROUND 1A"
-      title="BOSS — Finalised Plans"
-      subtitle="Review each plan’s module and session summary, then choose the copy to export."
-      large
-    >
+    <PageHeader overline="AY24/25 · Sem 2 · Round 1A" title="Finalised plans" subtitle="Compare your plans, then add one to Google Calendar.">
       <template #actions>
         <RouterLink
           to="/bidding"
-          class="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-[9px] text-body font-medium text-primary hover:bg-muted"
+          class="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-[9px] text-[14px] font-medium transition-colors hover:bg-muted"
         >
           <img :src="arrowLeft" alt="" class="size-4" /> Back to planner
         </RouterLink>
@@ -64,67 +84,74 @@ function exportCopy(copy) {
     </PageHeader>
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
-      <div class="flex items-center gap-3 rounded-md border border-primary-soft-border bg-primary-soft p-4">
-        <img :src="iconInfo" alt="" class="size-5" />
-        <div class="flex flex-col gap-1 text-[13px]">
-          <p class="font-semibold text-primary">Export to Google Calendar</p>
-          <p class="leading-[18px] text-muted-foreground">
-            Each copy downloads as an .ics file you can import into Google Calendar. Plan 2 and Plan 3 use observed
-            alternative sessions.
-          </p>
+      <!-- TODO(backend): remove once plans are real, this only labels the sample data -->
+      <div v-enter class="flex items-start gap-3 rounded-lg border border-primary bg-primary/10 px-3.5 py-3">
+        <img :src="iconInfo" alt="" class="mt-0.5 size-4" />
+        <div class="flex flex-col gap-0.5 text-[13px] leading-normal">
+          <p class="font-semibold text-primary">Example finalised state · sample copies</p>
+          <p>These copies illustrate the finalised view. Plan 2 and Plan 3 use observed alternative sessions.</p>
         </div>
       </div>
 
-      <div class="grid grid-cols-3 gap-6">
-        <article v-for="copy in copies" :key="copy.name" class="card flex flex-col">
-          <div class="flex flex-col gap-3 p-5">
-            <div class="flex items-center justify-between">
-              <h2 class="text-h3">{{ copy.name }}</h2>
-              <span class="flex items-center gap-[5px] rounded-full bg-success px-[9px] py-1 text-[11px] font-medium text-primary-foreground">
-                <img :src="iconCheck" alt="" class="size-3" /> Finalised
-              </span>
-            </div>
-            <p class="h-9 text-small text-muted-foreground">{{ copy.note }}</p>
-            <div class="flex h-11 items-center gap-1.5 rounded-sm bg-muted px-3">
-              <template v-if="copy.original">
-                <span class="font-mono text-[16px] leading-[22px] font-medium">e$ {{ bidding.allocated }}</span>
-                <span class="text-small text-muted-foreground">allocated of e$ {{ user.balance.toLocaleString() }}</span>
-              </template>
-              <span v-else class="text-small text-muted-foreground">Alternative allocation not provided</span>
-            </div>
+      <div v-stagger="0.05" class="grid grid-cols-3 gap-6">
+        <article v-for="copy in copies" :key="copy.name" class="card flex flex-col gap-3 p-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-h3">{{ copy.name }}</h2>
+            <StatusPill tone="success">Finalised</StatusPill>
           </div>
-          <div class="h-px bg-border" />
-          <div class="flex flex-1 flex-col gap-3.5 p-5">
-            <div class="flex items-center justify-between">
-              <h3 class="text-h4">Module &amp; session summary</h3>
-              <span class="text-small text-muted-foreground">Y2 · Sem 2</span>
-            </div>
-            <div v-for="s in copy.schedule" :key="s.id" class="flex flex-col gap-1.5">
-              <div class="flex items-center justify-between">
-                <span class="text-small">{{ bidding.slotLabel(s) }}</span>
-                <span v-if="s.changed" class="text-[11px] font-medium text-primary">Changed</span>
-              </div>
-              <TimetableModuleCard
-                :code="s.module"
-                :section="s.section"
-                :name="moduleName(s.module)"
-                :meta="`${s.profShort} · ${s.venueShort}`"
-              />
-            </div>
-          </div>
-          <div class="flex flex-col gap-2 px-5 pt-1 pb-5">
-            <BaseButton block @click="exportCopy(copy)">
-              <img :src="iconDownload" alt="" class="size-4" /> Export copy
-            </BaseButton>
-            <p class="text-center text-overline text-muted-foreground uppercase">{{ copy.name }} · .ics</p>
-          </div>
+          <p v-if="copy.original" class="flex items-baseline gap-1.5 leading-normal">
+            <span class="font-mono text-[22px] font-bold">e$ {{ bidding.allocated }}</span>
+            <span class="text-[13px] text-muted-foreground">allocated</span>
+          </p>
+          <p v-else class="flex items-baseline gap-1.5 leading-normal">
+            <span class="font-mono text-[22px] font-bold">—</span>
+            <span class="text-[13px] text-muted-foreground">no bids set</span>
+          </p>
+          <p class="text-[13px] text-muted-foreground">{{ copy.summary }}</p>
+          <BaseButton :variant="copy.original ? 'primary' : 'outline'" block @click="exportCopy(copy)">
+            Add to Google Calendar
+          </BaseButton>
         </article>
       </div>
 
-      <div class="flex items-center gap-2">
-        <img :src="lockKeyhole" alt="" class="size-3.5" />
-        <p class="text-small text-muted-foreground">Finalised copies are read-only. To adjust a session, return to the planner.</p>
-      </div>
+      <section v-enter="0.15" class="card overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4">
+          <h2 class="text-h4">Module and session comparison</h2>
+          <span class="text-[12px] text-muted-foreground">Y2 · Sem 2 · only cells that differ from Plan 1 are tinted</span>
+        </div>
+        <div class="grid grid-cols-[minmax(0,1.1fr)_repeat(3,minmax(0,1fr))] bg-muted text-overline text-muted-foreground">
+          <span class="px-5 py-2.5">Module</span>
+          <span v-for="c in copies" :key="c.name" class="px-4 py-2.5">{{ c.name }}</span>
+        </div>
+        <div
+          v-for="r in rows"
+          :key="r.module"
+          class="grid grid-cols-[minmax(0,1.1fr)_repeat(3,minmax(0,1fr))] border-t border-border text-[13px]"
+        >
+          <p class="flex items-center gap-2 px-5 py-3 leading-normal">
+            <span class="font-mono font-bold">{{ r.module }}</span>
+            <span>{{ moduleName(r.module) }}</span>
+          </p>
+          <div
+            v-for="(cell, i) in r.cells"
+            :key="i"
+            class="flex items-center gap-2 px-4 py-3"
+            :class="cell.changed && 'border-l-[3px] border-primary bg-primary/10'"
+          >
+            <span v-if="cell.same" class="text-muted-foreground">Same as Plan 1</span>
+            <template v-else>
+              <span class="font-mono font-bold">{{ cell.s.section }}</span>
+              <span class="text-muted-foreground">{{ when(cell.s) }}</span>
+              <span v-if="cell.changed" class="text-[12px] font-semibold text-primary">Changed</span>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <p class="flex items-center gap-2 text-[13px] text-muted-foreground">
+        <img :src="iconLock" alt="" class="size-3.5" />
+        Finalised copies are read-only. To adjust a session, return to the planner.
+      </p>
     </main>
   </div>
 </template>

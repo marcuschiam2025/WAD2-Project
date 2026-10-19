@@ -1,12 +1,13 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@backend/stores/user'
+import { popEnter, popLeave } from '@/motion'
 import BrandLogo from './BrandLogo.vue'
-import iconBell from '@/assets/figma/icon-bell.svg'
-import avatarRing from '@/assets/figma/avatar-ring-32.svg'
-import iconSettings from '@/assets/figma/icon-settings.svg'
-import iconLogout from '@/assets/figma/icon-logout.svg'
+import UserAvatar from '@/components/ui/UserAvatar.vue'
+import iconBell from '@/assets/v2/bell.svg'
+import iconSettings from '@/assets/v2/settings.svg'
+import iconLogout from '@/assets/v2/logout.svg'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,6 +20,9 @@ const links = [
   { key: 'quiz', label: 'Track Quiz', to: '/quiz' },
   { key: 'rooms', label: 'Collab Rooms', to: '/rooms' },
 ]
+
+// quiz-results has no meta.nav in the shared router, so fall back to the path
+const activeKey = computed(() => route.meta.nav ?? (route.path.startsWith('/quiz') ? 'quiz' : null))
 
 const menuOpen = ref(false)
 const menuRef = ref(null)
@@ -42,29 +46,33 @@ function logOut() {
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card px-5">
-    <div class="flex items-center gap-7">
+  <header class="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card px-6">
+    <div class="flex items-center gap-8">
       <BrandLogo to="/dashboard" />
-      <nav class="flex items-center gap-[22px]">
+      <nav class="flex items-start gap-6">
         <RouterLink
           v-for="link in links"
           :key="link.key"
           :to="link.to"
-          class="relative flex flex-col text-[13.5px] whitespace-nowrap"
-          :class="route.meta.nav === link.key ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground'"
+          class="relative border-b-2 pt-[22px] pb-5 text-[14px] leading-normal whitespace-nowrap transition-colors"
+          :class="
+            activeKey === link.key
+              ? 'border-primary font-medium text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          "
         >
           {{ link.label }}
-          <span v-if="route.meta.nav === link.key" class="absolute -bottom-2 left-0 h-0.5 w-full bg-primary" />
         </RouterLink>
       </nav>
     </div>
 
-    <div class="flex items-center gap-3.5">
-      <div class="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 whitespace-nowrap">
-        <span class="font-mono text-[12.5px] font-medium text-black">e$ {{ user.balance.toLocaleString() }}</span>
+    <div class="flex items-center gap-4">
+      <!-- TODO(backend): balance comes from the user store; wire it to GET /api/users/me -->
+      <div class="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 leading-normal whitespace-nowrap">
+        <span class="font-mono text-[12.5px] font-bold">e$ {{ user.balance.toLocaleString() }}</span>
         <span class="text-[12px] text-muted-foreground">left</span>
       </div>
-      <button type="button" aria-label="Notifications" class="size-8">
+      <button type="button" aria-label="Notifications" class="size-8 rounded-full hover:bg-muted">
         <img :src="iconBell" alt="" class="size-8" />
       </button>
       <div ref="menuRef" class="relative">
@@ -72,29 +80,34 @@ function logOut() {
           type="button"
           aria-label="Account menu"
           :aria-expanded="menuOpen"
-          class="relative block size-8"
+          class="block rounded-full"
           @click="menuOpen = !menuOpen"
         >
-          <span class="absolute inset-[-6.25%]">
-            <img :src="avatarRing" alt="" class="block size-full max-w-none" />
-          </span>
-          <span class="absolute inset-0 flex items-center justify-center text-[12px] font-semibold text-black">
-            {{ user.profile.initials }}
-          </span>
+          <UserAvatar :initials="user.profile.initials" :size="32" you />
         </button>
         <!-- Overlay / Avatar menu -->
-        <div
-          v-if="menuOpen"
-          class="absolute top-11 right-0 flex w-48 flex-col gap-1 rounded-md border border-border bg-card p-2 shadow-sm"
-        >
-          <button type="button" class="flex h-10 items-center gap-3 rounded-sm px-3 text-left text-small hover:bg-muted" @click="go('/profile')">
-            <img :src="iconSettings" alt="" class="size-4" /> Settings
-          </button>
-          <div class="h-px bg-border" />
-          <button type="button" class="flex h-10 items-center gap-3 rounded-sm px-3 text-left text-small hover:bg-muted" @click="logOut">
-            <img :src="iconLogout" alt="" class="size-4" /> Log out
-          </button>
-        </div>
+        <Transition :css="false" @enter="popEnter" @leave="popLeave">
+          <div
+            v-if="menuOpen"
+            class="absolute top-11 right-0 flex w-48 origin-top-right flex-col gap-1 rounded-lg border border-border bg-card p-2 shadow-md"
+          >
+            <button
+              type="button"
+              class="flex items-center gap-2.5 rounded-sm p-2.5 text-left text-[14px] hover:bg-muted"
+              @click="go('/profile')"
+            >
+              <img :src="iconSettings" alt="" class="size-4" /> Settings
+            </button>
+            <div class="h-px bg-border" />
+            <button
+              type="button"
+              class="flex items-center gap-2.5 rounded-sm p-2.5 text-left text-[14px] hover:bg-muted"
+              @click="logOut"
+            >
+              <img :src="iconLogout" alt="" class="size-4" /> Log out
+            </button>
+          </div>
+        </Transition>
       </div>
     </div>
   </header>

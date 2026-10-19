@@ -1,59 +1,63 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { usePlannerStore, MAX_PLANS, effectiveCode } from '@backend/stores/planner'
+import { useRouter } from 'vue-router'
+import { usePlannerStore, effectiveCode } from '@backend/stores/planner'
 import { modules, tracks, trackName } from '@backend/data/catalogue'
+import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import BaseBadge from '@/components/ui/BaseBadge.vue'
-import SelectField from '@/components/ui/SelectField.vue'
-import ToggleSwitch from '@/components/ui/ToggleSwitch.vue'
-import ModuleChip from '@/components/ModuleChip.vue'
-import BasketModule from '@/components/BasketModule.vue'
+import StatusPill from '@/components/ui/StatusPill.vue'
+import ProgressBar from '@/components/ui/ProgressBar.vue'
 import PrereqWarningModal from '@/components/modals/PrereqWarningModal.vue'
 import PlanLimitModal from '@/components/modals/PlanLimitModal.vue'
-import iconPlusWhite from '@/assets/figma/plus-white.svg'
-import iconPlusDark from '@/assets/figma/plus-dark.svg'
-import iconPlusMuted from '@/assets/figma/plus-muted.svg'
-import iconPlus14 from '@/assets/figma/plus-14.svg'
-import iconUsers from '@/assets/figma/icon-users.svg'
-import iconGavel from '@/assets/figma/icon-gavel.svg'
-import iconInfoMuted from '@/assets/figma/info-muted.svg'
-import iconInfoPrimary from '@/assets/figma/info-primary.svg'
+import PlanSettingsModal from '@/components/modals/PlanSettingsModal.vue'
+import iconSearch from '@/assets/v2/search.svg'
+import iconCheck from '@/assets/figma/check-success.svg'
+import iconAlert from '@/assets/figma/alert-12.svg'
+import iconGrip from '@/assets/figma/icon-grip.svg'
+import iconPlus from '@/assets/figma/plus-14.svg'
 
+const router = useRouter()
 const planner = usePlannerStore()
+// TODO(backend): plans, basket and requirements all come from the planner store — swap for /api/plans
 const plan = computed(() => planner.activePlan)
 
 const tabsRef = ref(null)
 const showPlanLimit = ref(false)
+const showSettings = ref(false)
 const warning = ref(null) // { code, semId }
 const dragging = ref(null)
-const addingModule = ref(false)
-const moduleToAdd = ref('')
+const dragOver = ref(null) // semester id under the cursor while dragging
+const query = ref('')
+const expandedYears = ref([])
 
-function planSubtitle(p) {
-  const names = p.tracks.map((c) => tracks.find((t) => t.code === c)?.short ?? c)
-  return names.length === 1 ? `${names[0]} only` : names.join(' + ')
+const shortTrack = (c) => tracks.find((t) => t.code === c)?.short ?? c
+const status = (sem) => planner.semStatus(plan.value, sem.id)
+const nowSem = computed(() => plan.value.semesters.find((s) => s.id === plan.value.currentSem))
+
+// --- Columns: finished years collapse into one narrow "Y1 ✓ 8 done" column ------------------
+const columns = computed(() => {
+  const cols = []
+  plan.value.semesters.forEach((sem) => {
+    const year = sem.id.slice(0, 2)
+    if (status(sem) === 'done' && !expandedYears.value.includes(year)) {
+      const last = cols.at(-1)
+      if (last?.type === 'year' && last.year === year) last.count += sem.modules.length
+      else cols.push({ type: 'year', key: year, year, count: sem.modules.length })
+    } else {
+      cols.push({ type: 'sem', key: sem.id, sem })
+    }
+  })
+  return cols
+})
+
+function toggleYear(year) {
+  expandedYears.value = expandedYears.value.includes(year)
+    ? expandedYears.value.filter((y) => y !== year)
+    : [...expandedYears.value, year]
 }
 
-// --- Controls -------------------------------------------------------------
-const semesterOptions = computed(() =>
-  plan.value.semesters.filter((s) => !s.loa).map((s) => ({ value: s.id, label: s.label.replace('S', 'Sem ') })),
-)
-const trackOptions = tracks.map((t) => ({ value: t.code, label: t.name }))
-const secondTrackOptions = computed(() => [
-  { value: '', label: 'None' },
-  ...trackOptions.filter((o) => o.value !== plan.value.tracks[0]),
-])
-const firstTrack = computed({
-  get: () => plan.value.tracks[0],
-  set: (v) => (plan.value.tracks = [v, ...plan.value.tracks.slice(1).filter((c) => c !== v)]),
-})
-const secondTrack = computed({
-  get: () => plan.value.tracks[1] ?? '',
-  set: (v) => (plan.value.tracks = v ? [plan.value.tracks[0], v] : [plan.value.tracks[0]]),
-})
-
-// --- Plans ----------------------------------------------------------------
+// --- Plans ---------------------------------------------------------------------------------
 function addPlan() {
   if (!planner.addPlan()) showPlanLimit.value = true
 }
@@ -63,7 +67,9 @@ function goToPlans() {
   tabsRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
-// --- Drag & drop ----------------------------------------------------------
+// --- Drag & drop ---------------------------------------------------------------------------
+const canDrop = (sem) => !sem.loa && status(sem) !== 'done'
+
 function onDragStart(e, code) {
   dragging.value = code
   e.dataTransfer.effectAllowed = 'move'
@@ -72,41 +78,40 @@ function onDragStart(e, code) {
 
 function onDragEnd() {
   dragging.value = null
+  dragOver.value = null
 }
 
 function dropOnSemester(sem) {
   const code = dragging.value
-  dragging.value = null
-  if (!code || sem.loa) return
+  onDragEnd()
+  if (!code || !canDrop(sem)) return
   planner.placeModule(code, sem.id)
   if (planner.hasWarning(plan.value, code, sem.id)) warning.value = { code, semId: sem.id }
 }
 
 function dropOnBasket() {
   if (dragging.value) planner.returnToBasket(dragging.value)
-  dragging.value = null
+  onDragEnd()
 }
 
-function chipState(code, sem) {
-  if (dragging.value === code) return 'dragging'
-  if (planner.semStatus(plan.value, sem.id) === 'done') return 'completed'
+function cardState(code, sem) {
+  if (status(sem) === 'done') return 'done'
   if (planner.hasWarning(plan.value, code, sem.id)) return 'warning'
-  return 'default'
+  return 'planned'
 }
 
-// --- Prereq warning -------------------------------------------------------
+function warningText(code, sem) {
+  const { prereqs, coreqs } = planner.checkModule(plan.value, code, sem.id)
+  return prereqs.length ? `Prereq ${prereqs[0]} not met` : `Coreq ${coreqs[0]} needed`
+}
+
+// --- Prereq warning overlay ----------------------------------------------------------------
 const warningInfo = computed(() => {
   if (!warning.value) return null
   const { code, semId } = warning.value
   const semesters = plan.value.semesters.filter((s) => !s.loa)
   const i = semesters.findIndex((s) => s.id === semId)
-  return {
-    code,
-    sem: semesters[i],
-    prev: semesters[i - 1],
-    next: semesters[i + 1],
-    ...planner.checkModule(plan.value, code, semId),
-  }
+  return { code, sem: semesters[i], prev: semesters[i - 1], next: semesters[i + 1], ...planner.checkModule(plan.value, code, semId) }
 })
 
 function resolveWarning(action, target) {
@@ -121,246 +126,252 @@ function resolveWarning(action, target) {
   if (!planner.hasWarning(plan.value, w.code, w.sem.id)) warning.value = null
 }
 
-// --- Basket ---------------------------------------------------------------
-const addableModules = computed(() => {
+// --- Basket + search -----------------------------------------------------------------------
+const q = computed(() => query.value.trim().toLowerCase())
+const matches = (m) => !q.value || m.code.toLowerCase().includes(q.value) || m.name.toLowerCase().includes(q.value)
+const basket = computed(() => planner.basket.map((code) => modules[code] ?? { code, name: code }).filter(matches))
+
+// TODO(backend): search should hit GET /api/modules?search=… instead of the local catalogue
+const searchResults = computed(() => {
+  if (!q.value) return []
   const placed = new Set(plan.value.semesters.flatMap((s) => s.modules.map(effectiveCode)))
   return Object.values(modules)
-    .filter((m) => !placed.has(m.code) && !planner.basket.includes(m.code))
-    .map((m) => ({ value: m.code, label: `${m.code} · ${m.name}` }))
+    .filter((m) => !placed.has(m.code) && !planner.basket.includes(m.code) && matches(m))
+    .slice(0, 4)
 })
 
-function confirmAddModule() {
-  if (moduleToAdd.value) planner.addToBasket(moduleToAdd.value)
-  moduleToAdd.value = ''
-  addingModule.value = false
-}
+// --- Requirements strip --------------------------------------------------------------------
+// TODO(backend): the V2 design shows a "Track 2" bucket; the requirement checker only has IS depth for now
+const bucketOrder = ['major-core', 'track', 'depth', 'free', 'uni-core']
+const bucketLabel = (b) =>
+  ({
+    'major-core': 'IS core',
+    track: `Track 1 · ${shortTrack(plan.value.tracks[0])}`,
+    depth: 'IS depth',
+    free: 'Electives',
+    'uni-core': 'General education',
+  })[b.key] ?? b.label
+const requirements = computed(() =>
+  bucketOrder.map((key) => planner.requirements.find((b) => b.key === key)).filter(Boolean),
+)
 </script>
 
 <template>
   <div>
-    <PageHeader overline="BSc INFORMATION SYSTEMS · CLASS OF 2027" title="What-If Planner">
+    <PageHeader overline="BSc Information Systems · Class of 2027" title="What-If Planner">
       <template #actions>
-        <BaseButton variant="outline" @click="planner.addSemester({ loa: true })">Add LOA term</BaseButton>
-        <BaseButton @click="addPlan">
-          <img :src="iconPlusWhite" alt="" class="size-4" /> Add plan
-        </BaseButton>
+        <BaseButton variant="outline" size="lg" @click="planner.addSemester({ loa: true })">Add LOA term</BaseButton>
+        <BaseButton size="lg" @click="addPlan">Add plan</BaseButton>
       </template>
     </PageHeader>
 
-    <main class="flex flex-col gap-6 px-16 pt-8 pb-16">
-      <!-- Module basket -->
-      <section class="card flex flex-col gap-4 p-5" @dragover.prevent @drop.prevent="dropOnBasket">
-        <div class="flex items-center gap-3">
-          <div class="flex flex-1 flex-col gap-0.5">
-            <h2 class="text-h4">Module basket · {{ planner.basket.length }}</h2>
-            <p class="text-small text-muted-foreground">
-              Saved from Match Results and search. Drag a module onto a semester column.
-            </p>
+    <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
+      <section v-enter class="card flex items-stretch overflow-hidden">
+        <!-- Module basket -->
+        <aside
+          class="flex w-[260px] shrink-0 flex-col gap-3 border-r border-border p-4 transition-colors"
+          :class="dragging && !planner.basket.includes(dragging) && 'bg-primary/5'"
+          @dragover.prevent
+          @drop.prevent="dropOnBasket"
+        >
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+              <h2 class="text-h4">Module basket</h2>
+              <span class="text-[13px] text-muted-foreground">{{ planner.basket.length }}</span>
+            </div>
+            <p class="text-[12px] text-muted-foreground">Saved from Match Results and search.</p>
           </div>
-          <BaseButton variant="outline" @click="addingModule = !addingModule">
-            <img :src="iconPlusDark" alt="" class="size-4" /> Add module
-          </BaseButton>
-          <BaseButton variant="outline" to="/rooms">
-            <img :src="iconUsers" alt="" class="size-4" /> Import to Collab Room
-          </BaseButton>
-          <BaseButton variant="secondary" to="/bidding">
-            <img :src="iconGavel" alt="" class="size-4" /> Import to Bidding Planner
-          </BaseButton>
-        </div>
-        <div v-if="addingModule" class="flex items-end gap-2">
-          <SelectField
-            v-model="moduleToAdd"
-            label="Add a module to your basket"
-            :options="[{ value: '', label: 'Choose a module…' }, ...addableModules]"
-            width="w-[420px]"
-          />
-          <BaseButton :disabled="!moduleToAdd" @click="confirmAddModule">Add</BaseButton>
-        </div>
-        <div class="flex flex-wrap gap-3">
-          <BasketModule
-            v-for="code in planner.basket"
-            :key="code"
-            :code="code"
-            :name="modules[code]?.name ?? code"
-            draggable="true"
-            @dragstart="onDragStart($event, code)"
-            @dragend="onDragEnd"
-          />
-          <p v-if="!planner.basket.length" class="text-small text-muted-foreground">
-            Your basket is empty. Save modules from your track matches or drag one back here.
+
+          <label class="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 focus-within:border-ring">
+            <img :src="iconSearch" alt="" class="size-4" />
+            <input v-model="query" placeholder="Search modules..." class="min-w-0 flex-1 bg-transparent text-[13px] outline-none" />
+          </label>
+
+          <ul v-stagger class="flex flex-col gap-2">
+            <li
+              v-for="m in basket"
+              :key="m.code"
+              draggable="true"
+              class="flex cursor-grab items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-[opacity,border-color] active:cursor-grabbing"
+              :class="dragging === m.code ? 'border-primary opacity-50' : 'border-border hover:border-primary/50'"
+              @dragstart="onDragStart($event, m.code)"
+              @dragend="onDragEnd"
+            >
+              <img :src="iconGrip" alt="" class="size-3.5" />
+              <div class="flex min-w-0 flex-col leading-normal">
+                <span class="font-mono text-[13px] font-bold">{{ m.code }}</span>
+                <span class="truncate text-[12px] text-muted-foreground">{{ m.name }}</span>
+              </div>
+            </li>
+          </ul>
+
+          <div v-if="searchResults.length" class="flex flex-col gap-1.5">
+            <p class="text-overline text-muted-foreground">Add from catalogue</p>
+            <button
+              v-for="m in searchResults"
+              :key="m.code"
+              type="button"
+              class="flex items-center gap-2 rounded-md border border-dashed border-border px-2.5 py-2 text-left transition-colors hover:border-primary"
+              @click="planner.addToBasket(m.code)"
+            >
+              <img :src="iconPlus" alt="" class="size-3.5" />
+              <span class="min-w-0 flex-1 truncate text-[12px]"><span class="font-mono font-bold">{{ m.code }}</span> {{ m.name }}</span>
+            </button>
+          </div>
+
+          <p v-if="!planner.basket.length" class="text-[12px] text-muted-foreground">
+            Your basket is empty. Save modules from your track matches, or drag one back here.
           </p>
+          <p v-else class="text-[12px] text-muted-foreground">Drag a module onto a semester.</p>
+
+          <div class="mt-auto border-t border-border pt-3">
+            <BaseButton variant="ghost" @click="router.push('/rooms')">Import basket to Collab Room</BaseButton>
+          </div>
+        </aside>
+
+        <!-- Plans -->
+        <div class="flex min-w-0 flex-1 flex-col gap-3 p-4">
+          <div ref="tabsRef" class="flex items-center justify-between gap-3 border-b border-border">
+            <div class="flex min-w-0 gap-5">
+              <button
+                v-for="p in planner.plans"
+                :key="p.id"
+                type="button"
+                class="-mb-px border-b-2 pb-2.5 text-[14px] whitespace-nowrap transition-colors"
+                :class="
+                  p.id === planner.activePlanId
+                    ? 'border-foreground font-semibold'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                "
+                @click="planner.activePlanId = p.id"
+              >
+                {{ planLabel(p) }}
+              </button>
+            </div>
+            <div class="flex gap-2 pb-2">
+              <BaseButton variant="outline" size="sm" @click="showSettings = true">Plan settings</BaseButton>
+              <BaseButton variant="secondary" size="sm" to="/bidding">Import to Bidding Planner</BaseButton>
+            </div>
+          </div>
+
+          <p class="text-[13px] text-muted-foreground">
+            Now: {{ nowSem?.label.replace('S', 'Sem ') }}
+            · 1st track: {{ trackName(plan.tracks[0]) }}
+            <template v-if="plan.tracks[1]"> · 2nd track: {{ trackName(plan.tracks[1]) }}</template>
+          </p>
+
+          <div class="flex gap-2.5 overflow-x-auto pb-1">
+            <template v-for="col in columns" :key="col.key">
+              <!-- Collapsed finished year -->
+              <button
+                v-if="col.type === 'year'"
+                type="button"
+                class="flex min-h-[330px] w-14 shrink-0 flex-col items-center gap-2 rounded-md bg-muted py-3 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-border"
+                :title="`Show ${col.year} semesters`"
+                @click="toggleYear(col.year)"
+              >
+                {{ col.year }}
+                <img :src="iconCheck" alt="" class="size-3.5" />
+                <span class="font-sans">{{ col.count }} done</span>
+              </button>
+
+              <!-- Semester -->
+              <div
+                v-else
+                class="flex min-h-[330px] min-w-[140px] flex-1 flex-col gap-2 rounded-md p-2 transition-colors"
+                :class="{
+                  'border-[1.5px] border-primary bg-card': status(col.sem) === 'now',
+                  'border border-border bg-card': status(col.sem) === 'future' && !col.sem.loa,
+                  'border border-border bg-muted': status(col.sem) === 'done',
+                  'border border-dashed border-border bg-muted': col.sem.loa,
+                }"
+                @dragenter="canDrop(col.sem) && (dragOver = col.sem.id)"
+                @dragover.prevent
+                @drop.prevent="dropOnSemester(col.sem)"
+              >
+                <div class="flex items-center justify-between px-0.5 font-mono text-[11px]">
+                  <button
+                    v-if="status(col.sem) === 'done'"
+                    type="button"
+                    class="text-muted-foreground hover:text-foreground"
+                    @click="toggleYear(col.sem.id.slice(0, 2))"
+                  >{{ col.sem.label }}</button>
+                  <span v-else :class="status(col.sem) === 'now' ? 'text-primary' : 'text-muted-foreground'">{{ col.sem.label }}</span>
+                  <span v-if="col.sem.loa" class="font-sans text-muted-foreground">LOA</span>
+                  <span v-else-if="status(col.sem) === 'now'" class="font-sans font-semibold text-primary">Now</span>
+                  <span v-else-if="col.sem.exchange" class="font-sans font-semibold text-primary">Exchange</span>
+                  <span v-else class="text-muted-foreground">{{ col.sem.modules.length }}</span>
+                </div>
+
+                <p v-if="col.sem.loa" class="px-0.5 text-[11.5px] text-muted-foreground">Leave of absence. No modules this term.</p>
+
+                <div
+                  v-for="code in col.sem.modules"
+                  :key="code"
+                  :draggable="status(col.sem) !== 'done'"
+                  class="group relative flex flex-col rounded-sm px-2 py-1.5 leading-normal transition-opacity"
+                  :class="[
+                    cardState(code, col.sem) === 'warning' ? 'border border-warning bg-warning/14' : 'bg-secondary',
+                    status(col.sem) !== 'done' && 'cursor-grab',
+                    dragging === code && 'opacity-40',
+                  ]"
+                  @dragstart="onDragStart($event, code)"
+                  @dragend="onDragEnd"
+                >
+                  <span class="flex items-center gap-1 font-mono text-[12px] font-bold">
+                    {{ code }}
+                    <img v-if="cardState(code, col.sem) === 'warning'" :src="iconAlert" alt="" class="size-3" />
+                  </span>
+                  <span v-if="cardState(code, col.sem) === 'warning'" class="text-[11px] text-warning">{{ warningText(code, col.sem) }}</span>
+                  <span v-else class="line-clamp-2 text-[11px] text-muted-foreground">{{ modules[effectiveCode(code)]?.name ?? code }}</span>
+                  <button
+                    v-if="status(col.sem) !== 'done'"
+                    type="button"
+                    :aria-label="`Move ${code} back to basket`"
+                    class="absolute top-1 right-1.5 hidden text-[11px] text-muted-foreground group-hover:block hover:text-foreground"
+                    @click="planner.returnToBasket(code)"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div
+                  v-if="dragging && dragOver === col.sem.id && !col.sem.modules.includes(dragging)"
+                  class="flex justify-center rounded-sm border-[1.5px] border-dashed border-primary px-2 py-2.5 text-[11.5px] font-medium text-primary"
+                >
+                  Drop {{ dragging }} here
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground">
+            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] bg-muted" /> Done</span>
+            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] bg-secondary" /> Planned</span>
+            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-warning bg-warning/14" /> Prereq not met</span>
+            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-dashed border-primary" /> Drop target</span>
+            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-[1.5px] border-primary" /> Current semester</span>
+          </div>
         </div>
       </section>
 
-      <!-- Semester roadmap -->
-      <section class="card flex flex-col gap-4 p-5">
-        <div ref="tabsRef" class="flex items-stretch gap-2">
-          <button
-            v-for="p in planner.plans"
-            :key="p.id"
-            type="button"
-            class="flex flex-col gap-0.5 rounded-md px-3.5 py-2 text-left whitespace-nowrap"
-            :class="p.id === planner.activePlanId ? 'border-[1.5px] border-primary bg-primary-soft' : 'border border-border hover:bg-muted'"
-            @click="planner.activePlanId = p.id"
-          >
-            <span class="text-[13px] font-semibold" :class="p.id === planner.activePlanId && 'text-primary'">{{ p.name }}</span>
-            <span class="text-[12px] text-muted-foreground">{{ planSubtitle(p) }}</span>
-          </button>
-          <button
-            type="button"
-            class="flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border px-3.5 py-2 text-[13px] font-medium text-muted-foreground"
-            :class="planner.plans.length >= MAX_PLANS && 'opacity-60'"
-            @click="addPlan"
-          >
-            <img :src="iconPlusMuted" alt="" class="size-3.5" />
-            {{ planner.plans.length }} / {{ MAX_PLANS }} plans
-          </button>
+      <!-- Module requirements -->
+      <section v-enter="0.1" class="card flex flex-col gap-4 p-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
+          <StatusPill v-if="!planner.hasAnyWarning" tone="success">On track</StatusPill>
+          <StatusPill v-else tone="warning">Prereq issues</StatusPill>
         </div>
-
-        <div class="flex items-end gap-4">
-          <SelectField v-model="plan.currentSem" label="Current semester" :options="semesterOptions" width="w-[220px]" />
-          <SelectField v-model="firstTrack" label="1st track" :options="trackOptions" width="w-[260px]" />
-          <SelectField v-model="secondTrack" label="2nd track / major" :options="secondTrackOptions" width="w-[340px]" />
-          <div class="flex flex-1 items-center gap-1.5 pb-2.5">
-            <img :src="iconInfoMuted" alt="" class="size-3.5" />
-            <p class="text-small text-muted-foreground">2nd track or second major can be added later on.</p>
+        <div class="grid grid-cols-5 gap-14">
+          <div v-for="b in requirements" :key="b.key" class="flex flex-col gap-1.5">
+            <span class="text-[13px] text-muted-foreground">{{ bucketLabel(b) }}</span>
+            <span class="font-mono text-[14px] font-bold">{{ Math.min(b.planned, b.required) }} / {{ b.required }} CU</span>
+            <ProgressBar
+              :value="Math.min(1, b.planned / b.required)"
+              :color="b.planned >= b.required ? 'bg-success' : 'bg-primary'"
+              track="h-1.5 w-full"
+            />
           </div>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <div class="flex flex-1 flex-col gap-0.5">
-            <h2 class="text-h4">{{ plan.name }} · {{ plan.semesters.length }}-semester roadmap</h2>
-            <p class="text-small text-muted-foreground">
-              Drag modules from the basket onto a semester. Past semesters are locked; drop modules there to mark them
-              as done for prereq checks.
-            </p>
-          </div>
-          <BaseButton v-if="planner.plans.length > 1" variant="ghost" size="sm" @click="planner.deletePlan(plan.id)">
-            Delete plan
-          </BaseButton>
-          <BaseButton variant="outline" size="sm" @click="planner.addSemester()">
-            <img :src="iconPlus14" alt="" class="size-3.5" /> Add sem
-          </BaseButton>
-        </div>
-
-        <div class="flex gap-2.5 overflow-x-auto pb-1">
-          <div
-            v-for="sem in plan.semesters"
-            :key="sem.id"
-            class="flex min-h-[260px] min-w-[120px] flex-1 flex-col gap-2 rounded-md px-2.5 py-3"
-            :class="{
-              'border border-border bg-muted opacity-75': planner.semStatus(plan, sem.id) === 'done',
-              'border-[1.5px] border-primary bg-card':
-                planner.semStatus(plan, sem.id) === 'now' || (sem.exchange && planner.semStatus(plan, sem.id) !== 'done'),
-              'border border-border bg-card':
-                planner.semStatus(plan, sem.id) === 'future' && !sem.exchange && !sem.loa,
-              'border border-dashed border-border bg-muted': sem.loa,
-            }"
-            @dragover.prevent
-            @drop.prevent="dropOnSemester(sem)"
-          >
-            <div
-              class="flex items-center justify-between text-[11px] font-medium"
-              :class="planner.semStatus(plan, sem.id) === 'now' || (sem.exchange && planner.semStatus(plan, sem.id) !== 'done') ? 'text-primary' : 'text-muted-foreground'"
-            >
-              <span class="tracking-[0.44px]">{{ sem.loa ? `${sem.label} · LOA` : sem.label }}</span>
-              <span v-if="planner.semStatus(plan, sem.id) === 'done'">Done</span>
-              <span v-else-if="planner.semStatus(plan, sem.id) === 'now'" class="font-semibold">Now</span>
-            </div>
-
-            <template v-if="sem.loa">
-              <p class="text-[11.5px] text-muted-foreground">Leave of absence — no modules this term.</p>
-            </template>
-            <template v-else>
-              <ToggleSwitch
-                :model-value="sem.exchange"
-                class="text-[11px] font-medium"
-                :class="sem.exchange ? 'text-foreground' : 'text-muted-foreground'"
-                @update:model-value="planner.toggleExchange(sem.id)"
-              >Exchange sem</ToggleSwitch>
-
-              <div
-                v-for="code in sem.modules"
-                :key="code"
-                class="group relative"
-                draggable="true"
-                @dragstart="onDragStart($event, code)"
-                @dragend="onDragEnd"
-              >
-                <ModuleChip :code="code" :state="chipState(code, sem)" class="w-full cursor-grab" />
-                <button
-                  v-if="planner.semStatus(plan, sem.id) !== 'done'"
-                  type="button"
-                  :aria-label="`Move ${code} back to basket`"
-                  class="absolute top-1/2 right-1.5 hidden -translate-y-1/2 text-[12px] text-muted-foreground group-hover:block hover:text-foreground"
-                  @click="planner.returnToBasket(code)"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div
-                v-if="planner.semStatus(plan, sem.id) !== 'done' && sem.modules.length < 5"
-                class="flex justify-center rounded-sm border border-dashed border-border p-2 text-[11.5px] text-muted-foreground"
-              >
-                + Drop module
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-5 text-[12px] text-muted-foreground">
-          <span class="flex items-center gap-1.5"><ModuleChip state="completed" class="h-3.5 w-5 px-1!" /> Completed (past sem)</span>
-          <span class="flex items-center gap-1.5"><span class="h-3.5 w-5 rounded-sm bg-secondary" /> Planned</span>
-          <span class="flex items-center gap-1.5"><ModuleChip state="warning" class="h-3.5 w-[22px] px-1!" /> Prereq not met</span>
-          <span class="flex items-center gap-1.5"><span class="h-4 w-6 rounded-sm border-2 border-primary bg-primary-soft" /> Dragging</span>
-        </div>
-
-        <!-- Requirements overview -->
-        <div class="flex items-center gap-3">
-          <div class="flex flex-1 flex-col gap-0.5">
-            <h2 class="text-h4">Module requirements overview — {{ plan.name }}</h2>
-            <p class="text-small text-muted-foreground">
-              {{ planner.plannedCu }} / {{ planner.requiredCu }} CU planned · graduation check updates as you drag modules.
-            </p>
-          </div>
-          <BaseBadge v-if="!planner.hasAnyWarning" variant="success" dot>On track</BaseBadge>
-          <BaseBadge v-else variant="warning" dot>Prereq issues</BaseBadge>
-        </div>
-
-        <div class="flex overflow-hidden rounded-md border border-border">
-          <div
-            v-for="(bucket, bi) in planner.requirements"
-            :key="bucket.key"
-            class="flex min-w-0 flex-1 flex-col"
-            :class="bi < planner.requirements.length - 1 && 'border-r border-border'"
-          >
-            <div class="flex flex-col gap-0.5 bg-muted px-3 py-2.5">
-              <p class="text-[12.5px] font-semibold">
-                {{ bucket.key === 'track' ? `IS Track #1 · ${trackName(plan.tracks[0])}` : bucket.label }}
-              </p>
-              <p class="font-mono text-[11px] font-medium text-muted-foreground">
-                {{ Math.min(bucket.planned, bucket.required) }} / {{ bucket.required }} CU
-              </p>
-            </div>
-            <div class="flex flex-col gap-2 p-3">
-              <div v-for="m in bucket.modules" :key="m.code" class="flex items-center gap-1.5">
-                <ModuleChip :code="m.code" />
-                <span v-if="bucket.key === 'uni-core'" class="min-w-0 flex-1 truncate text-[11.5px] text-muted-foreground">{{ m.name }}</span>
-                <BaseBadge v-else-if="bucket.key === 'track' && m.compulsory" variant="info" dot>Compulsory</BaseBadge>
-                <BaseBadge v-else-if="bucket.key === 'track'">Elective</BaseBadge>
-              </div>
-              <p v-if="!bucket.modules.length" class="text-[11.5px] text-muted-foreground">Nothing planned yet</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2.5 rounded-md bg-primary-soft px-3.5 py-3">
-          <img :src="iconInfoPrimary" alt="" class="size-4" />
-          <p class="flex-1 text-small">
-            Once 4 track modules are met, extra track modules can shift to IS Depth (only shown when you take 1 track) —
-            otherwise they move to Free Electives.
-          </p>
         </div>
       </section>
     </main>
@@ -379,5 +390,6 @@ function confirmAddModule() {
       @move-next="resolveWarning('move')"
     />
     <PlanLimitModal v-if="showPlanLimit" @close="showPlanLimit = false" @go-to-plans="goToPlans" />
+    <PlanSettingsModal v-if="showSettings" @close="showSettings = false" />
   </div>
 </template>
