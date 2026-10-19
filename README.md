@@ -16,8 +16,8 @@ pnpm dev
 
 # terminal 2 — app on http://localhost:5173 (/api is proxied to the backend on :4000)
 cd frontend
-npm install
-npm run dev            # npm run build for a production build
+pnpm install           # run this first after cloning
+pnpm dev               # pnpm build for a production build
 ```
 
 For local work without Firebase, set `AUTH_DEV_BYPASS=true` in `backend/.env` and send an
