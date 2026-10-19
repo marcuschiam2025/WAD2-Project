@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { useBiddingStore } from '@backend/stores/bidding'
-import { moduleName } from '@backend/data/catalogue'
-import { days, slots, sections, weightage, rateBid, MIN_BID } from '@backend/data/bidding'
+import { useBiddingStore } from '@/stores/bidding'
+import { moduleName } from '@/data/catalogue'
+import { days, slots, sections, weightage, rateBid, MIN_BID } from '@/data/bidding'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import SelectField from '@/components/ui/SelectField.vue'
 import iconX from '@/assets/figma/icon-x.svg'

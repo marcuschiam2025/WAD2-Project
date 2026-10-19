@@ -1,5 +1,5 @@
 <script setup>
-import { MAX_PLANS } from '@backend/stores/planner'
+import { MAX_PLANS } from '@/stores/planner'
 import AlertModal from './AlertModal.vue'
 import NoticeRow from './NoticeRow.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'

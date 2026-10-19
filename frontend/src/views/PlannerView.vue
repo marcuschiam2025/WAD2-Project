@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { usePlannerStore, MAX_PLANS, effectiveCode } from '@backend/stores/planner'
-import { modules, tracks, trackName } from '@backend/data/catalogue'
+import { usePlannerStore, MAX_PLANS, effectiveCode } from '@/stores/planner'
+import { modules, tracks, trackName } from '@/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseBadge from '@/components/ui/BaseBadge.vue'

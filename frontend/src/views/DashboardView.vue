@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
-import { useUserStore } from '@backend/stores/user'
-import { useBiddingStore } from '@backend/stores/bidding'
+import { useUserStore } from '@/stores/user'
+import { useBiddingStore } from '@/stores/bidding'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'

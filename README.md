@@ -4,7 +4,6 @@ Collaborative track explorer, What-If degree planner and BOSS bidding simulator 
 
 - `frontend/` — Vue 3 + Vite, Tailwind CSS v4, Vue Router and Pinia. Built from the Figma file (`Screens` page).
 - `backend/` — Node.js + Express 5 REST API with MongoDB (Mongoose) and Firebase Auth token verification.
-  It also holds the router, stores, API client and sample data that the frontend imports (see [Folder structure](#folder-structure)).
 
 ## Getting started
 
@@ -25,15 +24,15 @@ npm run dev            # npm run build for a production build
 For local work without Firebase, set `AUTH_DEV_BYPASS=true` in `backend/.env` and send an
 `x-dev-uid: some.name.2024` header. The bypass is ignored when `NODE_ENV=production`.
 
-The Pinia stores currently run on the sample data in `backend/data`, so the UI works without the API.
-Each store has `TODO(Backend n)` comments marking where to call `backend/services/api.js` instead.
+The Pinia stores currently run on the sample data in `frontend/src/data`, so the UI works without the API.
+Each store has `TODO(Backend n)` comments marking where to call `frontend/src/services/api.js` instead.
 
 ## Folder structure
 
 ```
 frontend/
-├── vite.config.js         # @ and @backend aliases, dev proxy, access to ../backend
-├── jsconfig.json          # same aliases for the editor
+├── vite.config.js         # @ alias, dev proxy to the API
+├── jsconfig.json          # same alias for the editor
 └── src/
     ├── main.js / App.vue  # app shell; nav bar shows on routes with meta.layout = 'app'
     ├── style.css          # design tokens from Figma (@theme) + text styles
@@ -44,10 +43,16 @@ frontend/
     │   ├── modals/        # prereq warning, plan limit, module detail, import plans, prereq ban
     │   ├── rooms/         # invite card, members card, slot picker
     │   └── ModuleChip, BasketModule, TimetableGrid, TimetableModuleCard, TrackMatchRow, RoomCard, BidSidebar
-    └── views/             # one file per screen
+    ├── views/             # one file per screen
+    ├── router/            # Vue Router page routes + sign-in guard
+    ├── stores/            # Pinia stores: user, quiz, planner, bidding, rooms
+    ├── services/api.js    # fetch client for the API endpoints below
+    ├── data/              # sample catalogue / quiz / bidding / room data
+    └── utils/ics.js       # .ics export for the finalised timetable
 
 backend/
-├── server.js              # Express app: CORS, JSON, /api routes, error handling
+├── server.js              # entry point: connects to MongoDB, starts the server
+├── app.js                 # Express app: CORS, JSON, /api routes, error handling
 ├── config/                # db.js (Mongo connection), firebase.js (Firebase Admin)
 ├── middleware/            # auth.js (verify ID token → req.user), errorHandler.js
 ├── models/                # Mongoose schemas
@@ -63,24 +68,10 @@ backend/
 │   └── BidCart.js         # a student's bids for a term (min e$ 10)
 ├── routes/                # one API router per feature, mounted in routes/index.js
 ├── utils/                 # pure logic, unit-testable: trackScoring, requirementChecker, referenceBid, clash
-├── seed/                  # seed.js + data/*.json
-│
-│   # Browser code used by the Vue frontend (imported as @backend/... — not run by Express)
-├── router/                # Vue Router page routes + sign-in guard
-├── stores/                # Pinia stores: user, quiz, planner, bidding, rooms
-├── services/api.js        # fetch client for the API endpoints below
-├── data/                  # sample catalogue / quiz / bidding / room data
-└── utils/ics.js           # .ics export for the finalised timetable
+└── seed/                  # seed.js + data/*.json
 ```
 
-### How the frontend imports from `backend/`
-
-Frontend code imports the browser files in `backend/` with the `@backend` alias, e.g.
-`import { useUserStore } from '@backend/stores/user'`. `frontend/vite.config.js` sets up the alias,
-lets the dev server read `../backend`, and dedupes `vue`, `vue-router` and `pinia` so those files use
-`frontend/node_modules`. Run `npm install` in `frontend/` even if you only edit those files.
-
-Note that `backend/router/` is page navigation for the Vue app, while `backend/routes/` is the Express API.
+Note that `frontend/src/router/` is page navigation for the Vue app, while `backend/routes/` is the Express API.
 
 ## API endpoints (all under `/api`)
 

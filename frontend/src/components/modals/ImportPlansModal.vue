@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { usePlannerStore } from '@backend/stores/planner'
+import { usePlannerStore } from '@/stores/planner'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import iconX from '@/assets/figma/icon-x.svg'

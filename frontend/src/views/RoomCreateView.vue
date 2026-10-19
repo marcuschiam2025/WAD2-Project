@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useRoomsStore, MAX_ROOM_SIZE } from '@backend/stores/rooms'
-import { moduleName } from '@backend/data/catalogue'
+import { useRoomsStore, MAX_ROOM_SIZE } from '@/stores/rooms'
+import { moduleName } from '@/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BackButton from '@/components/layout/BackButton.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'

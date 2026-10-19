@@ -1,8 +1,8 @@
 <script setup>
 // Timetable of a module's sections where a room member ticks the slots they'd take.
 import { computed } from 'vue'
-import { sections } from '@backend/data/bidding'
-import { moduleName } from '@backend/data/catalogue'
+import { sections } from '@/data/bidding'
+import { moduleName } from '@/data/catalogue'
 import TimetableGrid from '@/components/TimetableGrid.vue'
 import TimetableModuleCard from '@/components/TimetableModuleCard.vue'
 

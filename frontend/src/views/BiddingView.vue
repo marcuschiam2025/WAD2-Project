@@ -1,9 +1,9 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { useBiddingStore } from '@backend/stores/bidding'
-import { useUserStore } from '@backend/stores/user'
-import { moduleName } from '@backend/data/catalogue'
-import { sections } from '@backend/data/bidding'
+import { useBiddingStore } from '@/stores/bidding'
+import { useUserStore } from '@/stores/user'
+import { moduleName } from '@/data/catalogue'
+import { sections } from '@/data/bidding'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import TimetableGrid from '@/components/TimetableGrid.vue'

@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuizStore } from '@backend/stores/quiz'
+import { useQuizStore } from '@/stores/quiz'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
 

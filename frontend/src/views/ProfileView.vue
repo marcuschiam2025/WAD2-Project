@@ -1,5 +1,5 @@
 <script setup>
-import { useUserStore } from '@backend/stores/user'
+import { useUserStore } from '@/stores/user'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ToggleSwitch from '@/components/ui/ToggleSwitch.vue'

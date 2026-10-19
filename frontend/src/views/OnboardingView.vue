@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@backend/stores/user'
-import { tracks } from '@backend/data/catalogue'
+import { useUserStore } from '@/stores/user'
+import { tracks } from '@/data/catalogue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import SelectField from '@/components/ui/SelectField.vue'
 import chevronUp from '@/assets/figma/chevron-up.svg'

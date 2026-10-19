@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { modules } from '@backend/data/catalogue'
+import { modules } from '@/data/catalogue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import iconClose from '@/assets/figma/icon-close.svg'

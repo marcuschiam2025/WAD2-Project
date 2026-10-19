@@ -1,7 +1,7 @@
 <script setup>
 // Weekly grid: rows are BOSS session slots, columns are weekdays.
 // Use the #cell slot to render cards for a given { day, slot }.
-import { days, slots } from '@backend/data/bidding'
+import { days, slots } from '@/data/bidding'
 
 defineEmits(['cell-drop', 'cell-dragover'])
 </script>

@@ -1,7 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useUserStore } from '@backend/stores/user'
+import { useUserStore } from '@/stores/user'
 import BrandLogo from './BrandLogo.vue'
 import iconBell from '@/assets/figma/icon-bell.svg'
 import avatarRing from '@/assets/figma/avatar-ring-32.svg'

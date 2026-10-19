@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoomsStore } from '@backend/stores/rooms'
+import { useRoomsStore } from '@/stores/rooms'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
 
 const props = defineProps({

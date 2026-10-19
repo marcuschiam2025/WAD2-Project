@@ -1,5 +1,5 @@
 <script setup>
-import { moduleName } from '@backend/data/catalogue'
+import { moduleName } from '@/data/catalogue'
 import AlertModal from './AlertModal.vue'
 import NoticeRow from './NoticeRow.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
