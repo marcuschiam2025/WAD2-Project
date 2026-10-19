@@ -1,5 +1,5 @@
-// Thin client for the Express backend (see backend/routes). In dev, Vite proxies /api to :4000.
-// The Pinia stores currently use sample data from backend/data; swap their TODOs for these calls.
+// Thin client for the Express backend (see backend/features). In dev, Vite proxies /api to :4000.
+// The Pinia stores currently use sample data from src/data; swap their TODOs for these calls.
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -46,14 +46,14 @@ export const api = {
   deletePlan: (id) => request('DELETE', `/plans/${id}`),
   checkPlan: (id) => request('GET', `/plans/${id}/check`),
 
-  // Collab rooms
-  rooms: () => request('GET', '/rooms'),
-  room: (id) => request('GET', `/rooms/${id}`),
-  createRoom: (room) => request('POST', '/rooms', room),
-  joinRoom: (inviteCode) => request('POST', '/rooms/join', { inviteCode }),
-  leaveRoom: (id) => request('DELETE', `/rooms/${id}/members/me`),
-  vote: (id, sectionIds) => request('PUT', `/rooms/${id}/votes`, { sectionIds }),
-  roomUpdates: (id, since) => request('GET', `/rooms/${id}/updates?since=${since}`),
+  // Parties
+  parties: () => request('GET', '/parties'),
+  party: (id) => request('GET', `/parties/${id}`),
+  createParty: (party) => request('POST', '/parties', party),
+  joinParty: (inviteCode) => request('POST', '/parties/join', { inviteCode }),
+  leaveParty: (id) => request('DELETE', `/parties/${id}/members/me`),
+  vote: (id, sectionIds) => request('PUT', `/parties/${id}/votes`, { sectionIds }),
+  partyUpdates: (id, since) => request('GET', `/parties/${id}/updates?since=${since}`),
 
   // BOSS bidding
   sections: (moduleCode) => request('GET', `/bidding/sections?module=${moduleCode}`),
@@ -62,6 +62,7 @@ export const api = {
     request('GET', `/bidding/reference/${moduleCode}?amount=${amount}&round=${round}`),
   cart: () => request('GET', '/bidding/cart'),
   saveCart: (cart) => request('PUT', '/bidding/cart', cart),
+  validateCart: (sectionIds) => request('POST', '/bidding/validate-cart', { sectionIds }),
 
   // Google Calendar
   exportCalendar: (accessToken, sectionIds) => request('POST', '/calendar/export', { accessToken, sectionIds }),

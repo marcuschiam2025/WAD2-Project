@@ -6,8 +6,7 @@
   "main": "server.js",
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env server.js",
-    "start": "node --env-file-if-exists=.env server.js",
-    "seed": "node --env-file-if-exists=.env seed/seed.js"
+    "start": "node --env-file-if-exists=.env server.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

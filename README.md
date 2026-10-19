@@ -10,10 +10,9 @@ Collaborative track explorer, What-If degree planner and BOSS bidding simulator 
 ```bash
 # terminal 1 — API on http://localhost:4000/api
 cd backend
-npm install
+pnpm install           # run this first after cloning; uses pnpm-lock.yaml for exact versions
 cp .env.example .env   # fill in MONGODB_URI and the Firebase service account
-npm run seed           # loads seed/data/*.json (tracks, modules, quiz, sections, bid history)
-npm run dev
+pnpm dev
 
 # terminal 2 — app on http://localhost:5173 (/api is proxied to the backend on :4000)
 cd frontend
@@ -54,24 +53,18 @@ backend/
 ├── server.js              # entry point: connects to MongoDB, starts the server
 ├── app.js                 # Express app: CORS, JSON, /api routes, error handling
 ├── config/                # db.js (Mongo connection), firebase.js (Firebase Admin)
-├── middleware/            # auth.js (verify ID token → req.user), errorHandler.js
-├── models/                # Mongoose schemas
-│   ├── User.js            # profile, completed modules, basket, consents
-│   ├── Track.js           # track requirements per intake
-│   ├── Module.js          # catalogue: prereqs, coreqs, category, tags
-│   ├── QuizQuestion.js    # Track Finder questions with per-answer track weights
-│   ├── QuizAttempt.js     # scored attempts (latest 2 kept)
-│   ├── Plan.js            # What-If plans (max 3 per student)
-│   ├── Room.js            # plan rooms: members, invite code, votes, comments
-│   ├── Section.js         # BOSS class sections (day + session slot)
-│   ├── BidHistory.js      # historical median / min bids per term and round
-│   └── BidCart.js         # a student's bids for a term (min e$ 10)
-├── routes/                # one API router per feature, mounted in routes/index.js
-├── utils/                 # pure logic, unit-testable: trackScoring, requirementChecker, referenceBid, clash
-└── seed/                  # seed.js + data/*.json
+├── middleware/            # errorHandler.js (shared by every feature)
+├── routes/index.js        # mounts every feature's routes under /api
+└── features/              # one folder per feature: *.routes.js → *.controller.js → models/
+    ├── auth/              # Firebase sign-in: auth.middleware.js (verify ID token → req.user), users, User model
+    ├── planning/          # modules, tracks, majors, What-If plans (max 3) + utils/requirementChecker
+    ├── quiz/              # Track Finder questions, attempts, recommendations + utils/trackScoring
+    ├── bidding/           # BOSS sections, bid history, bid cart, cart clash check + utils/referenceBid, clash
+    ├── parties/           # parties of classmates: members, invite code, slot votes, shared plans, comments
+    └── calendar/          # timetable export (Google for now; Microsoft/Outlook planned, not confirmed)
 ```
 
-Note that `frontend/src/router/` is page navigation for the Vue app, while `backend/routes/` is the Express API.
+Note that `frontend/src/router/` is page navigation for the Vue app, while `backend/routes/` and `backend/features/*/*.routes.js` are the Express API.
 
 ## API endpoints (all under `/api`)
 
@@ -80,6 +73,7 @@ Note that `frontend/src/router/` is page navigation for the Vue app, while `back
 | GET | `/health` | public |
 | GET | `/tracks`, `/tracks/:code` | public, `?intake=2023` |
 | GET | `/modules`, `/modules/:code` | public, `?track=BA&category=track&q=` |
+| GET | `/majors`, `/majors/:id` | public |
 | GET / PATCH | `/users/me` | profile setup, completed modules, basket, consents |
 | GET | `/quiz/questions` | weights hidden from the client |
 | POST | `/quiz/attempts` | `{ answers }` → scored % fit per track |
@@ -87,16 +81,17 @@ Note that `frontend/src/router/` is page navigation for the Vue app, while `back
 | GET / POST | `/plans` | max 3 plans → 409 |
 | GET / PUT / DELETE | `/plans/:id` | |
 | GET | `/plans/:id/check` | CU per requirement bucket + prereq/coreq warnings |
-| GET / POST | `/rooms` | create with `memberEmails`; invitees missing prereqs come back in `blocked` |
-| POST | `/rooms/join` | `{ inviteCode }`; 403 with `missing` prereqs |
-| GET | `/rooms/:id`, `/rooms/:id/updates?since=` | `updates` returns 204 when nothing changed (short polling) |
-| PUT / GET | `/rooms/:id/votes` | slot votes for the room's module |
-| POST | `/rooms/:id/finalise`, `/rooms/:id/ban` | owner only |
-| PUT | `/rooms/:id/plans` | share What-If plans with the room |
-| POST | `/rooms/:id/comments` | |
-| DELETE | `/rooms/:id/members/me` | leave room |
+| GET / POST | `/parties` | create with `memberEmails`; invitees missing prereqs come back in `blocked` |
+| POST | `/parties/join` | `{ inviteCode }`; 403 with `missing` prereqs |
+| GET | `/parties/:id`, `/parties/:id/updates?since=` | `updates` returns 204 when nothing changed (short polling) |
+| PUT / GET | `/parties/:id/votes` | slot votes for the party's module |
+| POST | `/parties/:id/finalise`, `/parties/:id/ban` | owner only |
+| PUT | `/parties/:id/plans` | share What-If plans with the party |
+| POST | `/parties/:id/comments` | |
+| DELETE | `/parties/:id/members/me` | leave party |
 | GET | `/bidding/sections?module=`, `/bidding/history/:module?round=` | |
 | GET | `/bidding/reference/:module?amount=&round=` | Safe / Competitive / At risk vs median ± 1 SD |
 | GET / PUT | `/bidding/cart` | PUT returns any timetable `clashes` |
-| GET | `/bidding/co-bids/:roomId` | which room members bid for which section |
+| POST | `/bidding/validate-cart` | `{ sectionIds }` → duplicate module, class time and exam clashes |
+| GET | `/bidding/co-bids/:partyId` | which party members bid for which section |
 | POST | `/calendar/export` | `{ accessToken, sectionIds, termStart }` → Google Calendar API v3 |
