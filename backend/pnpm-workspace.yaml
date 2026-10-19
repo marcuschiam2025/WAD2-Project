@@ -1,0 +1,5 @@
+allowBuilds:
+  # Not needed by the backend: protobufjs only prints a version warning,
+  # @firebase/util only auto-configures the browser SDK on Firebase Hosting
+  '@firebase/util': false
+  protobufjs: false
