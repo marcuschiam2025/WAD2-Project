@@ -80,7 +80,7 @@ function onEnter(el, done) {
                 role="radio"
                 :aria-checked="selected === i"
                 class="flex items-center gap-3 rounded-md border px-3.5 py-3 text-left text-[14px] leading-normal transition-colors"
-                :class="selected === i ? 'border-primary bg-primary/8' : 'border-border bg-card hover:bg-muted'"
+                :class="selected === i ? 'border-primary bg-primary-tint' : 'border-border bg-card hover:bg-muted'"
                 @click="quiz.answer(i)"
               >
                 <span

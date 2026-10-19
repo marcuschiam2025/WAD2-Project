@@ -65,7 +65,7 @@ const features = [
               >{{ code }}</span>
               <span
                 v-if="sem.highlight"
-                class="rounded-[4px] border-[1.5px] border-primary bg-primary/10 px-1.5 py-[5px] font-mono text-[11px] font-medium text-primary"
+                class="rounded-[4px] border-[1.5px] border-primary bg-primary-tint px-1.5 py-[5px] font-mono text-[11px] font-medium text-primary"
               >{{ sem.highlight }}</span>
             </div>
           </div>
@@ -79,7 +79,7 @@ const features = [
           :key="f.title"
           class="flex min-w-0 flex-1 flex-col gap-1 rounded-lg border border-border bg-card p-4"
         >
-          <span class="mb-1 flex self-start rounded-md bg-primary/10 p-[7px]">
+          <span class="mb-1 flex self-start rounded-md bg-primary-tint p-[7px]">
             <img :src="f.icon" alt="" class="size-3.5" />
           </span>
           <h2 class="text-[14px] font-semibold">{{ f.title }}</h2>

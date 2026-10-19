@@ -25,7 +25,7 @@ function continueWithGoogle() {
         <p class="text-[15px] leading-[22px] text-muted-foreground">
           We pull in your completed modules and BOSS history from your SMU account.
         </p>
-        <div class="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2.5">
+        <div class="flex items-center gap-2 rounded-md bg-primary-tint px-3 py-2.5">
           <img :src="iconInfo" alt="" class="size-4" />
           <p class="text-[13px] font-medium">Use your @smu.edu.sg Google account</p>
         </div>
@@ -45,7 +45,7 @@ function continueWithGoogle() {
     </section>
 
     <!-- Art panel -->
-    <section class="flex w-1/2 flex-col items-center justify-center gap-5 border-l border-border bg-primary/6 p-16">
+    <section class="flex w-1/2 flex-col items-center justify-center gap-5 border-l border-border bg-primary-tint p-16">
       <img v-enter="0.1" :src="logo" alt="" class="h-[374px] w-[260px] object-contain" /> <!-- motion: hero image fades in, 100ms delay -->
       <p v-enter="0.2" class="w-[440px] max-w-full text-center text-[20px] leading-7 font-semibold"> <!-- motion: testimonial fades in, 200ms delay -->
         "Planned all of Y3 in one evening, and my IS442 bid cleared with e$ 6 to spare."

@@ -170,7 +170,7 @@ const requirements = computed(() =>
         <!-- Module basket -->
         <aside
           class="flex w-[260px] shrink-0 flex-col gap-3 border-r border-border p-4 transition-colors"
-          :class="dragging && !planner.basket.includes(dragging) && 'bg-primary/5'"
+          :class="dragging && !planner.basket.includes(dragging) && 'bg-primary-tint'"
           @dragover.prevent
           @drop.prevent="dropOnBasket"
         >
@@ -311,7 +311,7 @@ const requirements = computed(() =>
                   :draggable="status(col.sem) !== 'done'"
                   class="group relative flex flex-col rounded-sm px-2 py-1.5 leading-normal transition-opacity"
                   :class="[
-                    cardState(code, col.sem) === 'warning' ? 'border border-warning bg-warning/14' : 'bg-secondary',
+                    cardState(code, col.sem) === 'warning' ? 'border border-destructive bg-destructive-tint' : 'bg-secondary',
                     status(col.sem) !== 'done' && 'cursor-grab',
                     dragging === code && 'opacity-40',
                   ]"
@@ -322,7 +322,7 @@ const requirements = computed(() =>
                     {{ code }}
                     <img v-if="cardState(code, col.sem) === 'warning'" :src="iconAlert" alt="" class="size-3" />
                   </span>
-                  <span v-if="cardState(code, col.sem) === 'warning'" class="text-[11px] text-warning">{{ warningText(code, col.sem) }}</span>
+                  <span v-if="cardState(code, col.sem) === 'warning'" class="text-[11px] text-destructive">{{ warningText(code, col.sem) }}</span>
                   <span v-else class="line-clamp-2 text-[11px] text-muted-foreground">{{ modules[effectiveCode(code)]?.name ?? code }}</span>
                   <button
                     v-if="status(col.sem) !== 'done'"
@@ -348,7 +348,7 @@ const requirements = computed(() =>
           <div class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground">
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] bg-muted" /> Done</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] bg-secondary" /> Planned</span>
-            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-warning bg-warning/14" /> Prereq not met</span>
+            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-destructive bg-destructive-tint" /> Prereq not met</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-dashed border-primary" /> Drop target</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-[1.5px] border-primary" /> Current semester</span>
           </div>
@@ -360,7 +360,7 @@ const requirements = computed(() =>
         <div class="flex items-center justify-between">
           <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
           <StatusPill v-if="!planner.hasAnyWarning" tone="success">On track</StatusPill>
-          <StatusPill v-else tone="warning">Prereq issues</StatusPill>
+          <StatusPill v-else tone="destructive">Prereq issues</StatusPill>
         </div>
         <div class="grid grid-cols-5 gap-14">
           <div v-for="b in requirements" :key="b.key" class="flex flex-col gap-1.5">

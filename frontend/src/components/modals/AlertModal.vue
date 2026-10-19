@@ -11,7 +11,7 @@ const emit = defineEmits(['close'])
 <template>
   <BaseModal @close="emit('close')">
     <div class="flex items-center gap-3">
-      <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-warning/14">
+      <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive-tint">
         <img :src="iconAlert" alt="" class="size-[18px]" />
       </span>
       <h2 class="flex-1 text-[18px] leading-normal font-semibold">{{ title }}</h2>

@@ -9,6 +9,7 @@ import StatusPill from '@/components/ui/StatusPill.vue'
 import TimetableGrid from '@/components/TimetableGrid.vue'
 import TimetableModuleCard from '@/components/TimetableModuleCard.vue'
 import BidSidebar from '@/components/BidSidebar.vue'
+import { popEnter, popLeave } from '@/motion'
 
 // TODO(backend): booked sections, bids and alternatives come from the bidding store / @core/data/bidding
 const bidding = useBiddingStore()
@@ -17,16 +18,18 @@ const dragging = ref(null)
 // TODO(backend): replace with the current round from GET /api/bidding/round
 const round = { term: 'AY24/25 · Sem 2 · Round 1A', closesIn: '2h 15m', semester: 'Y2 · Sem 2' }
 
-// Alternative sections are shown for the module being dragged, or the one open in the sidebar
-const focusModule = computed(() => dragging.value ?? bidding.selectedModule)
-
+// Alternative sections only appear for the module that has been clicked (selected)
 function cardsAt(day, slot) {
+  const focus = bidding.selectedModule
   const booked = bidding.bookedSections.filter((s) => s.day === day && s.slot === slot)
-  const options = sections.filter(
-    (s) => s.day === day && s.slot === slot && bidding.booked[s.module] && bidding.booked[s.module] !== s.id,
-  )
+  const options = focus
+    ? sections.filter((s) => s.module === focus && s.day === day && s.slot === slot && bidding.booked[focus] !== s.id)
+    : []
   return [...booked.map((s) => ({ ...s, option: false })), ...options.map((s) => ({ ...s, option: true }))]
 }
+
+// While a module is selected, everything except it and its alternatives is greyed out
+const isDimmed = (s) => bidding.selectedModule && !s.option && s.module !== bidding.selectedModule
 
 function variantFor(s) {
   if (s.option) return 'option'
@@ -36,6 +39,7 @@ function variantFor(s) {
 }
 
 function onDragStart(e, s) {
+  if (s.module !== bidding.selectedModule) return e.preventDefault()
   dragging.value = s.module
   e.dataTransfer.effectAllowed = 'move'
 }
@@ -71,30 +75,32 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
         <div class="flex flex-col gap-0.5">
           <h2 class="text-[17px] font-semibold">{{ round.semester }} timetable, imported from What-If Planner</h2>
           <p class="text-[13px] text-muted-foreground">
-            Drag a card between session slots to swap sections. Click a card to see details and simulate your bid.
+            Click a card to see its other sections, then click or drag onto one to swap. Other modules are locked until you click the card again or close the sidebar.
           </p>
         </div>
         <div class="flex shrink-0 items-center gap-4 text-[12px] text-muted-foreground">
           <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-l-[3px] border-success bg-secondary" /> Booked section</span>
-          <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-dashed border-border" /> Alternative section (drag to swap)</span>
+          <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-dashed border-primary bg-primary-tint" /> Alternative section (shown after you click a card)</span>
           <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-primary" /> Selected</span>
         </div>
       </div>
 
       <div v-enter class="flex items-stretch gap-4"> <!-- motion: fade + slide up on mount -->
         <div class="flex min-w-0 flex-1 flex-col gap-3">
-          <TimetableGrid @cell-drop="onDrop">
+          <TimetableGrid row-height="min-h-[100px]" @cell-drop="onDrop">
             <template #cell="{ day, slot }">
+              <!-- motion: alternative sections pop in when a card is selected, and out when deselected -->
+              <TransitionGroup tag="div" class="flex min-h-0 flex-1 flex-col gap-1" :css="false" @enter="popEnter" @leave="popLeave">
               <button
                 v-for="s in cardsAt(day, slot)"
                 :key="s.id"
                 type="button"
-                :draggable="!s.option"
-                class="block w-full transition-opacity"
+                :disabled="isDimmed(s)"
+                :draggable="!s.option && s.module === bidding.selectedModule"
+                class="flex min-h-0 w-full shrink"
                 :class="[
-                  s.option && focusModule && focusModule !== s.module && 'opacity-40',
-                  s.option && 'hover:opacity-100',
-                  !s.option && 'cursor-grab active:cursor-grabbing',
+                  isDimmed(s) && 'cursor-not-allowed',
+                  !s.option && s.module === bidding.selectedModule && 'cursor-grab active:cursor-grabbing',
                 ]"
                 @dragstart="onDragStart($event, s)"
                 @dragend="dragging = null"
@@ -106,12 +112,14 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
                   :name="moduleName(s.module)"
                   :meta="`${s.profShort} · ${s.venueShort}`"
                   :variant="variantFor(s)"
+                  :class="isDimmed(s) && 'opacity-30 grayscale'"
                 />
               </button>
+              </TransitionGroup>
             </template>
           </TimetableGrid>
           <p v-if="bidding.clashes.size" class="text-[13px] text-destructive">
-            Timetable clash: {{ clashList }} share a session slot. Drag one to an alternative section.
+            Timetable clash: {{ clashList }} share a session slot. Click one and pick an alternative section.
           </p>
         </div>
 

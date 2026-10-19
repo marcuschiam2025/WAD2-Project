@@ -26,7 +26,7 @@ defineEmits(['cell-drop', 'cell-dragover'])
       <div
         v-for="(d, di) in days"
         :key="d"
-        class="relative flex min-w-0 flex-1 flex-col gap-1.5 border-l border-border p-1.5"
+        class="relative flex min-w-0 flex-1 flex-col gap-1.5 overflow-hidden border-l border-border p-1.5"
         @dragover.prevent="$emit('cell-dragover', { day: di, slot: si })"
         @drop.prevent="$emit('cell-drop', { day: di, slot: si })"
       >

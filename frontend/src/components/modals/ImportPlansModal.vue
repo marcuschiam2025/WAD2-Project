@@ -38,7 +38,7 @@ function toggle(id) {
         role="checkbox"
         :aria-checked="picked.includes(p.id)"
         class="flex items-center gap-2.5 rounded-md border px-3 py-3 text-left transition-colors"
-        :class="picked.includes(p.id) ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'"
+        :class="picked.includes(p.id) ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted'"
         @click="toggle(p.id)"
       >
         <span

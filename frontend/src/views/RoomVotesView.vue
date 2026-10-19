@@ -71,7 +71,7 @@ const isFinalised = computed(() => room.value.finalised)
                 v-for="r in ranking"
                 :key="r.section.id"
                 class="flex items-center gap-3 rounded-md border px-3 py-2.5 text-[13px]"
-                :class="isLeader(r) ? 'border-success bg-success/10' : 'border-border'"
+                :class="isLeader(r) ? 'border-success bg-success-tint' : 'border-border'"
               >
                 <span class="font-mono font-bold">{{ r.section.section }}</span>
                 <span class="flex-1">{{ when(r.section) }}</span>
@@ -89,7 +89,7 @@ const isFinalised = computed(() => room.value.finalised)
             >
               Finalise {{ leader?.section.section ?? '' }} for everyone
             </BaseButton>
-            <p v-else class="rounded-md bg-success/14 px-3 py-2.5 text-center text-[13px] font-semibold text-success">
+            <p v-else class="rounded-md bg-success-tint px-3 py-2.5 text-center text-[13px] font-semibold text-success">
               Finalised · {{ rows.find((r) => r.section.id === isFinalised).section.section }}
             </p>
           </template>
@@ -113,7 +113,7 @@ const isFinalised = computed(() => room.value.finalised)
                 class="flex flex-col gap-0.5 rounded-sm px-2.5 py-2 leading-normal"
                 :class="
                   isLeader(r)
-                    ? 'border-2 border-success bg-success/14'
+                    ? 'border-2 border-success bg-success-tint'
                     : r.count
                       ? 'bg-secondary'
                       : 'border-[1.5px] border-dashed border-border text-muted-foreground'

@@ -85,7 +85,7 @@ function exportCopy(copy) {
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
       <!-- TODO(backend): remove once plans are real, this only labels the sample data -->
-      <div v-enter class="flex items-start gap-3 rounded-lg border border-primary bg-primary/10 px-3.5 py-3"> <!-- motion: info banner fades in on mount -->
+      <div v-enter class="flex items-start gap-3 rounded-lg border border-primary bg-primary-tint px-3.5 py-3"> <!-- motion: info banner fades in on mount -->
         <img :src="iconInfo" alt="" class="mt-0.5 size-4" />
         <div class="flex flex-col gap-0.5 text-[13px] leading-normal">
           <p class="font-semibold text-primary">Example finalised state · sample copies</p>
@@ -136,7 +136,7 @@ function exportCopy(copy) {
             v-for="(cell, i) in r.cells"
             :key="i"
             class="flex items-center gap-2 px-4 py-3"
-            :class="cell.changed && 'border-l-[3px] border-primary bg-primary/10'"
+            :class="cell.changed && 'border-l-[3px] border-primary bg-primary-tint'"
           >
             <span v-if="cell.same" class="text-muted-foreground">Same as Plan 1</span>
             <template v-else>

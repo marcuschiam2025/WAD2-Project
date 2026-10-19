@@ -13,11 +13,11 @@ const props = defineProps({
 })
 
 const variants = {
-  primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  primary: 'bg-primary text-primary-foreground hover:bg-primary-hover',
   secondary: 'bg-secondary text-secondary-foreground hover:bg-border',
   outline: 'border border-border bg-card text-foreground hover:bg-muted',
   ghost: 'text-foreground hover:bg-muted',
-  'destructive-outline': 'border border-destructive bg-card text-destructive hover:bg-destructive/5',
+  'destructive-outline': 'border border-destructive bg-card text-destructive hover:bg-destructive-tint',
   link: 'text-primary hover:underline',
 }
 

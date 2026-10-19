@@ -161,9 +161,9 @@ watch(
 
             <div class="flex flex-col gap-2">
               <div class="relative flex gap-1">
-                <span class="h-1.5 flex-1 rounded-full bg-destructive/55" />
-                <span class="h-1.5 flex-1 rounded-full bg-warning/55" />
-                <span class="h-1.5 flex-1 rounded-full bg-success/55" />
+                <span class="h-1.5 flex-1 rounded-full bg-destructive" />
+                <span class="h-1.5 flex-1 rounded-full bg-warning" />
+                <span class="h-1.5 flex-1 rounded-full bg-success" />
                 <span
                   v-if="markerPct !== null"
                   class="absolute -top-0.5 h-2.5 w-[3px] rounded-[2px] bg-foreground transition-[left] duration-300"

@@ -185,7 +185,7 @@ const input = 'rounded-md border border-border bg-card px-3 py-[9px] text-[14px]
           <span class="text-[12px] text-muted-foreground">
             Including you · {{ members.length }} invited so far
           </span>
-          <span v-if="isFull" class="text-[12px] text-warning">Room is full. Raise the limit to invite more people.</span>
+          <span v-if="isFull" class="text-[12px] text-destructive">Room is full. Raise the limit to invite more people.</span>
         </div>
 
         <div class="flex justify-end gap-2">
@@ -193,7 +193,7 @@ const input = 'rounded-md border border-border bg-card px-3 py-[9px] text-[14px]
           <button
             type="submit"
             :disabled="!canCreate"
-            class="inline-flex items-center rounded-md bg-primary px-4 py-[9px] text-[14px] leading-normal font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            class="inline-flex items-center rounded-md bg-primary px-4 py-[9px] text-[14px] leading-normal font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
             Create room
           </button>
