@@ -1,0 +1,190 @@
+{
+  "catalogueVersion": "smu-is-ay2025-2026-10-20",
+  "retrievedAt": "2026-10-20",
+  "intakeFrom": 2025,
+  "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum",
+  "scope": "Curated exploration shortlist, not a complete catalogue or enrolment eligibility check.",
+  "tagging": "Summaries paraphrase official course descriptions. Theme tags are editorial mappings for this project, not SMU classifications.",
+  "modules": [
+    {
+      "code": "IS444",
+      "name": "Digital Banking Enterprise Architecture",
+      "tracks": [
+        "FT"
+      ],
+      "summary": "Design banking architecture and prototype API-based solutions.",
+      "themeTags": [
+        "FINANCE",
+        "BUILD",
+        "RELIABLE"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#digital_banking_enterprise_architecture_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "IS217",
+      "name": "Analytics Foundation",
+      "tracks": [
+        "BA",
+        "SMT"
+      ],
+      "summary": "Explore, prepare and analyse data to frame business problems.",
+      "themeTags": [
+        "DATA"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#analytics_foundation_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "IS424",
+      "name": "Data Mining & Business Analytics",
+      "tracks": [
+        "BA"
+      ],
+      "summary": "Discover patterns in data for business decisions.",
+      "themeTags": [
+        "DATA"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#data_mining__business_analytics_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "IS434",
+      "name": "Social Analytics and Applications",
+      "tracks": [
+        "BA"
+      ],
+      "summary": "Analyse social-media behaviour and interpret business insights.",
+      "themeTags": [
+        "DATA",
+        "PEOPLE"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#social_analytics_and_applications_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "IS442",
+      "name": "Object Oriented Programming",
+      "tracks": [
+        "PD"
+      ],
+      "summary": "Develop clean Java programs using object-oriented design.",
+      "themeTags": [
+        "BUILD"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#object_oriented_programming_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "IS458",
+      "name": "Cloud Management and Engineering",
+      "tracks": [
+        "PD"
+      ],
+      "summary": "Build cloud solutions and manage reliability and incidents.",
+      "themeTags": [
+        "BUILD",
+        "RELIABLE"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#cloud_management_and_engineering_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "CS443",
+      "name": "Software & Systems Security",
+      "tracks": [
+        "PD"
+      ],
+      "summary": "Understand and protect software and computer systems.",
+      "themeTags": [
+        "RELIABLE",
+        "BUILD"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#software__systems_security_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "IS430",
+      "name": "Digital Payments & Innovation",
+      "tracks": [
+        "FT"
+      ],
+      "summary": "Explore payment systems, institutions, rules and technologies.",
+      "themeTags": [
+        "FINANCE",
+        "RELIABLE"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#digital_payments__innovation_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "IS419",
+      "name": "Retail Banking & Mobile Technology",
+      "tracks": [
+        "FT"
+      ],
+      "summary": "Study retail-banking processes, architecture and mobile channels.",
+      "themeTags": [
+        "FINANCE",
+        "PEOPLE"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#retail_banking__mobile_technology_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "IS463",
+      "name": "Digital Technologies for Environmental Sustainability",
+      "tracks": [
+        "SMT"
+      ],
+      "summary": "Prototype digital solutions for responsible consumption and waste reduction.",
+      "themeTags": [
+        "CIVIC",
+        "BUILD"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#digital_technologies_for_environmental_sustainability_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "SMT201",
+      "name": "Geographic Information Systems for Urban Planning",
+      "tracks": [
+        "SMT"
+      ],
+      "summary": "Apply spatial data and GIS to urban planning.",
+      "themeTags": [
+        "CIVIC",
+        "DATA"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#geographic_information_systems_for_urban_planning_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    },
+    {
+      "code": "SMT481",
+      "name": "Smart-City Operations Research",
+      "tracks": [
+        "BA",
+        "SMT"
+      ],
+      "summary": "Use optimisation and probability models for sustainable urban operations.",
+      "themeTags": [
+        "CIVIC",
+        "DATA"
+      ],
+      "sourceUrl": "https://computing.smu.edu.sg/bsc-information-systems/curriculum#smart-city_operations_research_c31724904a7e",
+      "prerequisites": null,
+      "termsOffered": null
+    }
+  ]
+}

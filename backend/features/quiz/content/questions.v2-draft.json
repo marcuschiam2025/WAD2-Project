@@ -1,0 +1,586 @@
+{
+  "rubricVersion": "v2-draft",
+  "status": "unpublished",
+  "questions": [
+    {
+      "id": "I1",
+      "section": "interests",
+      "order": 1,
+      "type": "rating",
+      "prompt": "How interested are you in finding patterns in messy information and checking what those patterns actually mean?",
+      "options": [
+        {
+          "id": "1",
+          "label": "Not interested"
+        },
+        {
+          "id": "2",
+          "label": "Slightly interested"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Interested"
+        },
+        {
+          "id": "5",
+          "label": "Very interested"
+        }
+      ]
+    },
+    {
+      "id": "I2",
+      "section": "interests",
+      "order": 2,
+      "type": "scenario",
+      "prompt": "Which semester project would you most want to explore?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Use campus activity data to explain a problem and recommend a change."
+        },
+        {
+          "id": "b",
+          "label": "Build a student tool, test it, and improve how it works."
+        },
+        {
+          "id": "c",
+          "label": "Explore a simpler way for people to make and manage digital payments."
+        },
+        {
+          "id": "d",
+          "label": "Explore how technology could reduce energy waste in a neighbourhood."
+        },
+        {
+          "id": "e",
+          "label": "None of these appeal to me yet."
+        }
+      ]
+    },
+    {
+      "id": "I3",
+      "section": "interests",
+      "order": 3,
+      "type": "rating",
+      "prompt": "How interested are you in turning an idea into working software, then testing and improving it?",
+      "options": [
+        {
+          "id": "1",
+          "label": "Not interested"
+        },
+        {
+          "id": "2",
+          "label": "Slightly interested"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Interested"
+        },
+        {
+          "id": "5",
+          "label": "Very interested"
+        }
+      ]
+    },
+    {
+      "id": "I4",
+      "section": "interests",
+      "order": 4,
+      "type": "scenario",
+      "prompt": "Which problem would you most want to understand better?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Why two analyses of the same situation reach different conclusions."
+        },
+        {
+          "id": "b",
+          "label": "Why a useful app becomes slow or difficult to maintain as it grows."
+        },
+        {
+          "id": "c",
+          "label": "Why some people struggle to use everyday banking or payment services."
+        },
+        {
+          "id": "d",
+          "label": "Why a transport or healthcare service struggles to meet demand."
+        },
+        {
+          "id": "e",
+          "label": "None of these appeal to me yet."
+        }
+      ]
+    },
+    {
+      "id": "I5",
+      "section": "interests",
+      "order": 5,
+      "type": "rating",
+      "prompt": "How interested are you in using technology to improve public services, shared spaces, or environmental outcomes?",
+      "options": [
+        {
+          "id": "1",
+          "label": "Not interested"
+        },
+        {
+          "id": "2",
+          "label": "Slightly interested"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Interested"
+        },
+        {
+          "id": "5",
+          "label": "Very interested"
+        }
+      ]
+    },
+    {
+      "id": "S1",
+      "section": "strengths",
+      "order": 6,
+      "type": "rating",
+      "prompt": "How confident are you in checking whether a conclusion is supported by the information behind it?",
+      "options": [
+        {
+          "id": "1",
+          "label": "Not confident yet"
+        },
+        {
+          "id": "2",
+          "label": "Slightly confident"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Confident"
+        },
+        {
+          "id": "5",
+          "label": "Very confident"
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "section": "strengths",
+      "order": 7,
+      "type": "scenario",
+      "prompt": "A team gets an unfamiliar problem. Which contribution feels most natural to you right now?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Organise the evidence and compare possible explanations."
+        },
+        {
+          "id": "b",
+          "label": "Break a proposed tool into smaller parts that can be built and tested."
+        },
+        {
+          "id": "c",
+          "label": "Work through the rules and steps of a money-related process."
+        },
+        {
+          "id": "d",
+          "label": "Connect different groups' needs to the services and resources available."
+        },
+        {
+          "id": "e",
+          "label": "I’m not sure which I could contribute to yet."
+        }
+      ]
+    },
+    {
+      "id": "S3",
+      "section": "strengths",
+      "order": 8,
+      "type": "rating",
+      "prompt": "How confident are you in asking questions that help you understand what another person needs from a tool or service?",
+      "options": [
+        {
+          "id": "1",
+          "label": "Not confident yet"
+        },
+        {
+          "id": "2",
+          "label": "Slightly confident"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Confident"
+        },
+        {
+          "id": "5",
+          "label": "Very confident"
+        }
+      ]
+    },
+    {
+      "id": "S4",
+      "section": "strengths",
+      "order": 9,
+      "type": "scenario",
+      "prompt": "When reviewing a proposal, which kind of weakness do you feel most comfortable investigating?",
+      "options": [
+        {
+          "id": "a",
+          "label": "The evidence may not support the conclusion."
+        },
+        {
+          "id": "b",
+          "label": "Parts of the proposed tool may be difficult to build or test."
+        },
+        {
+          "id": "c",
+          "label": "The rules for moving or recording money may leave an important case unclear."
+        },
+        {
+          "id": "d",
+          "label": "The proposal may overlook needs in different places or communities."
+        },
+        {
+          "id": "e",
+          "label": "I’m not sure which I could contribute to yet."
+        }
+      ]
+    },
+    {
+      "id": "S5",
+      "section": "strengths",
+      "order": 10,
+      "type": "rating",
+      "prompt": "How confident are you in tracing a process step by step and spotting where an error could happen?",
+      "options": [
+        {
+          "id": "1",
+          "label": "Not confident yet"
+        },
+        {
+          "id": "2",
+          "label": "Slightly confident"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Confident"
+        },
+        {
+          "id": "5",
+          "label": "Very confident"
+        }
+      ]
+    },
+    {
+      "id": "W1",
+      "section": "working-style",
+      "order": 11,
+      "type": "rating",
+      "prompt": "I enjoy working through how money moves through a service and the rules that shape each step.",
+      "options": [
+        {
+          "id": "1",
+          "label": "Strongly unlike me"
+        },
+        {
+          "id": "2",
+          "label": "Somewhat unlike me"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Somewhat like me"
+        },
+        {
+          "id": "5",
+          "label": "Very like me"
+        }
+      ]
+    },
+    {
+      "id": "W2",
+      "section": "working-style",
+      "order": 12,
+      "type": "scenario",
+      "prompt": "Your team has two weeks to improve a service. Which activity would you prefer to lead?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Analyse records to identify patterns and exceptions."
+        },
+        {
+          "id": "b",
+          "label": "Build a small prototype and improve it after testing."
+        },
+        {
+          "id": "c",
+          "label": "Map how money moves through the service and compare possible improvements."
+        },
+        {
+          "id": "d",
+          "label": "Understand how different groups share the service and its resources."
+        },
+        {
+          "id": "e",
+          "label": "None of these appeal to me yet."
+        }
+      ]
+    },
+    {
+      "id": "W3",
+      "section": "working-style",
+      "order": 13,
+      "type": "rating",
+      "prompt": "I enjoy testing unusual cases and checking that a solution remains dependable when something goes wrong.",
+      "options": [
+        {
+          "id": "1",
+          "label": "Strongly unlike me"
+        },
+        {
+          "id": "2",
+          "label": "Somewhat unlike me"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Somewhat like me"
+        },
+        {
+          "id": "5",
+          "label": "Very like me"
+        }
+      ]
+    },
+    {
+      "id": "W4",
+      "section": "working-style",
+      "order": 14,
+      "type": "scenario",
+      "prompt": "Which kind of trade-off would you most enjoy working through?",
+      "options": [
+        {
+          "id": "a",
+          "label": "A simple analysis is easy to explain, but a more complex one may be more accurate."
+        },
+        {
+          "id": "b",
+          "label": "Adding a feature helps some users, but increases the effort to maintain the tool."
+        },
+        {
+          "id": "c",
+          "label": "Making a financial service easier to access adds rules and safeguards to consider."
+        },
+        {
+          "id": "d",
+          "label": "Improving one public service could use resources needed elsewhere in the community."
+        },
+        {
+          "id": "e",
+          "label": "None of these appeal to me yet."
+        }
+      ]
+    },
+    {
+      "id": "W5",
+      "section": "working-style",
+      "order": 15,
+      "type": "rating",
+      "prompt": "I enjoy discussing different people's needs before deciding how a tool or service should work.",
+      "options": [
+        {
+          "id": "1",
+          "label": "Strongly unlike me"
+        },
+        {
+          "id": "2",
+          "label": "Somewhat unlike me"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Somewhat like me"
+        },
+        {
+          "id": "5",
+          "label": "Very like me"
+        }
+      ]
+    },
+    {
+      "id": "C1",
+      "section": "career-goals",
+      "order": 16,
+      "type": "rating",
+      "prompt": "How interested are you in a future role where you help build and improve digital products?",
+      "options": [
+        {
+          "id": "1",
+          "label": "Not interested"
+        },
+        {
+          "id": "2",
+          "label": "Slightly interested"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Interested"
+        },
+        {
+          "id": "5",
+          "label": "Very interested"
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "section": "career-goals",
+      "order": 17,
+      "type": "scenario",
+      "prompt": "Which outcome would make a future project feel most worthwhile?",
+      "options": [
+        {
+          "id": "a",
+          "label": "An organisation makes a better decision because the evidence is clearer."
+        },
+        {
+          "id": "b",
+          "label": "People can complete a recurring task with a tool your team built."
+        },
+        {
+          "id": "c",
+          "label": "People can move or manage money through a more useful financial service."
+        },
+        {
+          "id": "d",
+          "label": "A community uses transport, care, or shared resources more effectively."
+        },
+        {
+          "id": "e",
+          "label": "None of these appeal to me yet."
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "section": "career-goals",
+      "order": 18,
+      "type": "rating",
+      "prompt": "How interested are you in learning how financial services work and using technology to improve them?",
+      "options": [
+        {
+          "id": "1",
+          "label": "Not interested"
+        },
+        {
+          "id": "2",
+          "label": "Slightly interested"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Interested"
+        },
+        {
+          "id": "5",
+          "label": "Very interested"
+        }
+      ]
+    },
+    {
+      "id": "C4",
+      "section": "career-goals",
+      "order": 19,
+      "type": "scenario",
+      "prompt": "Which internship task would you most like to try?",
+      "options": [
+        {
+          "id": "a",
+          "label": "Investigate operational data and explain what the team can learn from it."
+        },
+        {
+          "id": "b",
+          "label": "Help turn a requested feature into tested, working software."
+        },
+        {
+          "id": "c",
+          "label": "Help improve a banking or payment service and its processes."
+        },
+        {
+          "id": "d",
+          "label": "Help a city-facing team evaluate a planning, sustainability, or care service."
+        },
+        {
+          "id": "e",
+          "label": "None of these appeal to me yet."
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "section": "career-goals",
+      "order": 20,
+      "type": "rating",
+      "prompt": "How interested are you in a future role that involves improving city systems, public services, or environmental outcomes?",
+      "options": [
+        {
+          "id": "1",
+          "label": "Not interested"
+        },
+        {
+          "id": "2",
+          "label": "Slightly interested"
+        },
+        {
+          "id": "3",
+          "label": "Unsure"
+        },
+        {
+          "id": "4",
+          "label": "Interested"
+        },
+        {
+          "id": "5",
+          "label": "Very interested"
+        }
+      ]
+    }
+  ]
+}
