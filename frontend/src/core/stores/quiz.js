@@ -28,6 +28,25 @@ export const useQuizStore = defineStore('quiz', () => {
   const issues = ref([])
   let loadingPromise
   let restoring = false
+  let sessionRevision = 0
+
+  // Invalidate in-flight requests and private state when the session changes.
+  watch(() => [user.isSignedIn, user.profile.email], () => {
+    sessionRevision += 1
+    restoring = true
+    answers.value = {}
+    optionOrders.value = {}
+    current.value = 0
+    attempts.value = []
+    submissionId.value = null
+    hasDraft.value = false
+    error.value = ''
+    issues.value = []
+    loading.value = false
+    submitting.value = false
+    loadingPromise = null
+    restoring = false
+  }, { flush: 'sync' })
   const draftKey = () => `bidmaxxer:quiz:v2:${user.profile.email}`
   const latest = computed(() => attempts.value[0] ?? null)
   const answeredCount = computed(() => questions.value.filter((q) => {
@@ -67,18 +86,21 @@ export const useQuizStore = defineStore('quiz', () => {
 
   async function initialize() {
     if (loadingPromise) return loadingPromise
+    const revision = sessionRevision
     loading.value = true
     error.value = ''
     loadingPromise = (async () => {
       try {
         const [content, history] = await Promise.all([api.quizQuestionsV2(), api.quizAttemptsV2()])
+        if (revision !== sessionRevision) return
         questions.value = content.questions
         rubricVersion.value = content.rubricVersion
         attempts.value = history
         if (!hasDraft.value) restoreDraft()
       } catch (err) {
-        error.value = err.status === 401 ? 'The quiz API needs a signed-in session. For local development, start the backend with its development authentication enabled.' : 'Could not load the quiz. Check that the backend is running, then retry.'
-      } finally { loading.value = false; loadingPromise = null }
+        if (revision !== sessionRevision) return
+        error.value = err.status === 401 ? 'Please sign in again to load your quiz.' : 'Could not load the quiz. Check that the backend is running, then retry.'
+      } finally { if (revision === sessionRevision) { loading.value = false; loadingPromise = null } }
     })()
     return loadingPromise
   }
@@ -121,6 +143,7 @@ export const useQuizStore = defineStore('quiz', () => {
 
   async function submit() {
     if (submitting.value) return null
+    const revision = sessionRevision
     submitting.value = true
     error.value = ''
     issues.value = []
@@ -129,15 +152,17 @@ export const useQuizStore = defineStore('quiz', () => {
         rubricVersion: rubricVersion.value, submissionId: submissionId.value,
         answers: questions.value.map((q) => ({ questionId: q.id, optionId: answers.value[q.id] ?? null })),
       })
+      if (revision !== sessionRevision) return null
       attempts.value = [attempt, ...attempts.value.filter((a) => a.id !== attempt.id)].slice(0, 2)
       hasDraft.value = false
       try { sessionStorage.removeItem(draftKey()) } catch { /* No persisted draft. */ }
       return attempt
     } catch (err) {
+      if (revision !== sessionRevision) return null
       issues.value = err.issues ?? []
       error.value = err.status === 422 ? 'Complete the highlighted sections, then try again.' : err.status === 409 ? 'This quiz version or submission has changed. Return to Track Finder and start a new attempt.' : err.status === 410 ? 'This result is no longer in your latest two attempts. Return to Track Finder to start again.' : 'Could not save your result. Your answers are kept in this tab; retry when the backend is available.'
       return null
-    } finally { submitting.value = false }
+    } finally { if (revision === sessionRevision) submitting.value = false }
   }
 
   return { questions, rubricVersion, answers, current, attempts, latest, answeredCount, sectionCoverage, hasDraft, loading, submitting, error, issues, initialize, start, answer, optionsFor, submit }

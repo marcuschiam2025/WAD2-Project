@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { setToken } from '../services/api'
 
 const STORAGE_KEY = 'bidmaxxer:user'
 
@@ -38,6 +39,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function signOut() {
+    setToken(null)
     isSignedIn.value = false
   }
 
