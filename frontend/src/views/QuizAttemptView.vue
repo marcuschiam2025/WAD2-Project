@@ -1,109 +1,57 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { animate } from 'motion'
-import { useQuizStore } from '@core/stores/quiz'
-import { ease } from '@/motion'
+import { useQuizStore, sectionLabels } from '@core/stores/quiz'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-
-const router = useRouter()
 const quiz = useQuizStore()
-
-// TODO(backend): questions come from the quiz store (@core/data/quiz) — swap for GET /api/quiz/questions
-const total = quiz.questions.length
+const router = useRouter()
 const question = computed(() => quiz.questions[quiz.current])
-const selected = computed(() => quiz.answers[quiz.current])
-const isLast = computed(() => quiz.current === total - 1)
-
-const direction = ref(1)
-function back() {
-  if (quiz.current === 0) return router.push('/quiz')
-  direction.value = -1
-  quiz.current--
+const options = computed(() => question.value ? quiz.optionsFor(question.value) : [])
+const selected = computed(() => question.value ? quiz.answers[question.value.id] : null)
+const last = computed(() => quiz.current === quiz.questions.length - 1)
+const sectionNumber = computed(() => Object.keys(sectionLabels).indexOf(question.value?.section) + 1)
+const intros = { interests: 'Choose what you would like to explore. No specialised knowledge is needed.', strengths: 'Think about school, hobbies or everyday situations. This is current confidence; skills can develop.', 'working-style': 'Think about the activities and decisions you prefer when working with others.', 'career-goals': 'You do not need a fixed career plan. Choose activities you would like a chance to explore.' }
+function jump(section) { quiz.current = quiz.questions.findIndex((q) => q.section === section) }
+async function next() {
+  if (quiz.submitting) return
+  if (!last.value) { quiz.current++; return }
+  const attempt = await quiz.submit()
+  if (attempt) router.push(`/quiz/results?attempt=${attempt.id}`)
 }
-function next() {
-  if (selected.value === null) return
-  if (!isLast.value) {
-    direction.value = 1
-    quiz.current++
-    return
-  }
-  const attempt = quiz.submit()
-  router.push(`/quiz/results?attempt=${attempt.id}`)
+function skip() { quiz.answer(null); next() }
+function back() { if (quiz.current) quiz.current--; else router.push('/quiz') }
+function onKey(event) {
+  if (!question.value || quiz.submitting || event.ctrlKey || event.metaKey || event.altKey || event.repeat) return
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return
+  const index = Number(event.key) - 1
+  if (Number.isInteger(index) && index >= 0 && index < options.value.length) { event.preventDefault(); quiz.answer(options.value[index].id) }
+  else if (event.key === 'Enter' && !['BUTTON', 'A'].includes(event.target?.tagName)) { event.preventDefault(); next() }
 }
-
-// Keyboard: 1–4 picks an answer, Enter continues
-function onKey(e) {
-  const n = Number(e.key)
-  if (n >= 1 && n <= question.value.options.length) quiz.answer(n - 1)
-  else if (e.key === 'Enter') next()
-}
-onMounted(() => window.addEventListener('keydown', onKey))
+onMounted(async () => { await quiz.initialize(); if (quiz.questions.length && !quiz.hasDraft) quiz.start(); window.addEventListener('keydown', onKey) })
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
-
-function onEnter(el, done) {
-  animate(el, { opacity: [0, 1], x: [20 * direction.value, 0] }, { duration: 0.25, ease }).then(done)
-}
 </script>
-
 <template>
   <div>
-    <PageHeader
-      overline="Track Quiz"
-      title="Find your best-fit IS track"
-      :subtitle="`Answer ${total} questions. We rank the IS tracks using your answers and the modules you have completed.`"
-    />
-
-    <main class="flex flex-col items-center gap-8 px-16 pt-8 pb-12">
-      <section v-enter class="card flex w-[560px] max-w-full flex-col gap-4 p-6"> <!-- motion: question card fades in on mount -->
-        <div class="flex gap-1">
-          <span v-for="i in total" :key="i" class="relative h-1 flex-1 overflow-hidden rounded-full bg-muted">
-            <span
-              class="absolute inset-0 origin-left bg-primary transition-transform duration-300"
-              :class="i - 1 <= quiz.current ? 'scale-x-100' : 'scale-x-0'"
-            />
-          </span>
-        </div>
-
-        <Transition mode="out-in" :css="false" @enter="onEnter">
-          <div :key="quiz.current" class="flex flex-col gap-4">
-            <p class="text-overline text-muted-foreground">Question {{ quiz.current + 1 }} of {{ total }}</p>
-            <h2 class="text-[20px] leading-7 font-semibold">{{ question.prompt }}</h2>
-            <p class="text-[13px] text-muted-foreground">No right answers. Pick what genuinely sounds fun.</p>
-
-            <div class="flex flex-col gap-3.5" role="radiogroup">
-              <button
-                v-for="(opt, i) in question.options"
-                :key="opt.label"
-                type="button"
-                role="radio"
-                :aria-checked="selected === i"
-                class="flex items-center gap-3 rounded-md border px-3.5 py-3 text-left text-[14px] leading-normal transition-colors"
-                :class="selected === i ? 'border-primary bg-primary/8' : 'border-border bg-card hover:bg-muted'"
-                @click="quiz.answer(i)"
-              >
-                <span
-                  class="flex size-4 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors"
-                  :class="selected === i ? 'border-primary bg-primary' : 'border-border'"
-                >
-                  <span v-if="selected === i" class="size-1.5 rounded-full bg-card" />
-                </span>
-                <span class="flex-1">{{ opt.label }}</span>
-                <span class="rounded-[4px] border border-border px-1.5 font-mono text-[11px] text-muted-foreground">{{ i + 1 }}</span>
-              </button>
-            </div>
-          </div>
-        </Transition>
-
-        <div class="flex items-center justify-between border-t border-border pt-3">
-          <BaseButton variant="ghost" size="sm" @click="back">Back</BaseButton>
-          <BaseButton size="sm" :disabled="selected === null" @click="next">
-            {{ isLast ? 'See my matches' : 'Next question' }}
-          </BaseButton>
-        </div>
+    <PageHeader class="quiz-header" overline="Track Finder" title="What feels like you?" subtitle="Choose honestly. There are no right answers, and your confidence can grow." />
+    <main class="mx-auto flex max-w-3xl flex-col gap-5 px-5 py-8 sm:px-12">
+      <p v-if="quiz.loading" role="status">Loading questions…</p>
+      <div v-if="quiz.error" role="alert" class="rounded-md border border-destructive p-4"><p>{{ quiz.error }}</p><div class="mt-3 flex flex-wrap gap-2"><BaseButton v-if="!quiz.questions.length" variant="outline" @click="quiz.initialize">Retry loading</BaseButton><BaseButton v-for="section in [...new Set(quiz.issues.map((issue) => issue.section).filter(Boolean))]" :key="section" variant="outline" @click="jump(section)">Review {{ sectionLabels[section] }}</BaseButton><BaseButton variant="ghost" to="/quiz">Back to Track Finder</BaseButton></div></div>
+      <section v-if="question && !quiz.loading" class="card flex flex-col gap-5 p-5 sm:p-7" :aria-busy="quiz.submitting">
+        <div class="flex items-center justify-between gap-2 text-xs text-muted-foreground"><span>Section {{ sectionNumber }} of 4 · {{ sectionLabels[question.section] }}</span><span>{{ quiz.answeredCount }} / 20 answered</span></div>
+        <progress :value="quiz.current + 1" :max="quiz.questions.length" class="h-2 w-full accent-primary" aria-label="Question position" />
+        <p class="text-sm text-muted-foreground">{{ intros[question.section] }}</p>
+        <fieldset :disabled="quiz.submitting" class="flex min-w-0 flex-col gap-4"><legend class="mb-4 w-full text-xl font-semibold leading-7"><span class="mb-2 block text-xs font-normal text-muted-foreground">Question {{ quiz.current + 1 }} of {{ quiz.questions.length }} · {{ question.type === 'rating' ? 'Rate individually from 1 to 5' : 'Choose one scenario' }}</span>{{ question.prompt }}</legend>
+          <label v-for="(option, index) in options" :key="`${question.id}:${option.id}`" class="flex cursor-pointer items-start gap-3 rounded-md border p-3.5 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary" :class="selected === option.id ? 'border-primary bg-primary/8' : 'border-border hover:bg-muted'"><input type="radio" :name="question.id" :value="option.id" :checked="selected === option.id" class="mt-0.5 accent-primary" @change="quiz.answer(option.id)" /><span class="min-w-0 flex-1">{{ option.label }}</span><span class="font-mono text-xs text-muted-foreground">{{ question.type === 'rating' ? option.id : String.fromCharCode(65 + index) }}</span></label>
+        </fieldset>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><BaseButton variant="ghost" :disabled="quiz.submitting" @click="back">Back</BaseButton><div class="flex gap-2"><BaseButton variant="ghost" :disabled="quiz.submitting" @click="skip">Skip</BaseButton><BaseButton :disabled="quiz.submitting" @click="next">{{ quiz.submitting ? 'Saving…' : last ? 'See my results' : 'Next' }}</BaseButton></div></div>
+        <p class="text-xs text-muted-foreground">{{ question.type === 'rating' ? '3 means Unsure: it counts as answered but adds no scoring evidence.' : 'None or Not sure adds no evidence and does not count as answered.' }} Your draft stays in this browser tab after a reload.</p>
       </section>
-      <p class="text-[12px] text-muted-foreground">Press 1–{{ question.options.length }} to choose an answer and Enter to continue.</p>
+      <div v-if="question" class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4" aria-label="Section completion"><button v-for="section in quiz.sectionCoverage" :key="section.section" class="rounded-md border p-3 text-left hover:border-primary" :class="quiz.issues.some((issue) => issue.section === section.section) ? 'border-destructive' : 'border-border'" :disabled="quiz.submitting" @click="jump(section.section)"><span class="block font-medium">{{ section.label }}</span><span class="text-muted-foreground">{{ section.answered }}/5 answered · {{ section.scenarios ? 'scenario ✓' : 'needs scenario' }}</span></button></div>
     </main>
   </div>
 </template>
+
+<style scoped>
+.quiz-header { padding-inline: clamp(1.25rem, 5vw, 3rem); }
+</style>

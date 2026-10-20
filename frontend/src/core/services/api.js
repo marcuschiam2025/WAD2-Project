@@ -20,7 +20,9 @@ async function request(method, path, body) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error ?? `${method} ${path} failed (${res.status})`)
+    throw Object.assign(new Error(err.error ?? `${method} ${path} failed (${res.status})`), {
+      status: res.status, code: err.code, issues: err.issues ?? [],
+    })
   }
   return res.status === 204 ? null : res.json()
 }
@@ -38,6 +40,10 @@ export const api = {
   quizQuestions: () => request('GET', '/quiz/questions'),
   submitQuiz: (answers) => request('POST', '/quiz/attempts', { answers }),
   quizAttempts: () => request('GET', '/quiz/attempts'),
+  quizQuestionsV2: () => request('GET', '/quiz/v2/questions'),
+  submitQuizV2: (submission) => request('POST', '/quiz/v2/attempts', submission),
+  quizAttemptsV2: () => request('GET', '/quiz/v2/attempts'),
+  quizModulesV2: (id) => request('GET', `/quiz/v2/attempts/${encodeURIComponent(id)}/recommendations`),
 
   // What-If plans
   plans: () => request('GET', '/plans'),
