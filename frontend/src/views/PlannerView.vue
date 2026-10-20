@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlannerStore, effectiveCode } from '@core/stores/planner'
+import { useRoomsStore } from '@core/stores/rooms'
 import { modules, tracks, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -20,6 +21,10 @@ import iconPlus from '@/assets/figma/plus-14.svg'
 
 const router = useRouter()
 const planner = usePlannerStore()
+const rooms = useRoomsStore()
+
+// Modules whose section was accepted in a collab room get their own colour
+const roomDecision = (code) => rooms.decided.find((d) => d.module === effectiveCode(code))
 // TODO(backend): plans, basket and requirements all come from the planner store — swap for /api/plans
 const plan = computed(() => planner.activePlan)
 
@@ -310,9 +315,14 @@ const requirements = computed(() =>
                   v-for="code in col.sem.modules"
                   :key="code"
                   :draggable="status(col.sem) !== 'done'"
+                  :title="roomDecision(code) ? `Accepted in ${roomDecision(code).roomName}. Undo it in the room to remove it.` : undefined"
                   class="group relative flex flex-col rounded-sm px-2 py-1.5 leading-normal transition-opacity"
                   :class="[
-                    cardState(code, col.sem) === 'warning' ? 'border border-destructive bg-destructive-tint' : 'bg-secondary',
+                    roomDecision(code)
+                      ? 'border-2 border-success bg-success-tint'
+                      : cardState(code, col.sem) === 'warning'
+                        ? 'border border-destructive bg-destructive-tint'
+                        : 'bg-secondary',
                     status(col.sem) !== 'done' && 'cursor-grab',
                     dragging === code && 'opacity-40',
                   ]"
@@ -326,7 +336,7 @@ const requirements = computed(() =>
                   <span v-if="cardState(code, col.sem) === 'warning'" class="text-[11px] text-destructive">{{ warningText(code, col.sem) }}</span>
                   <span v-else class="line-clamp-2 text-[11px] text-muted-foreground">{{ modules[effectiveCode(code)]?.name ?? code }}</span>
                   <button
-                    v-if="status(col.sem) !== 'done'"
+                    v-if="status(col.sem) !== 'done' && !roomDecision(code)"
                     type="button"
                     :aria-label="`Move ${code} back to basket`"
                     class="absolute top-1 right-1.5 hidden text-[11px] text-muted-foreground group-hover:block hover:text-foreground"
@@ -350,6 +360,7 @@ const requirements = computed(() =>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] bg-muted" /> Done</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] bg-secondary" /> Planned</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-destructive bg-destructive-tint" /> Prereq not met</span>
+            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-success bg-success-tint" /> Accepted in a collab room</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-dashed border-primary" /> Drop target</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-[1.5px] border-primary" /> Current semester</span>
           </div>

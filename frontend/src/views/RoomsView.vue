@@ -54,8 +54,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
       <div class="flex flex-col gap-0.5">
         <h2 class="text-h3">Welcome back, {{ user.profile.firstName }}. Here are your rooms.</h2>
         <p class="text-[14px] text-muted-foreground">
-          Plan the incoming semester with friends: import your What-If plans, see who is taking the same modules, and line
-          up bids together.
+          Plan the incoming semester with friends and line up bids together!
         </p>
       </div>
 

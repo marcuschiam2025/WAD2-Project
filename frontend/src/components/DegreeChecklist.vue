@@ -79,7 +79,7 @@ const addLabel = computed(() => {
 <template>
   <section v-enter="0.2" class="card flex flex-col gap-4 p-6"> <!-- motion: checklist card fades in, 200ms delay -->
     <div class="flex flex-col gap-0.5">
-      <h2 class="text-[17px] font-semibold">Degree checklist</h2>
+      <h2 class="text-[17px] font-semibold">Outstanding Modules</h2>
       <p class="text-[13px] text-muted-foreground">
         {{ plan.name }} · {{ left }} of {{ totals.required }} courses still to clear. Pick one to see what you can take for it.
       </p>

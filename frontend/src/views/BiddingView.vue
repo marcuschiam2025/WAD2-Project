@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useBiddingStore } from '@core/stores/bidding'
 import { usePlannerStore } from '@core/stores/planner'
+import { useRoomsStore } from '@core/stores/rooms'
 import { planLabel } from '@/trackLabels'
 import { moduleName } from '@core/data/catalogue'
 import { sections } from '@core/data/bidding'
@@ -9,6 +10,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import SelectField from '@/components/ui/SelectField.vue'
+import UserAvatar from '@/components/ui/UserAvatar.vue'
 import TimetableGrid from '@/components/TimetableGrid.vue'
 import TimetableModuleCard from '@/components/TimetableModuleCard.vue'
 import BidSidebar from '@/components/BidSidebar.vue'
@@ -17,7 +19,15 @@ import { popEnter, popLeave } from '@/motion'
 // TODO(backend): booked sections, bids and alternatives come from the bidding store / @core/data/bidding
 const bidding = useBiddingStore()
 const planner = usePlannerStore()
+const rooms = useRoomsStore()
 const dragging = ref(null)
+
+// Modules whose section was accepted in a collab room are locked, and show the room's friends
+const friendsOf = (code) => {
+  const d = bidding.locked[code]
+  return d ? rooms.getRoom(d.roomId).members.filter((id) => id !== 'me').map(rooms.person) : []
+}
+const lockedFocus = computed(() => (bidding.selectedModule ? (bidding.locked[bidding.selectedModule] ?? null) : null))
 
 // The timetable is the next semester of whichever What-If plan is picked here
 const planOptions = computed(() => planner.plans.map((p) => ({ value: p.id, label: planLabel(p) })))
@@ -37,7 +47,7 @@ const round = { term: 'AY24/25 · Sem 2 · Round 1A', closesIn: '2h 15m' }
 function cardsAt(day, slot) {
   const focus = bidding.selectedModule
   const booked = bidding.bookedSections.filter((s) => s.day === day && s.slot === slot)
-  const options = focus
+  const options = focus && !bidding.isLocked(focus)
     ? sections.filter((s) => s.module === focus && s.day === day && s.slot === slot && bidding.booked[focus] !== s.id)
     : []
   return [...booked.map((s) => ({ ...s, option: false })), ...options.map((s) => ({ ...s, option: true }))]
@@ -48,13 +58,14 @@ const isDimmed = (s) => bidding.selectedModule && !s.option && s.module !== bidd
 
 function variantFor(s) {
   if (s.option) return 'option'
+  if (bidding.isLocked(s.module)) return 'room'
   if (bidding.selectedModule === s.module) return 'selected'
   if (bidding.clashes.has(s.id)) return 'clash'
   return 'booked'
 }
 
 function onDragStart(e, s) {
-  if (s.module !== bidding.selectedModule) return e.preventDefault()
+  if (s.module !== bidding.selectedModule || bidding.isLocked(s.module)) return e.preventDefault()
   dragging.value = s.module
   e.dataTransfer.effectAllowed = 'move'
 }
@@ -101,6 +112,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
           <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-l-[3px] border-success bg-secondary" /> Booked section</span>
           <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-dashed border-primary bg-primary-tint" /> Alternative section (shown after you click a card)</span>
           <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-primary" /> Selected</span>
+          <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-success bg-success-tint" /> Collab room section (locked)</span>
         </div>
       </div>
 
@@ -121,9 +133,9 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
                 :key="s.id"
                 type="button"
                 :aria-disabled="isDimmed(s)"
-                :draggable="!s.option && s.module === bidding.selectedModule"
+                :draggable="!s.option && s.module === bidding.selectedModule && !bidding.isLocked(s.module)"
                 class="flex min-h-0 w-full shrink"
-                :class="!s.option && s.module === bidding.selectedModule && 'cursor-grab active:cursor-grabbing'"
+                :class="!s.option && s.module === bidding.selectedModule && !bidding.isLocked(s.module) && 'cursor-grab active:cursor-grabbing'"
                 @dragstart="onDragStart($event, s)"
                 @dragend="dragging = null"
                 @click="onCardClick($event, s)"
@@ -134,13 +146,29 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
                   :name="moduleName(s.module)"
                   :meta="`${s.profShort} · ${s.venueShort}`"
                   :variant="variantFor(s)"
-                  :class="isDimmed(s) && 'opacity-30 grayscale'"
-                />
+                  :class="[isDimmed(s) && 'opacity-30 grayscale', bidding.isLocked(s.module) && bidding.selectedModule === s.module && 'ring-2 ring-success ring-offset-2']"
+                >
+                  <span v-if="friendsOf(s.module).length" class="mt-1 flex">
+                    <UserAvatar
+                      v-for="(f, i) in friendsOf(s.module)"
+                      :key="f.id"
+                      :initials="f.initials"
+                      :title="f.name"
+                      class="ring-2 ring-success-tint"
+                      :class="i > 0 && '-ml-1'"
+                    />
+                  </span>
+                </TimetableModuleCard>
               </button>
               </TransitionGroup>
             </template>
           </TimetableGrid>
           </div>
+          <p v-if="lockedFocus" class="text-[13px] leading-normal">
+            <span class="font-mono font-bold">{{ lockedFocus.module }} {{ lockedFocus.sectionId.split('-')[1] }}</span> is locked because you accepted it in
+            {{ lockedFocus.roomName }}. Undo the accept in the room to swap sections.
+            <RouterLink :to="`/rooms/${lockedFocus.roomId}`" class="font-medium text-primary hover:underline">Open room</RouterLink>
+          </p>
           <p v-if="bidding.fromRooms.length" class="text-[13px] text-muted-foreground">
             Accepted in collab rooms:
             <template v-for="(d, i) in bidding.fromRooms" :key="d.roomId"

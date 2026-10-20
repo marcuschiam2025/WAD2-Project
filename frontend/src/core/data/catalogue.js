@@ -81,7 +81,7 @@ export const modules = {
     name: 'Enterprise Solution Delivery',
     category: 'major-core',
     prereqs: ['IS211'],
-    coreqs: ['IS216'],
+    coreqs: [], // IS216 co-requisite switched off while testing; restore ['IS216'] afterwards
   },
   IS453: { code: 'IS453', name: 'Financial Analytics', category: 'track', tracks: ['BA'], prereqs: ['IS217'], coreqs: [] },
   IS458: { code: 'IS458', name: 'Cloud Management & Engineering', category: 'track', tracks: ['FT'], prereqs: [], coreqs: [] },

@@ -10,6 +10,7 @@ import { buildChecklist } from '@core/utils/degreeChecklist'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
+import TodoList from '@/components/TodoList.vue'
 
 const user = useUserStore()
 const bidding = useBiddingStore()
@@ -69,13 +70,12 @@ const stats = computed(() => [
 ])
 
 // --- Schedule -----------------------------------------------------------------------------
-// TODO(backend): replace with GET /api/users/me/feed — assignment deadlines, quizzes and to-dos.
-// offset = days from today (null = anytime). Classes below come from the booked sections in the bidding store.
+// TODO(backend): replace with GET /api/users/me/feed — assignment deadlines and quizzes.
+// offset = days from today. Classes below come from the booked sections in the bidding store.
 const deadlines = [
   { id: 'bid', kind: 'Bid', title: 'Submit bid cart', meta: `${round.name} closes`, offset: closesOffset, time: hhmm(round.closesAt) },
   { id: 'quiz', kind: 'Due', title: 'IS111 Quiz 3', meta: 'Mon, Week 8', offset: 5 },
   { id: 'asg', kind: 'Due', title: 'IS216 Assignment 2', meta: 'Wed, Week 9', offset: 12 },
-  { id: 'kaist', kind: 'To-do', title: 'Confirm KAIST exchange mapping', meta: 'Exchange to-do', offset: null },
 ]
 
 const classes = computed(() =>
@@ -95,17 +95,16 @@ const ordered = (list) => [...list].sort((a, b) => (a.offset ?? 99) - (b.offset 
 const tab = ref('today')
 const schedule = computed(() => {
   const all = ordered([...classes.value, ...deadlines])
-  const items = tab.value === 'today' ? all.filter((i) => i.offset === 0 || i.offset === null) : all.filter((i) => i.offset === null || i.offset <= 6)
+  const items = tab.value === 'today' ? all.filter((i) => i.offset === 0) : all.filter((i) => i.offset <= 6)
   return items.map((i) => ({
     ...i,
-    when: i.offset === null ? 'Anytime' : tab.value === 'today' ? i.time : `${dayName(i.offset)} ${i.time ?? ''}`.trim(),
+    when: tab.value === 'today' ? i.time : `${dayName(i.offset)} ${i.time ?? ''}`.trim(),
   }))
 })
 const kindStyle = {
   Class: 'bg-primary-tint text-primary',
   Bid: 'bg-warning-tint text-foreground',
   Due: 'bg-secondary text-muted-foreground',
-  'To-do': 'bg-secondary text-muted-foreground',
 }
 
 // --- Bid cart -----------------------------------------------------------------------------
@@ -158,7 +157,7 @@ const alerts = computed(() => {
 const comingUp = computed(() =>
   ordered(deadlines.filter((d) => d.kind !== 'Bid')).map((d) => ({
     ...d,
-    when: d.offset === null ? 'anytime' : `in ${d.offset} day${d.offset === 1 ? '' : 's'}`,
+    when: `in ${d.offset} day${d.offset === 1 ? '' : 's'}`,
   })),
 )
 </script>
@@ -207,6 +206,7 @@ const comingUp = computed(() =>
       </div>
 
       <div class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-4">
+        <div class="flex flex-col gap-4">
         <!-- Schedule -->
         <section v-enter="0.1" class="card flex flex-col p-5"> <!-- motion: schedule fades in, 100ms delay -->
           <div class="flex items-center justify-between pb-3">
@@ -236,6 +236,10 @@ const comingUp = computed(() =>
             <li v-if="!schedule.length" class="border-t border-border py-4 text-[13px] text-muted-foreground">Nothing scheduled.</li>
           </ul>
         </section>
+
+        <!-- To-do list (motion: fades in, 150ms delay) -->
+        <TodoList v-enter="0.15" />
+        </div>
 
         <!-- Bid cart -->
         <section v-enter="0.15" class="card flex flex-col gap-3 p-5"> <!-- motion: bid cart fades in, 150ms delay -->

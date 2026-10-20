@@ -11,6 +11,7 @@ const props = defineProps({
   roomId: { type: String, required: true },
   sectionId: { type: String, required: true },
   label: { type: String, required: true }, // e.g. "G1"
+  compact: Boolean, // fewer words, for narrow cards
 })
 
 const rooms = useRoomsStore()
@@ -37,7 +38,7 @@ const average = computed(() =>
 
 <template>
   <div class="flex flex-col gap-2">
-    <p class="text-overline text-muted-foreground">Suggested bid for {{ label }}</p>
+    <p class="text-overline text-muted-foreground">{{ compact ? 'Suggested bids' : `Suggested bid for ${label}` }}</p>
     <template v-if="canBid">
       <div class="flex max-w-[320px] gap-2">
         <label class="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border px-3 py-[7px] focus-within:border-ring">
@@ -56,8 +57,9 @@ const average = computed(() =>
         <BaseButton size="sm" :disabled="!valid || amount === saved" @click="save">Save</BaseButton>
       </div>
       <span v-if="input !== '' && !valid" class="text-[12px] text-destructive">Minimum bid is e$ {{ MIN_BID }}.</span>
-      <span v-else-if="saved !== null" class="text-[12px] text-muted-foreground">Your suggestion for {{ label }}: e$ {{ saved }}</span>
+      <span v-else-if="saved !== null && !compact" class="text-[12px] text-muted-foreground">Your suggestion for {{ label }}: e$ {{ saved }}</span>
     </template>
+    <p v-else-if="compact" class="text-[12px] leading-normal text-muted-foreground">You didn't pick this section.</p>
     <p v-else class="text-[12px] leading-normal text-muted-foreground">
       You haven't picked this section. Pick it to suggest a bid for it.
       <RouterLink :to="`/rooms/${roomId}`" class="font-medium text-primary hover:underline">Change my picks</RouterLink>
@@ -70,9 +72,10 @@ const average = computed(() =>
         <span class="font-mono font-medium">e$ {{ s.amount }}</span>
       </li>
     </ul>
-    <p v-if="average !== null" class="text-[12px] text-muted-foreground">
+    <p v-if="average !== null && compact" class="text-[12px] font-medium text-muted-foreground">Average e$ {{ average }}</p>
+    <p v-else-if="average !== null" class="text-[12px] text-muted-foreground">
       Average of {{ suggestions.length }} suggestion{{ suggestions.length === 1 ? '' : 's' }} for {{ label }}: e$ {{ average }}
     </p>
-    <p v-else-if="canBid" class="text-[12px] text-muted-foreground">No suggestions for {{ label }} yet.</p>
+    <p v-else-if="canBid && !compact" class="text-[12px] text-muted-foreground">No suggestions for {{ label }} yet.</p>
   </div>
 </template>

@@ -9,6 +9,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import BackButton from '@/components/layout/BackButton.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
+import RoomDecision from '@/components/rooms/RoomDecision.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
 import RoomSlotPicker from '@/components/rooms/RoomSlotPicker.vue'
 
@@ -120,6 +121,8 @@ function leave() {
               {{ moduleName(room.module) }}
             </p>
           </div>
+
+          <RoomDecision :room-id="room.id" />
 
           <div class="flex flex-col gap-2.5">
             <p class="text-overline text-muted-foreground">Members · {{ room.members.length }} of {{ room.maxMembers }}</p>

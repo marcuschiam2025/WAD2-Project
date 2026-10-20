@@ -46,10 +46,16 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   const decidedSection = (code) => rooms.decided.find((d) => d.module === code)?.sectionId
 
+  // Sections accepted in a collab room are locked: they can't be swapped until the accept is undone in the room
+  const locked = computed(() =>
+    Object.fromEntries(rooms.decided.filter((d) => inCart.value.includes(d.module)).map((d) => [d.module, d])),
+  )
+  const isLocked = (code) => code in locked.value
+
   // module code -> booked section id
   const booked = computed(() =>
     Object.fromEntries(
-      inCart.value.map((code) => [code, chosen.value[plan.value.id]?.[code] ?? decidedSection(code) ?? sections.find((s) => s.module === code).id]),
+      inCart.value.map((code) => [code, decidedSection(code) ?? chosen.value[plan.value.id]?.[code] ?? sections.find((s) => s.module === code).id]),
     ),
   )
 
@@ -86,6 +92,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   })
 
   function swapSection(code, sectionId) {
+    if (isLocked(code)) return
     const id = plan.value.id
     chosen.value[id] = { ...chosen.value[id], [code]: sectionId }
   }
@@ -118,6 +125,8 @@ export const useBiddingStore = defineStore('bidding', () => {
     targetSem,
     notOffered,
     fromRooms,
+    locked,
+    isLocked,
     booked,
     bids,
     selectedModule,

@@ -111,24 +111,45 @@ export const usePlannerStore = defineStore('planner', () => {
     basket.value = basket.value.filter((m) => m !== code)
   }
 
-  // Modules decided in collab rooms land in the basket, ready to drag into a semester.
-  // They leave again if the student takes their picks back (unless they have been placed in a plan by then).
+  // Modules accepted in collab rooms are placed in the next semester of every plan (the one being bid for),
+  // unless a plan already has them somewhere. Undoing the accept takes them out again, as long as they are still
+  // where they were placed. A plan with no biddable next semester gets the module in the basket instead.
   const rooms = useRoomsStore()
-  const fromRooms = new Set()
-  const isPlaced = (code) => plans.value.some((p) => p.semesters.some((s) => s.modules.some((m) => effectiveCode(m) === code)))
+  const placedByRoom = new Map() // "planId|code" -> the semester it was placed in
+  const basketFromRoom = new Set()
+  const inPlan = (plan, code) => plan.semesters.some((s) => s.modules.some((m) => effectiveCode(m) === code))
   watch(
     () => rooms.decided.map((d) => d.module),
     (now, before = []) => {
-      now.forEach((code) => {
-        if (before.includes(code) || basket.value.includes(code) || isPlaced(code)) return
-        fromRooms.add(code)
-        basket.value.push(code)
-      })
-      before
-        .filter((code) => !now.includes(code) && fromRooms.has(code))
+      now
+        .filter((code) => !before.includes(code))
         .forEach((code) => {
-          fromRooms.delete(code)
-          removeFromBasket(code)
+          let needsBasket = false
+          plans.value.forEach((plan) => {
+            if (inPlan(plan, code)) return
+            const next = plan.semesters[semIndex(plan, plan.currentSem) + 1]
+            if (next && !next.exchange && !next.loa) {
+              next.modules.push(code)
+              placedByRoom.set(`${plan.id}|${code}`, next.id)
+            } else needsBasket = true
+          })
+          if (needsBasket && !basket.value.includes(code)) {
+            basketFromRoom.add(code)
+            basket.value.push(code)
+          } else if (!needsBasket) removeFromBasket(code)
+        })
+      before
+        .filter((code) => !now.includes(code))
+        .forEach((code) => {
+          plans.value.forEach((plan) => {
+            const key = `${plan.id}|${code}`
+            const semId = placedByRoom.get(key)
+            if (!semId) return
+            placedByRoom.delete(key)
+            const sem = plan.semesters.find((x) => x.id === semId)
+            if (sem) sem.modules = sem.modules.filter((m) => m !== code)
+          })
+          if (basketFromRoom.delete(code)) removeFromBasket(code)
         })
     },
     { immediate: true },

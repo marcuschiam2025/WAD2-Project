@@ -10,6 +10,7 @@ import UserAvatar from '@/components/ui/UserAvatar.vue'
 import TimetableGrid from '@/components/TimetableGrid.vue'
 import BackButton from '@/components/layout/BackButton.vue'
 import SectionBids from '@/components/rooms/SectionBids.vue'
+import RoomDecision from '@/components/rooms/RoomDecision.vue'
 import iconX from '@/assets/figma/icon-x.svg'
 
 const route = useRoute()
@@ -38,39 +39,9 @@ const names = (r) => r.voters.map((v) => v.short).join(', ')
 
 // Once everyone has voted, the section(s) with the most votes can be accepted. A tie means picking one of them.
 const state = computed(() => rooms.roomState(room.value))
-const leaderRows = computed(() => rows.value.filter((r) => state.value.leaders.includes(r.section.id)))
 const isLeader = (r) => state.value.leaders.includes(r.section.id)
 const isAccepted = (r) => state.value.acceptedId === r.section.id
-const waitingNames = computed(() => state.value.waiting.map((id) => rooms.person(id).short).join(', '))
-const sectionCodes = computed(() => leaderRows.value.map((r) => r.section.section).join(' and '))
-const acceptedRow = computed(() => rows.value.find(isAccepted) ?? null)
-
-const decision = computed(() => {
-  const st = state.value
-  if (!st.allVoted)
-    return {
-      pill: ['warning', 'Voting'],
-      title: 'Waiting for everyone to vote',
-      body: `${st.voted} of ${st.total} have voted. Once everyone has, you can accept the section with the most votes.`,
-    }
-  if (st.acceptedId)
-    return {
-      pill: ['success', 'Accepted'],
-      title: `You accepted ${acceptedRow.value.section.section}`,
-      body: 'It is on your Bidding Planner and in your What-If basket. You can undo this any time.',
-    }
-  if (st.tie)
-    return {
-      pill: ['info', 'Tie'],
-      title: `It's a tie between ${sectionCodes.value}`,
-      body: `Each has ${st.top} votes. Accept one of them. You can switch or undo later.`,
-    }
-  return {
-    pill: ['info', 'Ready to accept'],
-    title: `Everyone has voted. ${sectionCodes.value} has the most votes`,
-    body: 'Accept it to add it to your Bidding Planner. You can undo this any time.',
-  }
-})
+const sectionCodes = computed(() => rows.value.filter(isLeader).map((r) => r.section.section).join(' and '))
 
 // Click a section (card or ranking row) to see how it cleared in past terms
 const selectedId = ref(null)
@@ -104,6 +75,8 @@ const select = (r) => (selectedId.value = selectedId.value === r.section.id ? nu
             </p>
           </div>
 
+          <RoomDecision :room-id="room.id" />
+
           <div class="flex flex-col gap-2">
             <p class="text-overline text-muted-foreground">Ranking</p>
             <ul v-stagger class="flex flex-col gap-2"> <!-- motion: ranking rows stagger in -->
@@ -135,51 +108,6 @@ const select = (r) => (selectedId.value = selectedId.value === r.section.id ? nu
         </aside>
 
         <section class="flex min-w-0 flex-1 flex-col gap-4 p-5">
-          <!-- Accept the winning section (everyone has to have voted first) -->
-          <div
-            class="flex flex-col gap-3 rounded-lg border px-4 py-3.5"
-            :class="state.acceptedId ? 'border-success bg-success-tint' : state.allVoted ? 'border-primary bg-primary-tint' : 'border-border'"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex flex-col gap-0.5 leading-normal">
-                <p class="text-[15px] font-semibold">{{ decision.title }}</p>
-                <p class="text-[13px] text-muted-foreground">{{ decision.body }}</p>
-              </div>
-              <StatusPill :tone="decision.pill[0]">{{ decision.pill[1] }}</StatusPill>
-            </div>
-
-            <p v-if="!state.allVoted" class="text-[13px]">
-              <span class="text-muted-foreground">Still to vote:</span> <span class="font-medium">{{ waitingNames }}</span>
-            </p>
-
-            <ul v-else class="flex flex-col gap-2">
-              <li v-for="r in leaderRows" :key="r.section.id" class="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5">
-                <span class="font-mono text-[14px] font-bold">{{ r.section.section }}</span>
-                <span class="flex min-w-0 flex-1 flex-col leading-normal">
-                  <span class="text-[13px] font-medium">{{ when(r.section) }}</span>
-                  <span class="text-[12px] text-muted-foreground">{{ r.count }} {{ r.count === 1 ? 'vote' : 'votes' }} · {{ names(r) }}</span>
-                </span>
-                <BaseButton v-if="isAccepted(r)" variant="outline" size="sm" @click="rooms.undoAccept(room.id)">Undo</BaseButton>
-                <BaseButton
-                  v-else
-                  :variant="state.acceptedId ? 'outline' : 'primary'"
-                  size="sm"
-                  @click="rooms.acceptSection(room.id, r.section.id)"
-                >{{ state.acceptedId ? 'Switch to this' : 'Accept' }}</BaseButton>
-              </li>
-            </ul>
-
-            <!-- Accepted: the suggested bids for that section, and a way into the Bidding Planner -->
-            <template v-if="acceptedRow">
-              <div class="border-t border-success pt-3">
-                <SectionBids :room-id="room.id" :section-id="acceptedRow.section.id" :label="acceptedRow.section.section" />
-              </div>
-              <div>
-                <BaseButton variant="outline" size="sm" to="/bidding">Open Bidding Planner</BaseButton>
-              </div>
-            </template>
-          </div>
-
           <div class="flex items-center justify-between">
             <p class="text-[13px] text-muted-foreground">Click a section to see who voted for it and how it cleared in past terms.</p>
             <StatusPill v-if="state.leaders.length" tone="success">
