@@ -8,6 +8,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import ProgressBar from '@/components/ui/ProgressBar.vue'
+import DegreeChecklist from '@/components/DegreeChecklist.vue'
 import PrereqWarningModal from '@/components/modals/PrereqWarningModal.vue'
 import PlanLimitModal from '@/components/modals/PlanLimitModal.vue'
 import PlanSettingsModal from '@/components/modals/PlanSettingsModal.vue'
@@ -374,6 +375,9 @@ const requirements = computed(() =>
           </div>
         </div>
       </section>
+
+      <!-- Degree checklist: the 36 courses, what is cleared and what is still to take -->
+      <DegreeChecklist />
     </main>
 
     <PrereqWarningModal

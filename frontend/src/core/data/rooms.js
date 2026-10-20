@@ -1,4 +1,6 @@
 // Sample plan-room data. Shapes mirror backend/models/Room.js.
+// ownerId: the room creator. admins: members the owner promoted (owner and admins can remove people).
+// suggestedBids: section id -> { member id -> the e$ they suggest bidding for that section }.
 
 export const classmates = [
   { id: 'rk', name: 'Rachel Koh', short: 'Rachel', initials: 'RK', email: 'rachel.koh.2023@smu.edu.sg', completed: ['IS211', 'COR-IS1704'] },
@@ -23,10 +25,12 @@ export const rooms = [
     description: 'IS Y3 friends planning Y3S2 bids together',
     module: 'IS442',
     maxMembers: 6,
+    ownerId: 'me',
+    admins: ['rk'],
     members: ['me', 'rk', 'tm', 'sl'],
     // section id -> member ids who picked it (excluding the signed-in student)
     votes: { 'IS442-G1': ['rk', 'tm'], 'IS442-G2': ['sl'], 'IS442-G3': [] },
-    finalised: null,
+    suggestedBids: { 'IS442-G1': { rk: 36, tm: 32 }, 'IS442-G2': { sl: 31 } },
   },
   {
     id: '7C20',
@@ -34,9 +38,11 @@ export const rooms = [
     description: 'BA track people syncing IS428 and IS460 sections',
     module: 'IS442',
     maxMembers: 5,
+    ownerId: 'jl',
+    admins: ['aw'],
     members: ['me', 'jl', 'aw'],
     votes: { 'IS442-G1': ['jl'], 'IS442-G2': [], 'IS442-G3': ['aw'] },
-    finalised: null,
+    suggestedBids: { 'IS442-G1': { jl: 30 } },
   },
   {
     id: 'E9B1',
@@ -44,8 +50,10 @@ export const rooms = [
     description: 'KAIST + NUS exchange mapping, Y3S1',
     module: 'IS442',
     maxMembers: 4,
-    members: ['me', 'mp'],
+    ownerId: 'mp',
+    admins: ['me'],
+    members: ['me', 'mp', 'sl'],
     votes: { 'IS442-G1': [], 'IS442-G2': ['mp'], 'IS442-G3': [] },
-    finalised: null,
+    suggestedBids: {},
   },
 ]

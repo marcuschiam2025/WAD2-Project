@@ -2,11 +2,12 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoomsStore, MAX_ROOM_SIZE } from '@core/stores/rooms'
-import { moduleName } from '@core/data/catalogue'
+import { modules, moduleName } from '@core/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BackButton from '@/components/layout/BackButton.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
+import ModuleFacts from '@/components/rooms/ModuleFacts.vue'
 import PrereqBanModal from '@/components/modals/PrereqBanModal.vue'
 import iconSearch from '@/assets/figma/icon-search.svg'
 import iconPlus from '@/assets/figma/plus-14.svg'
@@ -18,7 +19,7 @@ const rooms = useRoomsStore()
 
 const name = ref('')
 const description = ref('')
-const module = ref('IS442')
+const module = ref('')
 const maxMembers = ref(6)
 const members = ref([]) // classmate ids
 const banned = ref([])
@@ -27,7 +28,22 @@ const blocked = ref(null) // { person, prereq }
 
 // TODO(backend): replace with GET /api/users?search=… (classmates) and GET /api/modules (bid-able modules)
 const suggestions = computed(() => rooms.searchClassmates(query.value, [...members.value, ...banned.value]))
-const moduleOptions = ['IS442']
+const moduleQuery = ref('')
+const allModules = Object.values(modules).sort((a, b) => a.code.localeCompare(b.code))
+const moduleMatches = computed(() => {
+  const q = moduleQuery.value.trim().toLowerCase()
+  if (!q) return []
+  return allModules.filter((m) => `${m.code} ${m.name}`.toLowerCase().includes(q)).slice(0, 8)
+})
+
+function pickModule(m) {
+  module.value = m.code
+  moduleQuery.value = ''
+}
+
+function pickFirstModule() {
+  if (moduleMatches.value[0]) pickModule(moduleMatches.value[0])
+}
 const isFull = computed(() => members.value.length + 1 >= maxMembers.value)
 const canCreate = computed(() => name.value.trim() && module.value)
 const minMembers = computed(() => Math.max(2, members.value.length + 1))
@@ -73,8 +89,9 @@ const input = 'rounded-md border border-border bg-card px-3 py-[9px] text-[14px]
     </PageHeader>
 
     <main class="flex justify-center px-16 pt-8 pb-12">
+      <!-- motion: the form fades + slides up on mount -->
       <form
-        v-enter <!-- motion: fade + slide up on mount -->
+        v-enter
         class="flex w-[480px] max-w-full flex-col gap-4 rounded-xl border border-border bg-card p-6 shadow-md"
         @submit.prevent="canCreate && create()"
       >
@@ -134,18 +151,45 @@ const input = 'rounded-md border border-border bg-card px-3 py-[9px] text-[14px]
 
         <div class="flex flex-col gap-1.5">
           <span class="text-[13px] font-medium">Module</span>
-          <div class="flex min-h-[38px] items-center rounded-md border border-border px-1.5 py-1">
-            <span v-if="module" class="flex items-center gap-2 rounded-sm bg-secondary px-2 py-1 text-[13px]">
+          <div v-if="module" class="flex min-h-[38px] items-center rounded-md border border-border px-1.5 py-1">
+            <span class="flex items-center gap-2 rounded-sm bg-secondary px-2 py-1 text-[13px]">
               <span><span class="font-mono font-bold">{{ module }}</span> {{ moduleName(module) }}</span>
               <button type="button" aria-label="Remove module" @click="module = ''">
                 <img :src="iconRemove" alt="" class="size-3" />
               </button>
             </span>
-            <select v-else v-model="module" class="flex-1 bg-transparent px-1.5 py-1 text-[14px] outline-none">
-              <option value="" disabled>Choose the module this room is bidding for</option>
-              <option v-for="m in moduleOptions" :key="m" :value="m">{{ m }} {{ moduleName(m) }}</option>
-            </select>
           </div>
+          <div v-else class="relative">
+            <div class="flex items-center gap-2 rounded-md border border-border px-3 py-[9px] focus-within:border-ring">
+              <img :src="iconSearch" alt="" class="size-4" />
+              <input
+                v-model="moduleQuery"
+                autocomplete="off"
+                placeholder="Search by module code or name"
+                aria-label="Search modules"
+                class="min-w-0 flex-1 bg-transparent text-[14px] leading-normal outline-none"
+                @keydown.enter.prevent="pickFirstModule"
+              />
+            </div>
+            <!-- TODO(backend): results come from GET /api/modules?q=… instead of filtering the sample catalogue -->
+            <div
+              v-if="moduleQuery.trim()"
+              class="absolute inset-x-0 top-full z-10 mt-1 flex max-h-64 flex-col overflow-y-auto rounded-lg border border-border bg-card p-1.5 shadow-md"
+            >
+              <button
+                v-for="m in moduleMatches"
+                :key="m.code"
+                type="button"
+                class="flex items-center gap-2 rounded-sm px-2 py-1.5 text-left text-[13px] hover:bg-muted"
+                @click="pickModule(m)"
+              >
+                <span class="font-mono font-bold">{{ m.code }}</span>
+                <span class="min-w-0 flex-1 truncate">{{ m.name }}</span>
+              </button>
+              <p v-if="!moduleMatches.length" class="px-2 py-1.5 text-[13px] text-muted-foreground">No matching modules</p>
+            </div>
+          </div>
+          <ModuleFacts v-if="module" :code="module" />
         </div>
 
         <label class="flex flex-col gap-1.5">

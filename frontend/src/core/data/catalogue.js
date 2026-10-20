@@ -18,10 +18,10 @@ export const tracks = [
     recommended: ['IS415', 'IS428', 'IS214'],
   },
   {
-    code: 'DCS',
-    name: 'Digital Cloud Solutioning',
-    short: 'Digital Cloud',
-    blurb: 'DCS focuses on designing, deploying and operating reliable cloud systems.',
+    code: 'FT',
+    name: 'Financial Technology',
+    short: 'Fintech',
+    blurb: 'FT applies software and analytics to payments, banking and financial services.',
     recommended: ['IS458', 'IS459', 'IS214'],
   },
   {
@@ -34,11 +34,28 @@ export const tracks = [
 ]
 
 // category: uni-core | major-core | track | depth | free
+// basket (optional): managing | tss | cmw — which uni-core elective basket the module belongs to
+// grad (optional): graduation requirements it also counts for — sustainability | sg-asia
+// TODO(backend): basket and grad come from the course attributes ("Grad - Sustainability (2024)" etc.)
 export const modules = {
-  COR1100: { code: 'COR1100', name: 'Managing', category: 'uni-core', prereqs: [], coreqs: [] },
-  COR2100: { code: 'COR2100', name: 'Technology, Science & Society', category: 'uni-core', prereqs: [], coreqs: [] },
-  COR3001: { code: 'COR3001', name: 'Cultures of the Modern World', category: 'uni-core', prereqs: [], coreqs: [] },
+  COR1100: { code: 'COR1100', name: 'Managing', category: 'uni-core', basket: 'managing', prereqs: [], coreqs: [] },
+  COR2100: { code: 'COR2100', name: 'Technology, Science & Society', category: 'uni-core', basket: 'tss', grad: ['sustainability'], prereqs: [], coreqs: [] },
+  COR3001: { code: 'COR3001', name: 'Cultures of the Modern World', category: 'uni-core', basket: 'cmw', grad: ['sg-asia'], prereqs: [], coreqs: [] },
   COR3301: { code: 'COR3301', name: 'Civilisations', category: 'uni-core', prereqs: [], coreqs: [] },
+  // Sample basket electives, only here so the degree checklist has options to list.
+  // TODO(backend): replace with the real Managing / TSS / CMW basket modules (GET /api/modules?basket=...)
+  MGMT101: { code: 'MGMT101', name: 'Organisational Behaviour', category: 'uni-core', basket: 'managing', prereqs: [], coreqs: [] },
+  MGMT102: { code: 'MGMT102', name: 'Managing Innovation', category: 'uni-core', basket: 'managing', prereqs: [], coreqs: [] },
+  MGMT103: { code: 'MGMT103', name: 'Leading Teams', category: 'uni-core', basket: 'managing', prereqs: [], coreqs: [] },
+  MGMT104: { code: 'MGMT104', name: 'Business Negotiation', category: 'uni-core', basket: 'managing', prereqs: [], coreqs: [] },
+  TSS101: { code: 'TSS101', name: 'Artificial Intelligence & Society', category: 'uni-core', basket: 'tss', prereqs: [], coreqs: [] },
+  TSS102: { code: 'TSS102', name: 'Climate, Technology & Policy', category: 'uni-core', basket: 'tss', grad: ['sustainability'], prereqs: [], coreqs: [] },
+  TSS103: { code: 'TSS103', name: 'Data, Privacy & Ethics', category: 'uni-core', basket: 'tss', prereqs: [], coreqs: [] },
+  TSS104: { code: 'TSS104', name: 'The Future of Work', category: 'uni-core', basket: 'tss', prereqs: [], coreqs: [] },
+  CMW101: { code: 'CMW101', name: 'Modern Southeast Asia', category: 'uni-core', basket: 'cmw', grad: ['sg-asia'], prereqs: [], coreqs: [] },
+  CMW102: { code: 'CMW102', name: 'Art, Culture & Society', category: 'uni-core', basket: 'cmw', prereqs: [], coreqs: [] },
+  CMW103: { code: 'CMW103', name: 'Global Religions', category: 'uni-core', basket: 'cmw', prereqs: [], coreqs: [] },
+  CMW104: { code: 'CMW104', name: 'Singapore: A Modern History', category: 'uni-core', basket: 'cmw', grad: ['sg-asia'], prereqs: [], coreqs: [] },
   GEC101: { code: 'GEC101', name: 'General Education I', category: 'free', prereqs: [], coreqs: [] },
   GEC102: { code: 'GEC102', name: 'General Education II', category: 'free', prereqs: [], coreqs: [] },
   HSS210: { code: 'HSS210', name: 'Humanities & Social Sciences Elective', category: 'free', prereqs: [], coreqs: [] },
@@ -67,8 +84,8 @@ export const modules = {
     coreqs: ['IS216'],
   },
   IS453: { code: 'IS453', name: 'Financial Analytics', category: 'track', tracks: ['BA'], prereqs: ['IS217'], coreqs: [] },
-  IS458: { code: 'IS458', name: 'Cloud Management & Engineering', category: 'track', tracks: ['DCS'], prereqs: [], coreqs: [] },
-  IS459: { code: 'IS459', name: 'Big Data Architecture', category: 'track', tracks: ['DCS'], prereqs: [], coreqs: [] },
+  IS458: { code: 'IS458', name: 'Cloud Management & Engineering', category: 'track', tracks: ['FT'], prereqs: [], coreqs: [] },
+  IS459: { code: 'IS459', name: 'Big Data Architecture', category: 'track', tracks: ['FT'], prereqs: [], coreqs: [] },
   IS460: {
     code: 'IS460',
     name: 'Machine Learning & Applications',

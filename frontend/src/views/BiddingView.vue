@@ -50,7 +50,10 @@ function onDrop({ day, slot }) {
   dragging.value = null
 }
 
-function onCardClick(s) {
+// Clicks on a greyed-out card or empty space bubble up to the grid, which deselects
+function onCardClick(e, s) {
+  if (isDimmed(s)) return
+  e.stopPropagation()
   if (s.option) bidding.swapSection(s.module, s.id)
   else bidding.selectedModule = bidding.selectedModule === s.module ? null : s.module
 }
@@ -75,7 +78,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
         <div class="flex flex-col gap-0.5">
           <h2 class="text-[17px] font-semibold">{{ round.semester }} timetable, imported from What-If Planner</h2>
           <p class="text-[13px] text-muted-foreground">
-            Click a card to see its other sections, then click or drag onto one to swap. Other modules are locked until you click the card again or close the sidebar.
+            Click a card to see its other sections, then click or drag onto one to swap. Other modules are locked. Click the card again, or anywhere else on the calendar, to deselect.
           </p>
         </div>
         <div class="flex shrink-0 items-center gap-4 text-[12px] text-muted-foreground">
@@ -87,6 +90,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
 
       <div v-enter class="flex items-stretch gap-4"> <!-- motion: fade + slide up on mount -->
         <div class="flex min-w-0 flex-1 flex-col gap-3">
+          <div @click="bidding.selectedModule = null">
           <TimetableGrid row-height="min-h-[100px]" @cell-drop="onDrop">
             <template #cell="{ day, slot }">
               <!-- motion: alternative sections pop in when a card is selected, and out when deselected -->
@@ -95,16 +99,13 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
                 v-for="s in cardsAt(day, slot)"
                 :key="s.id"
                 type="button"
-                :disabled="isDimmed(s)"
+                :aria-disabled="isDimmed(s)"
                 :draggable="!s.option && s.module === bidding.selectedModule"
                 class="flex min-h-0 w-full shrink"
-                :class="[
-                  isDimmed(s) && 'cursor-not-allowed',
-                  !s.option && s.module === bidding.selectedModule && 'cursor-grab active:cursor-grabbing',
-                ]"
+                :class="!s.option && s.module === bidding.selectedModule && 'cursor-grab active:cursor-grabbing'"
                 @dragstart="onDragStart($event, s)"
                 @dragend="dragging = null"
-                @click="onCardClick(s)"
+                @click="onCardClick($event, s)"
               >
                 <TimetableModuleCard
                   :code="s.module"
@@ -118,6 +119,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
               </TransitionGroup>
             </template>
           </TimetableGrid>
+          </div>
           <p v-if="bidding.clashes.size" class="text-[13px] text-destructive">
             Timetable clash: {{ clashList }} share a session slot. Click one and pick an alternative section.
           </p>

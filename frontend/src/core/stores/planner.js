@@ -36,7 +36,7 @@ function samplePlan(id, name, tracks) {
 export const usePlannerStore = defineStore('planner', () => {
   const plans = ref([
     samplePlan(1, 'Plan 1', ['BA', 'SMT']),
-    samplePlan(2, 'Plan 2', ['BA', 'DCS']),
+    samplePlan(2, 'Plan 2', ['BA', 'FT']),
     samplePlan(3, 'Plan 3', ['PD']),
   ])
   const activePlanId = ref(1)

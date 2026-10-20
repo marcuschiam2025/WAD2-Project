@@ -1,11 +1,13 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRoomsStore } from '@core/stores/rooms'
+import { useRoomsStore, roleOf, canKick, canSetAdmin } from '@core/stores/rooms'
 import { moduleName } from '@core/data/catalogue'
+import { popEnter, popLeave } from '@/motion'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BackButton from '@/components/layout/BackButton.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
 import RoomSlotPicker from '@/components/rooms/RoomSlotPicker.vue'
 import ImportPlansModal from '@/components/modals/ImportPlansModal.vue'
@@ -21,15 +23,48 @@ const picks = ref([...(rooms.myVotes[route.params.id] ?? [])])
 const importing = ref(false)
 const copied = ref(false)
 
-// TODO(backend): member status comes from GET /api/rooms/:id/members
+// TODO(backend): members, roles and vote status come from GET /api/rooms/:id/members
+const ORDER = { owner: 0, admin: 1, member: 2 }
+const roleLabel = { owner: 'Owner', admin: 'Admin' }
 const members = computed(() =>
-  room.value.members.map((id) => {
-    const person = rooms.person(id)
-    const voted = id === 'me' ? false : Object.values(room.value.votes).some((v) => v.includes(id))
-    const status = id === 'me' ? 'Picking…' : voted ? 'Voted' : 'Not yet'
-    return { ...person, status }
-  }),
+  room.value.members
+    .map((id) => {
+      const person = rooms.person(id)
+      const voted = id === 'me' ? false : Object.values(room.value.votes).some((v) => v.includes(id))
+      const status = id === 'me' ? 'Picking…' : voted ? 'Voted' : 'Not yet'
+      return {
+        ...person,
+        status,
+        role: roleOf(room.value, id),
+        canKick: canKick(room.value, 'me', id),
+        canAdmin: canSetAdmin(room.value, 'me', id),
+      }
+    })
+    .sort((a, b) => ORDER[a.role] - ORDER[b.role]),
 )
+const myRole = computed(() => roleOf(room.value, 'me'))
+
+// The ⋯ menu on a member row, and the confirmation before removing someone
+const menuFor = ref(null)
+const kicking = ref(null)
+const closeMenu = () => (menuFor.value = null)
+onMounted(() => document.addEventListener('click', closeMenu))
+onBeforeUnmount(() => document.removeEventListener('click', closeMenu))
+
+function toggleAdmin(m) {
+  rooms.setAdmin(room.value.id, m.id, m.role !== 'admin')
+  menuFor.value = null
+}
+
+function askKick(m) {
+  kicking.value = m
+  menuFor.value = null
+}
+
+function confirmKick() {
+  rooms.kickMember(room.value.id, kicking.value.id)
+  kicking.value = null
+}
 
 const link = computed(() => `bidmaxxer.app/room/${room.value.id}`)
 
@@ -84,15 +119,55 @@ function applyImport(planIds) {
           <div class="flex flex-col gap-2.5">
             <p class="text-overline text-muted-foreground">Members · {{ room.members.length }} of {{ room.maxMembers }}</p>
             <ul class="flex flex-col gap-2.5">
-              <li v-for="m in members" :key="m.id" class="flex items-center gap-2.5 text-[14px]">
+              <li v-for="m in members" :key="m.id" class="relative flex items-center gap-2.5 text-[14px]">
                 <UserAvatar :initials="m.initials" :size="24" :you="m.you" />
-                <span class="flex-1">{{ m.short }}</span>
-                <span
-                  class="text-[12px]"
-                  :class="m.status === 'Voted' ? 'font-medium text-success' : 'text-muted-foreground'"
-                >{{ m.status === 'Voted' ? '✓ Voted' : m.status }}</span>
+                <div class="flex min-w-0 flex-1 flex-col leading-normal">
+                  <span class="flex items-center gap-1.5">
+                    <span class="truncate">{{ m.short }}</span>
+                    <span
+                      v-if="m.role !== 'member'"
+                      class="shrink-0 rounded-sm border px-1.5 text-[10.5px] font-semibold"
+                      :class="m.role === 'owner' ? 'border-primary bg-primary-tint text-primary' : 'border-border bg-secondary text-muted-foreground'"
+                    >{{ roleLabel[m.role] }}</span>
+                  </span>
+                  <span
+                    class="text-[12px]"
+                    :class="m.status === 'Voted' ? 'font-medium text-success' : 'text-muted-foreground'"
+                  >{{ m.status === 'Voted' ? '✓ Voted' : m.status }}</span>
+                </div>
+                <button
+                  v-if="m.canKick || m.canAdmin"
+                  type="button"
+                  :aria-label="`Manage ${m.short}`"
+                  :aria-expanded="menuFor === m.id"
+                  class="rounded-sm px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  @click.stop="menuFor = menuFor === m.id ? null : m.id"
+                >···</button>
+                <Transition :css="false" @enter="popEnter" @leave="popLeave">
+                  <div
+                    v-if="menuFor === m.id"
+                    class="absolute top-full right-0 z-20 mt-1 flex w-44 flex-col rounded-lg border border-border bg-card p-1.5 shadow-md"
+                    @click.stop
+                  >
+                    <button
+                      v-if="m.canAdmin"
+                      type="button"
+                      class="rounded-sm px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted"
+                      @click="toggleAdmin(m)"
+                    >{{ m.role === 'admin' ? 'Remove as admin' : 'Make admin' }}</button>
+                    <button
+                      v-if="m.canKick"
+                      type="button"
+                      class="rounded-sm px-2.5 py-2 text-left text-[13px] text-destructive transition-colors hover:bg-destructive-tint"
+                      @click="askKick(m)"
+                    >Remove from room</button>
+                  </div>
+                </Transition>
               </li>
             </ul>
+            <p v-if="myRole !== 'member'" class="text-[12px] leading-normal text-muted-foreground">
+              {{ myRole === 'owner' ? "You're the owner: you can make admins and remove anyone." : "You're an admin: you can remove members." }}
+            </p>
           </div>
 
           <div class="flex flex-col gap-2">
@@ -126,6 +201,17 @@ function applyImport(planIds) {
         </section>
       </div>
     </main>
+
+    <BaseModal v-if="kicking" width="w-[400px]" @close="kicking = null">
+      <h2 class="text-h4">Remove {{ kicking.name }} from {{ room.name }}?</h2>
+      <p class="text-[14px] leading-[22px] text-muted-foreground">
+        They lose access to this room, and their votes and suggested bids are removed. They can rejoin with the invite link.
+      </p>
+      <div class="flex justify-end gap-2">
+        <BaseButton variant="ghost" @click="kicking = null">Cancel</BaseButton>
+        <BaseButton variant="destructive-outline" @click="confirmKick">Remove</BaseButton>
+      </div>
+    </BaseModal>
 
     <ImportPlansModal
       v-if="importing"

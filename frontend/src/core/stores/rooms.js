@@ -3,6 +3,25 @@ import { ref } from 'vue'
 import { classmates, rooms as sampleRooms, roomPrereqs } from '../data/rooms'
 
 export const MAX_ROOM_SIZE = 8
+const ME = 'me'
+
+// owner > admin > member
+export function roleOf(room, id) {
+  if (room.ownerId === id) return 'owner'
+  return room.admins.includes(id) ? 'admin' : 'member'
+}
+
+// The owner can remove anyone; admins can only remove regular members.
+export function canKick(room, actorId, targetId) {
+  if (actorId === targetId) return false
+  const actor = roleOf(room, actorId)
+  return actor === 'owner' || (actor === 'admin' && roleOf(room, targetId) === 'member')
+}
+
+// Only the owner promotes and demotes admins.
+export function canSetAdmin(room, actorId, targetId) {
+  return actorId !== targetId && roleOf(room, actorId) === 'owner' && roleOf(room, targetId) !== 'owner'
+}
 
 export const useRoomsStore = defineStore('rooms', () => {
   const rooms = ref(structuredClone(sampleRooms))
@@ -16,7 +35,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   function person(id) {
-    if (id === 'me') return { id: 'me', name: 'You', short: 'You', initials: 'VS', you: true }
+    if (id === ME) return { id: ME, name: 'You', short: 'You', initials: 'VS', you: true }
     return classmates.find((c) => c.id === id)
   }
 
@@ -45,9 +64,11 @@ export const useRoomsStore = defineStore('rooms', () => {
       description,
       module,
       maxMembers,
-      members: ['me', ...members],
+      ownerId: ME,
+      admins: [],
+      members: [ME, ...members],
       votes: { [`${module}-G1`]: [], [`${module}-G2`]: [], [`${module}-G3`]: [] },
-      finalised: null,
+      suggestedBids: {},
     })
     return id
   }
@@ -60,8 +81,29 @@ export const useRoomsStore = defineStore('rooms', () => {
     myVotes.value[roomId] = sectionIds
   }
 
-  function finalise(roomId, sectionId) {
-    getRoom(roomId).finalised = sectionId
+  // The signed-in student's suggested e$ for one section of the room's module
+  // TODO(Backend 2): PUT /api/rooms/:id/sections/:sectionId/bids/me
+  function setMyBid(roomId, sectionId, amount) {
+    const bids = getRoom(roomId).suggestedBids
+    bids[sectionId] = { ...bids[sectionId], [ME]: amount }
+  }
+
+  // TODO(Backend 2): DELETE /api/rooms/:id/members/:memberId (owner, or admin for regular members)
+  function kickMember(roomId, memberId) {
+    const room = getRoom(roomId)
+    if (!room || !canKick(room, ME, memberId)) return
+    room.members = room.members.filter((m) => m !== memberId)
+    room.admins = room.admins.filter((m) => m !== memberId)
+    Object.keys(room.votes).forEach((s) => (room.votes[s] = room.votes[s].filter((m) => m !== memberId)))
+    Object.values(room.suggestedBids).forEach((bids) => delete bids[memberId])
+  }
+
+  // TODO(Backend 2): PATCH /api/rooms/:id/members/:memberId { role: 'admin' | 'member' } (owner only)
+  function setAdmin(roomId, memberId, makeAdmin) {
+    const room = getRoom(roomId)
+    if (!room || !canSetAdmin(room, ME, memberId)) return
+    const rest = room.admins.filter((m) => m !== memberId)
+    room.admins = makeAdmin ? [...rest, memberId] : rest
   }
 
   function importPlans(roomId, planIds) {
@@ -79,7 +121,9 @@ export const useRoomsStore = defineStore('rooms', () => {
     createRoom,
     leaveRoom,
     setMyVotes,
-    finalise,
+    setMyBid,
+    kickMember,
+    setAdmin,
     importPlans,
   }
 })
