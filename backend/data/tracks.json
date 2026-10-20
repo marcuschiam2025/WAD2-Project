@@ -1,0 +1,38 @@
+[
+  {
+    "_id": "BSC-IS_AY2025_BA",
+    "majorId": "BSC-IS_AY2025",
+    "trackCode": "BA",
+    "name": "Business Analytics",
+    "description": "This track aims to provide students with the concepts, methods and best practices of data analytics through working on real world use cases and practicum.",
+    "source": "https://computing.smu.edu.sg/bsc-information-systems/curriculum",
+    "lastChecked": "2026-10-13"
+  },
+  {
+    "_id": "BSC-IS_AY2025_PD",
+    "majorId": "BSC-IS_AY2025",
+    "trackCode": "PD",
+    "name": "Product Development",
+    "description": "This track provides students with the skills and knowledge to excel in the fields of Software Development and Product Management. It prepares them to engineer IT solutions that enhance operational excellence, integrate information-processes-people and drive innovation.",
+    "source": "https://computing.smu.edu.sg/bsc-information-systems/curriculum",
+    "lastChecked": "2026-10-13"
+  },
+  {
+    "_id": "BSC-IS_AY2025_FT",
+    "majorId": "BSC-IS_AY2025",
+    "trackCode": "FT",
+    "name": "Financial Technology",
+    "description": "This track covers the foundations of enterprise architecture in banking and the functional domain areas such as retail and corporate banking, digital payments and innovations, and financial markets.",
+    "source": "https://computing.smu.edu.sg/bsc-information-systems/curriculum",
+    "lastChecked": "2026-10-13"
+  },
+  {
+    "_id": "BSC-IS_AY2025_SMCT",
+    "majorId": "BSC-IS_AY2025",
+    "trackCode": "SMCT",
+    "name": "Smart-City Management & Technology",
+    "description": "This track offers unique interdisciplinary pathways to develop the skills necessary for solving problems in the smart-city domain.",
+    "source": "https://computing.smu.edu.sg/bsc-information-systems/curriculum",
+    "lastChecked": "2026-10-13"
+  }
+]

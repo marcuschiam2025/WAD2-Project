@@ -1,20 +1,24 @@
 import mongoose from 'mongoose'
 
-export const MODULE_CATEGORIES = ['uni-core', 'major-core', 'track', 'depth', 'free']
+// Catalogue entry, built from the SMU courses report by scripts/build-catalogue.js. Seeded, read-only.
+const moduleSchema = new mongoose.Schema(
+  {
+    _id: { type: String, required: true }, // course code, e.g. IS460
+    title: { type: String, required: true },
+    cu: { type: Number, default: 1 },
+    schoolId: { type: String, ref: 'School', default: null },
+    department: String, // BOSS department code, e.g. SIS
+    description: String,
+    categories: [String], // IS, IS_TRACK, IS_RELATED — matched by "anyFromCategory" requirements
+    fulfils: [String], // e.g. CORE:MANAGING, GRAD:SUSTAINABILITY — matched by "basket" / "flag" requirements
+    prerequisites: [[String]], // AND of OR-groups: [["IS111","CS101"],["IS217"]]
+    corequisites: [[String]], // same shape; may be taken in the same term
+    mutuallyExclusive: [String],
+    prerequisiteRules: [{ _id: false, countFrom: String, n: Number }], // e.g. 2 track courses done first
+    requisiteNotes: [String], // free-text requisites (min grade, instructor's permission, …)
+    termsOffered: [String], // e.g. ['T1', 'T2']; empty = unknown
+  },
+  { versionKey: false },
+)
 
-// Catalogue entry, seeded from the cleaned BOSS module list.
-const moduleSchema = new mongoose.Schema({
-  code: { type: String, required: true, unique: true, trim: true },
-  name: { type: String, required: true },
-  cu: { type: Number, default: 1 },
-  description: String,
-  category: { type: String, enum: MODULE_CATEGORIES, required: true },
-  tracks: [String], // track codes this module counts towards
-  prereqs: [String],
-  coreqs: [String],
-  topicTags: [String], // matched against quiz answers by the recommender
-  termsOffered: { type: [Number], default: [1, 2] },
-  compulsory: { type: Boolean, default: false },
-})
-
-export default mongoose.model('Module', moduleSchema)
+export default mongoose.model('Module', moduleSchema, 'modules')

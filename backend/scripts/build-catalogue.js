@@ -1,0 +1,324 @@
+// Builds data/*.json (the planning catalogue that `pnpm seed` loads) from:
+//   - the SMU courses report CSV: every undergraduate course, its requisites, tracks and requirement areas
+//   - the team's seed folder: schools, majors, tracks and graduation requirements (copied as is),
+//     plus modules.json for courses the CSV doesn't list and tags the CSV doesn't carry
+//   - bidResults.json in the seed folder: which terms each course actually ran in
+// Usage: pnpm build-catalogue <courses-report.csv> <seed folder>
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { parseRequisite, splitCodes } from '../features/planning/utils/requisites.js'
+
+const csvPath = process.argv[2]
+const seedDir = process.argv[3]
+if (!csvPath || !seedDir) {
+  console.error('Usage: pnpm build-catalogue <courses-report.csv> <seed folder>')
+  process.exit(1)
+}
+
+const OUTPUT_FOLDER = new URL('../data/', import.meta.url)
+
+// Requirement areas in the CSV → the tags requirements.json matches with rule "basket" / "flag"
+const AREA_TAGS = {
+  'AREA - Capabilities - Managing': 'CORE:MANAGING',
+  'AREA - Capabilities - Modes of Thinking': 'CORE:MODES_OF_THINKING',
+  'AREA - Communities - Cultures of the Modern World': 'CORE:CULTURES_MODERN_WORLD',
+  'AREA - Communities - Technology, Science and Society': 'CORE:TECH_SCIENCE_SOCIETY',
+  'AREA - Grad Req - Dig Tech/Data Ana (Intake 2024 onwards)': 'GRAD:DIGITAL_TECH',
+  'AREA - Grad Req - Sustainability (Intake 2024 onwards)': 'GRAD:SUSTAINABILITY',
+  'AREA - Grad Req - SG & Asia Studies (Intake 2024 onwards)': 'GRAD:SG_ASIA_STUDIES',
+}
+
+// e.g. "TRCK - IS/T4BS: Business Analytics Track" or "TRCK - IS Major: Software Development Track"
+const IS_TRACK_ATTRIBUTE = /^TRCK - IS( Major|\/T4BS):/
+
+// Free-text requisites (min grades, CU counts, permission) — kept for display only
+const NOTE_ATTRIBUTE = /^RQ(SR|CU|GP|PL|CL|CS) - /
+
+// Requirements the planner leaves out: community service isn't planned in semesters
+const EXCLUDED_TAGS = ['CORE:COMMUNITY_SERVICE']
+
+// SMU has no single internship course, so the planner gets its own entry that students can
+// place in a semester or an LOA term. It fills the "Internship" requirement.
+const INTERNSHIP_MODULE = {
+  _id: 'INTERNSHIP',
+  title: 'Internship',
+  cu: 1,
+  schoolId: null,
+  department: null,
+  description: 'Planner entry for the internship graduation requirement. Place it in a semester or an LOA term.',
+  categories: [],
+  fulfils: ['CORE:INTERNSHIP'],
+  prerequisites: [],
+  corequisites: [],
+  mutuallyExclusive: [],
+  termsOffered: [],
+}
+
+// ---------------------------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------------------------
+
+function readSeedFile(fileName) {
+  const text = readFileSync(join(seedDir, fileName), 'utf8')
+  return JSON.parse(text)
+}
+
+function writeDataFile(fileName, data) {
+  const text = JSON.stringify(data, null, 2) + '\n'
+  writeFileSync(new URL(fileName, OUTPUT_FOLDER), text)
+}
+
+// Read a CSV file into an array of rows. Handles quoted fields containing commas, quotes and newlines.
+function parseCsv(text) {
+  const rows = []
+  let row = []
+  let field = ''
+  let insideQuotes = false
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]
+
+    if (insideQuotes) {
+      if (char === '"' && text[i + 1] === '"') {
+        field += '"' // "" inside quotes is an escaped quote
+        i++
+      } else if (char === '"') {
+        insideQuotes = false
+      } else {
+        field += char
+      }
+    } else if (char === '"') {
+      insideQuotes = true
+    } else if (char === ',') {
+      row.push(field)
+      field = ''
+    } else if (char === '\n') {
+      row.push(field)
+      rows.push(row)
+      row = []
+      field = ''
+    } else if (char !== '\r') {
+      field += char
+    }
+  }
+
+  // The last line may not end with a newline
+  if (field || row.length > 0) {
+    row.push(field)
+    rows.push(row)
+  }
+  return rows
+}
+
+// "AREA - X, RQCP - A/B, TRCK - Y" → ['AREA - X', 'RQCP - A/B', 'TRCK - Y']
+// Only split on commas followed by a 4-character prefix, so commas inside a value are kept.
+function splitAttributes(text) {
+  const parts = text.split(/,\s*(?=[A-Z0-9]{4} - )/)
+  const attributes = []
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (trimmed) {
+      attributes.push(trimmed)
+    }
+  }
+  return attributes
+}
+
+// The value of the first attribute with this prefix, e.g. value(attrs, 'RQCP') → 'IS217/MGMT108'
+function attributeValue(attributes, prefix) {
+  for (const attribute of attributes) {
+    if (attribute.startsWith(`${prefix} - `)) {
+      return attribute.slice(prefix.length + 3)
+    }
+  }
+  return undefined
+}
+
+// ---------------------------------------------------------------------------------------------
+// Load the inputs
+// ---------------------------------------------------------------------------------------------
+
+const csvRows = parseCsv(readFileSync(csvPath, 'utf8')).slice(1) // skip the header row
+const schools = readSeedFile('schools.json')
+const majors = readSeedFile('majors.json')
+const tracks = readSeedFile('tracks.json')
+const requirements = readSeedFile('requirements.json').filter(
+  (requirement) => !EXCLUDED_TAGS.includes(requirement.tag),
+)
+
+const seedModules = {} // code -> module from the team's seed
+for (const mod of readSeedFile('modules.json')) {
+  seedModules[mod._id] = mod
+}
+
+const bossCodeOf = {} // school id -> BOSS department code, e.g. SCIS -> SIS
+for (const school of schools) {
+  bossCodeOf[school._id] = school.bossCode
+}
+
+// Terms each course ran in over the last three academic years of bidding data, e.g. IS460 -> {T1, T2}
+const recentTerms = {}
+const bids = readSeedFile('bidResults.json')
+const allYears = new Set()
+for (const bid of bids) {
+  allYears.add(bid.termKey.split('_')[0]) // "2025-26_T1" -> "2025-26"
+}
+const lastThreeYears = [...allYears].sort().slice(-3)
+for (const bid of bids) {
+  const [year, term] = bid.termKey.split('_')
+  if (!lastThreeYears.includes(year)) {
+    continue
+  }
+  if (!recentTerms[bid.moduleCode]) {
+    recentTerms[bid.moduleCode] = new Set()
+  }
+  recentTerms[bid.moduleCode].add(term)
+}
+
+// Modules named in a track's requirement lists count as track courses even without a TRCK attribute
+const trackListed = new Set()
+for (const requirement of requirements) {
+  if (requirement.level === 'track') {
+    for (const code of requirement.modules ?? []) {
+      trackListed.add(code)
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Build the modules
+// ---------------------------------------------------------------------------------------------
+
+const modules = {} // code -> module
+
+for (const row of csvRows) {
+  const level = row[0]
+  const subject = row[1].trim()
+  const catalogNumber = row[2].trim()
+  const department = row[3]
+  const title = row[4]
+  const description = row[5]
+  const attributes = splitAttributes(row[9])
+
+  if (level !== 'Undergraduate') {
+    continue
+  }
+
+  const code = subject + catalogNumber
+  const seed = seedModules[code] // undefined if the team's seed doesn't have this course
+
+  // Categories used by "anyFromCategory" requirements
+  const categories = new Set(seed?.categories ?? [])
+  if (subject === 'IS') {
+    categories.add('IS')
+  }
+  const isTrackCourse = attributes.some((attribute) => IS_TRACK_ATTRIBUTE.test(attribute))
+  if (isTrackCourse || trackListed.has(code)) {
+    categories.add('IS_TRACK')
+  }
+  if (attributes.includes('AREA - IS Related Courses')) {
+    categories.add('IS_RELATED')
+  }
+
+  // Tags used by "basket" / "flag" requirements
+  const fulfils = new Set(seed?.fulfils ?? [])
+  for (const attribute of attributes) {
+    if (AREA_TAGS[attribute]) {
+      fulfils.add(AREA_TAGS[attribute])
+    }
+  }
+
+  // CU: from a "UNIT - 1.0 Unit" attribute, else the seed, else 1
+  let cu = seed?.cu ?? 1
+  const unitText = attributeValue(attributes, 'UNIT')
+  const unitNumber = Number(unitText?.match(/[\d.]+/)?.[0])
+  if (Number.isFinite(unitNumber)) {
+    cu = unitNumber
+  }
+
+  // Terms: from the bidding data, else the seed
+  let termsOffered = seed?.termsOffered ?? []
+  if (recentTerms[code]) {
+    termsOffered = [...recentTerms[code]].sort()
+  }
+
+  // Requisites: from the CSV, else the seed
+  let prerequisites = parseRequisite(attributeValue(attributes, 'RQCP'), subject)
+  if (prerequisites.length === 0) {
+    prerequisites = seed?.prerequisites ?? []
+  }
+  let corequisites = parseRequisite(attributeValue(attributes, 'RQCC'), subject)
+  if (corequisites.length === 0) {
+    corequisites = seed?.corequisites ?? []
+  }
+
+  const requisiteNotes = []
+  for (const attribute of attributes) {
+    if (NOTE_ATTRIBUTE.test(attribute)) {
+      requisiteNotes.push(attribute.slice(7)) // drop "RQSR - "
+    }
+  }
+
+  const mod = {
+    _id: code,
+    title: title.trim(),
+    cu: cu,
+    schoolId: bossCodeOf[department] ? department : (seed?.schoolId ?? null),
+    department: bossCodeOf[department] ?? department,
+    description: description.trim(),
+    categories: [...categories],
+    fulfils: [...fulfils],
+    prerequisites: prerequisites,
+    corequisites: corequisites,
+    mutuallyExclusive: splitCodes(attributeValue(attributes, 'RQCX'), subject),
+  }
+  if (seed?.prerequisiteRules) {
+    mod.prerequisiteRules = seed.prerequisiteRules
+  }
+  if (requisiteNotes.length > 0) {
+    mod.requisiteNotes = requisiteNotes
+  }
+  mod.termsOffered = termsOffered
+
+  modules[code] = mod
+}
+
+// Courses in the team's seed that the report doesn't list (renamed or not offered this year)
+let carriedOver = 0
+for (const mod of Object.values(seedModules)) {
+  if (!modules[mod._id]) {
+    modules[mod._id] = mod
+    carriedOver++
+  }
+}
+
+modules[INTERNSHIP_MODULE._id] = INTERNSHIP_MODULE
+
+// Warn if a requirement names a course we don't have
+const missing = new Set()
+for (const requirement of requirements) {
+  for (const code of requirement.modules ?? []) {
+    if (!modules[code]) {
+      missing.add(code)
+    }
+  }
+}
+if (missing.size > 0) {
+  console.warn(`Requirements name courses missing from the catalogue: ${[...missing].join(', ')}`)
+}
+
+// ---------------------------------------------------------------------------------------------
+// Write the output
+// ---------------------------------------------------------------------------------------------
+
+const sortedModules = Object.values(modules).sort((a, b) => a._id.localeCompare(b._id))
+writeDataFile('modules.json', sortedModules)
+writeDataFile('schools.json', schools)
+writeDataFile('majors.json', majors)
+writeDataFile('tracks.json', tracks)
+writeDataFile('requirements.json', requirements)
+
+console.log(
+  `Wrote ${sortedModules.length} modules (${carriedOver} carried over from the seed), ` +
+    `${schools.length} schools, ${majors.length} majors, ${tracks.length} tracks, ${requirements.length} requirements`,
+)

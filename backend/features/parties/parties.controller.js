@@ -3,13 +3,15 @@ import Party from './models/Party.js'
 import User from '../auth/models/User.js'
 import Module from '../planning/models/Module.js'
 import Section from '../bidding/models/Section.js'
+import { unmetGroups } from '../planning/utils/requisites.js'
 import { httpError } from '../../middleware/errorHandler.js'
 
 const MEMBER_FIELDS = 'name email'
 
+// Unmet prerequisite groups as text, e.g. ['IS111 or CS101']
 async function missingPrereqs(user, moduleCode) {
-  const mod = await Module.findOne({ code: moduleCode })
-  return (mod?.prereqs ?? []).filter((p) => !user.completedModules.includes(p))
+  const mod = await Module.findById(moduleCode).lean()
+  return unmetGroups(mod?.prerequisites, (c) => user.completedModules.includes(c)).map((g) => g.join(' or '))
 }
 
 async function uniqueInviteCode() {

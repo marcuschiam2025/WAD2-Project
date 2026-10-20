@@ -5,5 +5,6 @@ const router = Router()
 
 router.get('/', majors.listMajors)
 router.get('/:id', majors.getMajor)
+router.get('/:id/requirements', majors.getRequirements)
 
 export default router
