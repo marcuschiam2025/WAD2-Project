@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { modules, requirementBuckets } from '../data/catalogue'
+import { useRoomsStore } from './rooms'
 
 export const MAX_PLANS = 3
 
@@ -14,7 +15,10 @@ function sem(id, mods, extra = {}) {
   return { id, label: `Y${y} · S${s}`, exchange: false, loa: false, modules: mods, ...extra }
 }
 
-function samplePlan(id, name, tracks) {
+// y2s2 is the semester the BOSS Bidding Planner bids for, so it differs between the sample plans.
+const PLAN_1_Y2S2 = ['IS442', 'IS215', 'IS214']
+
+function samplePlan(id, name, tracks, y2s2 = PLAN_1_Y2S2) {
   return {
     id,
     name,
@@ -24,7 +28,7 @@ function samplePlan(id, name, tracks) {
       sem('Y1S1', ['IS111', 'IS112', 'GEC101', 'COR1100']),
       sem('Y1S2', ['IS113', 'IS210', 'GEC102', 'COR2100']),
       sem('Y2S1', ['IS211', 'IS216', 'IS213', 'STAT151']),
-      sem('Y2S2', ['IS442', 'IS215', 'IS214']),
+      sem('Y2S2', [...y2s2]),
       sem('Y3S1', ['CS412 → IS460', 'IS330 → IS4302', 'HSS210'], { exchange: true }),
       sem('Y3S2', ['IS424', 'IS428', 'IS460']),
       sem('Y4S1', ['IS483', 'IS441']),
@@ -36,8 +40,8 @@ function samplePlan(id, name, tracks) {
 export const usePlannerStore = defineStore('planner', () => {
   const plans = ref([
     samplePlan(1, 'Plan 1', ['BA', 'SMT']),
-    samplePlan(2, 'Plan 2', ['BA', 'FT']),
-    samplePlan(3, 'Plan 3', ['PD']),
+    samplePlan(2, 'Plan 2', ['BA', 'FT'], ['IS442', 'IS212', 'COR3001']),
+    samplePlan(3, 'Plan 3', ['PD'], ['IS212', 'IS214', 'IS215']),
   ])
   const activePlanId = ref(1)
   const basket = ref(['IS460', 'IS441', 'IS428', 'IS453', 'IS217'])
@@ -102,6 +106,33 @@ export const usePlannerStore = defineStore('planner', () => {
   function addToBasket(code) {
     if (!basket.value.includes(code)) basket.value.push(code)
   }
+
+  function removeFromBasket(code) {
+    basket.value = basket.value.filter((m) => m !== code)
+  }
+
+  // Modules decided in collab rooms land in the basket, ready to drag into a semester.
+  // They leave again if the student takes their picks back (unless they have been placed in a plan by then).
+  const rooms = useRoomsStore()
+  const fromRooms = new Set()
+  const isPlaced = (code) => plans.value.some((p) => p.semesters.some((s) => s.modules.some((m) => effectiveCode(m) === code)))
+  watch(
+    () => rooms.decided.map((d) => d.module),
+    (now, before = []) => {
+      now.forEach((code) => {
+        if (before.includes(code) || basket.value.includes(code) || isPlaced(code)) return
+        fromRooms.add(code)
+        basket.value.push(code)
+      })
+      before
+        .filter((code) => !now.includes(code) && fromRooms.has(code))
+        .forEach((code) => {
+          fromRooms.delete(code)
+          removeFromBasket(code)
+        })
+    },
+    { immediate: true },
+  )
 
   function nextSemId(plan) {
     const last = plan.semesters.at(-1).id.match(/\d/g).map(Number)
@@ -183,6 +214,7 @@ export const usePlannerStore = defineStore('planner', () => {
     placeModule,
     returnToBasket,
     addToBasket,
+    removeFromBasket,
     addSemester,
     toggleExchange,
     addPlan,

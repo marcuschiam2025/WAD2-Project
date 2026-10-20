@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoomsStore, roleOf, canKick, canSetAdmin } from '@core/stores/rooms'
 import { moduleName } from '@core/data/catalogue'
+import { sections } from '@core/data/bidding'
 import { popEnter, popLeave } from '@/motion'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BackButton from '@/components/layout/BackButton.vue'
@@ -10,7 +11,6 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
 import RoomSlotPicker from '@/components/rooms/RoomSlotPicker.vue'
-import ImportPlansModal from '@/components/modals/ImportPlansModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,7 +20,15 @@ const room = computed(() => rooms.getRoom(route.params.id))
 if (!room.value) router.replace('/rooms')
 
 const picks = ref([...(rooms.myVotes[route.params.id] ?? [])])
-const importing = ref(false)
+// Once submitted, the picks stay selected and locked until you unselect them
+const submitted = computed(() => (rooms.myVotes[route.params.id] ?? []).length > 0)
+
+// Once you have voted you can see who voted for each section
+const voterMap = computed(() =>
+  Object.fromEntries(
+    sections.filter((s) => s.module === room.value.module).map((s) => [s.id, rooms.votersOf(room.value, s.id).map(rooms.person)]),
+  ),
+)
 const copied = ref(false)
 
 // TODO(backend): members, roles and vote status come from GET /api/rooms/:id/members
@@ -31,7 +39,7 @@ const members = computed(() =>
     .map((id) => {
       const person = rooms.person(id)
       const voted = id === 'me' ? false : Object.values(room.value.votes).some((v) => v.includes(id))
-      const status = id === 'me' ? 'Picking…' : voted ? 'Voted' : 'Not yet'
+      const status = id === 'me' ? (submitted.value ? 'Voted' : 'Picking…') : voted ? 'Voted' : 'Not yet'
       return {
         ...person,
         status,
@@ -79,8 +87,13 @@ async function copy() {
 }
 
 function submit() {
-  rooms.setMyVotes(room.value.id, picks.value)
+  rooms.setMyVotes(room.value.id, [...picks.value])
   router.push(`/rooms/${room.value.id}/votes`)
+}
+
+function unselect() {
+  rooms.clearMyVotes(room.value.id)
+  picks.value = []
 }
 
 function leave() {
@@ -88,20 +101,12 @@ function leave() {
   rooms.leaveRoom(room.value.id)
   router.push('/rooms')
 }
-
-function applyImport(planIds) {
-  rooms.importPlans(room.value.id, planIds)
-  importing.value = false
-}
 </script>
 
 <template>
   <div v-if="room">
     <PageHeader :overline="`Collab rooms / room #${room.id}`" :title="room.name">
       <template #leading><BackButton to="/rooms" /></template>
-      <template #actions>
-        <BaseButton variant="outline" @click="importing = true">Import my plan</BaseButton>
-      </template>
     </PageHeader>
 
     <main class="px-16 pt-8 pb-12">
@@ -189,11 +194,14 @@ function applyImport(planIds) {
           <div class="flex items-start justify-between gap-4">
             <div class="flex flex-col gap-0.5 leading-normal">
               <h2 class="text-h4">Modules for bid · {{ room.module }}</h2>
-              <p class="text-[13px] text-muted-foreground">Pick every section you'd take. You can choose more than one.</p>
+              <p class="text-[13px] text-muted-foreground">
+                {{ submitted ? "You've submitted these picks. Unselect them if you want to change your votes." : "Pick every section you'd take. You can choose more than one." }}
+              </p>
             </div>
-            <BaseButton :disabled="!picks.length" @click="submit">Submit my picks</BaseButton>
+            <BaseButton v-if="submitted" variant="outline" @click="unselect">Unselect my picks</BaseButton>
+            <BaseButton v-else :disabled="!picks.length" @click="submit">Submit my picks</BaseButton>
           </div>
-          <RoomSlotPicker v-model="picks" :module="room.module" />
+          <RoomSlotPicker v-model="picks" :module="room.module" :readonly="submitted" :voters="submitted ? voterMap : null" />
           <div class="flex items-center gap-5 text-[12px] text-muted-foreground">
             <span class="flex items-center gap-1.5"><span class="h-3 w-[18px] rounded-sm bg-primary" /> Selected slot</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-[18px] rounded-sm border border-dashed border-border" /> Available slot</span>
@@ -212,13 +220,5 @@ function applyImport(planIds) {
         <BaseButton variant="destructive-outline" @click="confirmKick">Remove</BaseButton>
       </div>
     </BaseModal>
-
-    <ImportPlansModal
-      v-if="importing"
-      :room-name="room.name"
-      :initial="rooms.importedPlans[room.id] ?? []"
-      @close="importing = false"
-      @apply="applyImport"
-    />
   </div>
 </template>

@@ -32,14 +32,12 @@ function join() {
 
 // TODO(backend): votes / status / round come from GET /api/rooms (the sample derives them from room.votes)
 function summary(room) {
-  const voted = new Set(Object.values(room.votes).flat())
-  const count = voted.size + (rooms.myVotes[room.id]?.length ? 1 : 0)
-  const total = room.members.length
-  const status = count === 0 ? 'not-started' : 'voting'
-  return { count, total, status }
+  const st = rooms.roomState(room)
+  const status = st.acceptedId ? 'accepted' : st.allVoted ? 'ready' : st.voted === 0 ? 'not-started' : 'voting'
+  return { count: st.voted, total: st.total, status }
 }
-const statusTone = { voting: 'warning', 'not-started': 'neutral' }
-const statusLabel = { voting: 'Voting', 'not-started': 'Not started' }
+const statusTone = { voting: 'warning', ready: 'info', accepted: 'success', 'not-started': 'neutral' }
+const statusLabel = { voting: 'Voting', ready: 'Ready to accept', accepted: 'Accepted', 'not-started': 'Not started' }
 const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2h 15m', urgent: i === 0 })
 </script>
 

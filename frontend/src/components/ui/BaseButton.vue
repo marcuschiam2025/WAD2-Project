@@ -41,19 +41,18 @@ const classes = computed(() => [
 ])
 
 const tag = computed(() => (props.to ? RouterLink : props.href ? 'a' : 'button'))
+
+// Only pass the attributes each kind of element understands. Passing `href: undefined` to a RouterLink
+// would strip the href it renders, leaving a link with no address.
+const attrs = computed(() => {
+  if (props.to) return { to: props.to }
+  if (props.href) return { href: props.href, target: '_blank', rel: 'noopener' }
+  return { type: 'button', disabled: props.disabled }
+})
 </script>
 
 <template>
-  <component
-    :is="tag"
-    :to="to ?? undefined"
-    :href="href ?? undefined"
-    :target="href ? '_blank' : undefined"
-    :rel="href ? 'noopener' : undefined"
-    :type="tag === 'button' ? 'button' : undefined"
-    :disabled="tag === 'button' ? disabled : undefined"
-    :class="classes"
-  >
+  <component :is="tag" v-bind="attrs" :class="classes">
     <slot />
   </component>
 </template>

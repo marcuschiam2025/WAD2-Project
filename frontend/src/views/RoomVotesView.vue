@@ -1,14 +1,15 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoomsStore } from '@core/stores/rooms'
-import { days, slots, sections, MIN_BID, sectionBidHistory, bidStats } from '@core/data/bidding'
+import { days, slots, sections, sectionBidHistory, bidStats } from '@core/data/bidding'
 import { popEnter, popLeave } from '@/motion'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
 import TimetableGrid from '@/components/TimetableGrid.vue'
 import BackButton from '@/components/layout/BackButton.vue'
+import SectionBids from '@/components/rooms/SectionBids.vue'
 import iconX from '@/assets/figma/icon-x.svg'
 
 const route = useRoute()
@@ -18,26 +19,58 @@ const rooms = useRoomsStore()
 const room = computed(() => rooms.getRoom(route.params.id))
 if (!room.value) router.replace('/rooms')
 
-const mine = computed(() => rooms.myVotes[route.params.id] ?? [])
-
 // TODO(backend): poll GET /api/rooms/:id/votes for near-real-time updates
 const rows = computed(() =>
   sections
     .filter((s) => s.module === room.value.module)
     .map((section) => {
-      const others = room.value.votes[section.id] ?? []
-      const voters = [...(mine.value.includes(section.id) ? ['me'] : []), ...others].map(rooms.person)
+      const voters = rooms.votersOf(room.value, section.id).map(rooms.person)
       return { section, voters, count: voters.length }
     }),
 )
 const ranking = computed(() => [...rows.value].sort((a, b) => b.count - a.count || a.section.section.localeCompare(b.section.section)))
-const leader = computed(() => (ranking.value[0]?.count ? ranking.value[0] : null))
 const votedCount = computed(() => new Set(rows.value.flatMap((r) => r.voters.map((v) => v.id))).size)
 const totalVotes = computed(() => rows.value.reduce((a, r) => a + r.count, 0))
 
 const when = (s) => `${days[s.day].slice(0, 3)} ${slots[s.slot].start}–${slots[s.slot].end}`
 const cardsAt = (day, slot) => rows.value.filter((r) => r.section.day === day && r.section.slot === slot)
-const isLeader = (r) => leader.value?.section.id === r.section.id
+const names = (r) => r.voters.map((v) => v.short).join(', ')
+
+// Once everyone has voted, the section(s) with the most votes can be accepted. A tie means picking one of them.
+const state = computed(() => rooms.roomState(room.value))
+const leaderRows = computed(() => rows.value.filter((r) => state.value.leaders.includes(r.section.id)))
+const isLeader = (r) => state.value.leaders.includes(r.section.id)
+const isAccepted = (r) => state.value.acceptedId === r.section.id
+const waitingNames = computed(() => state.value.waiting.map((id) => rooms.person(id).short).join(', '))
+const sectionCodes = computed(() => leaderRows.value.map((r) => r.section.section).join(' and '))
+const acceptedRow = computed(() => rows.value.find(isAccepted) ?? null)
+
+const decision = computed(() => {
+  const st = state.value
+  if (!st.allVoted)
+    return {
+      pill: ['warning', 'Voting'],
+      title: 'Waiting for everyone to vote',
+      body: `${st.voted} of ${st.total} have voted. Once everyone has, you can accept the section with the most votes.`,
+    }
+  if (st.acceptedId)
+    return {
+      pill: ['success', 'Accepted'],
+      title: `You accepted ${acceptedRow.value.section.section}`,
+      body: 'It is on your Bidding Planner and in your What-If basket. You can undo this any time.',
+    }
+  if (st.tie)
+    return {
+      pill: ['info', 'Tie'],
+      title: `It's a tie between ${sectionCodes.value}`,
+      body: `Each has ${st.top} votes. Accept one of them. You can switch or undo later.`,
+    }
+  return {
+    pill: ['info', 'Ready to accept'],
+    title: `Everyone has voted. ${sectionCodes.value} has the most votes`,
+    body: 'Accept it to add it to your Bidding Planner. You can undo this any time.',
+  }
+})
 
 // Click a section (card or ranking row) to see how it cleared in past terms
 const selectedId = ref(null)
@@ -45,25 +78,6 @@ const selectedRow = computed(() => rows.value.find((r) => r.section.id === selec
 const history = computed(() => (selectedRow.value ? sectionBidHistory(selectedRow.value.section) : []))
 const stats = computed(() => bidStats(history.value))
 const select = (r) => (selectedId.value = selectedId.value === r.section.id ? null : r.section.id)
-
-// Suggested bid for the clicked section. You can only suggest one for a section you picked.
-const sectionBids = computed(() => room.value.suggestedBids[selectedId.value] ?? {})
-const canBid = computed(() => mine.value.includes(selectedId.value))
-const bidInput = ref('')
-watch(selectedId, () => (bidInput.value = sectionBids.value.me ?? ''), { immediate: true })
-const bidAmount = computed(() => Number(bidInput.value))
-const bidValid = computed(() => bidInput.value !== '' && Number.isInteger(bidAmount.value) && bidAmount.value >= MIN_BID)
-const savedBid = computed(() => sectionBids.value.me ?? null)
-const saveBid = () => bidValid.value && rooms.setMyBid(room.value.id, selectedId.value, bidAmount.value)
-
-const suggestions = computed(() =>
-  Object.entries(sectionBids.value)
-    .map(([id, amount]) => ({ person: rooms.person(id), amount }))
-    .sort((a, b) => b.amount - a.amount),
-)
-const avgBid = computed(() =>
-  suggestions.value.length ? Math.round(suggestions.value.reduce((a, s) => a + s.amount, 0) / suggestions.value.length) : null,
-)
 </script>
 
 <template>
@@ -96,19 +110,22 @@ const avgBid = computed(() =>
               <li v-for="r in ranking" :key="r.section.id">
                 <button
                   type="button"
-                  class="flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left text-[13px] transition-colors"
+                  class="flex w-full flex-col gap-1 rounded-md border px-3 py-2.5 text-left text-[13px] transition-colors"
                   :class="
                     selectedId === r.section.id
                       ? 'border-primary bg-primary-tint'
-                      : isLeader(r)
-                        ? 'border-success bg-success-tint hover:bg-success-tint'
+                      : isAccepted(r) || isLeader(r)
+                        ? 'border-success bg-success-tint'
                         : 'border-border hover:bg-muted'
                   "
                   @click="select(r)"
                 >
-                  <span class="font-mono font-bold">{{ r.section.section }}</span>
-                  <span class="flex-1">{{ when(r.section) }}</span>
-                  <span class="font-mono font-bold">{{ r.count }}</span>
+                  <span class="flex w-full items-center gap-3">
+                    <span class="font-mono font-bold">{{ r.section.section }}</span>
+                    <span class="flex-1">{{ when(r.section) }}</span>
+                    <span class="font-mono font-bold">{{ r.count }} {{ r.count === 1 ? 'vote' : 'votes' }}</span>
+                  </span>
+                  <span class="text-[12px] leading-normal text-muted-foreground">{{ r.count ? names(r) : 'No votes yet' }}</span>
                 </button>
               </li>
             </ul>
@@ -118,12 +135,59 @@ const avgBid = computed(() =>
         </aside>
 
         <section class="flex min-w-0 flex-1 flex-col gap-4 p-5">
-          <div class="flex items-center justify-between">
-            <p class="text-[13px] text-muted-foreground">Click a section to see how it cleared in past terms and to suggest a bid for it.</p>
-            <StatusPill v-if="leader" tone="success">{{ leader.section.section }} is leading</StatusPill>
+          <!-- Accept the winning section (everyone has to have voted first) -->
+          <div
+            class="flex flex-col gap-3 rounded-lg border px-4 py-3.5"
+            :class="state.acceptedId ? 'border-success bg-success-tint' : state.allVoted ? 'border-primary bg-primary-tint' : 'border-border'"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex flex-col gap-0.5 leading-normal">
+                <p class="text-[15px] font-semibold">{{ decision.title }}</p>
+                <p class="text-[13px] text-muted-foreground">{{ decision.body }}</p>
+              </div>
+              <StatusPill :tone="decision.pill[0]">{{ decision.pill[1] }}</StatusPill>
+            </div>
+
+            <p v-if="!state.allVoted" class="text-[13px]">
+              <span class="text-muted-foreground">Still to vote:</span> <span class="font-medium">{{ waitingNames }}</span>
+            </p>
+
+            <ul v-else class="flex flex-col gap-2">
+              <li v-for="r in leaderRows" :key="r.section.id" class="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5">
+                <span class="font-mono text-[14px] font-bold">{{ r.section.section }}</span>
+                <span class="flex min-w-0 flex-1 flex-col leading-normal">
+                  <span class="text-[13px] font-medium">{{ when(r.section) }}</span>
+                  <span class="text-[12px] text-muted-foreground">{{ r.count }} {{ r.count === 1 ? 'vote' : 'votes' }} · {{ names(r) }}</span>
+                </span>
+                <BaseButton v-if="isAccepted(r)" variant="outline" size="sm" @click="rooms.undoAccept(room.id)">Undo</BaseButton>
+                <BaseButton
+                  v-else
+                  :variant="state.acceptedId ? 'outline' : 'primary'"
+                  size="sm"
+                  @click="rooms.acceptSection(room.id, r.section.id)"
+                >{{ state.acceptedId ? 'Switch to this' : 'Accept' }}</BaseButton>
+              </li>
+            </ul>
+
+            <!-- Accepted: the suggested bids for that section, and a way into the Bidding Planner -->
+            <template v-if="acceptedRow">
+              <div class="border-t border-success pt-3">
+                <SectionBids :room-id="room.id" :section-id="acceptedRow.section.id" :label="acceptedRow.section.section" />
+              </div>
+              <div>
+                <BaseButton variant="outline" size="sm" to="/bidding">Open Bidding Planner</BaseButton>
+              </div>
+            </template>
           </div>
 
-          <!-- Past bid data for the clicked section (motion: pops in under the header) -->
+          <div class="flex items-center justify-between">
+            <p class="text-[13px] text-muted-foreground">Click a section to see who voted for it and how it cleared in past terms.</p>
+            <StatusPill v-if="state.leaders.length" tone="success">
+              {{ state.tie ? `${sectionCodes} are tied` : `${sectionCodes} is leading` }}
+            </StatusPill>
+          </div>
+
+          <!-- Details for the clicked section (motion: pops in under the header) -->
           <Transition :css="false" @enter="popEnter" @leave="popLeave">
             <div v-if="selectedRow" class="flex flex-col gap-3 rounded-lg border border-border px-4 py-3.5">
               <div class="flex items-start justify-between gap-3 leading-normal">
@@ -133,9 +197,26 @@ const avgBid = computed(() =>
                   </p>
                   <p class="text-[12px] text-muted-foreground">{{ selectedRow.section.prof }} · {{ selectedRow.section.venue }}</p>
                 </div>
-                <button type="button" aria-label="Close past bid data" class="rounded-sm p-0.5 hover:bg-muted" @click="selectedId = null">
+                <button type="button" aria-label="Close section details" class="rounded-sm p-0.5 hover:bg-muted" @click="selectedId = null">
                   <img :src="iconX" alt="" class="size-4" />
                 </button>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <span class="text-[13px] font-semibold">{{ selectedRow.count }} {{ selectedRow.count === 1 ? 'vote' : 'votes' }}</span>
+                <span v-if="selectedRow.count" class="flex items-center gap-2 text-[13px] text-muted-foreground">
+                  <span class="flex">
+                    <UserAvatar
+                      v-for="(v, i) in selectedRow.voters"
+                      :key="v.id"
+                      :initials="v.initials"
+                      :you="v.you"
+                      :class="i > 0 && '-ml-1 ring-2 ring-card'"
+                    />
+                  </span>
+                  {{ names(selectedRow) }}
+                </span>
+                <span v-else class="text-[13px] text-muted-foreground">Nobody has picked this section yet.</span>
               </div>
 
               <template v-if="stats">
@@ -169,50 +250,13 @@ const avgBid = computed(() =>
               </template>
               <p v-else class="text-[13px] text-muted-foreground">No past bid data for this section yet.</p>
 
-              <!-- Suggested bid for this section -->
-              <div class="flex flex-col gap-2 border-t border-border pt-3">
-                <p class="text-overline text-muted-foreground">Suggested bid for {{ selectedRow.section.section }}</p>
-                <template v-if="canBid">
-                  <div class="flex max-w-[320px] gap-2">
-                    <label class="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-border px-3 py-[7px] focus-within:border-ring">
-                      <span class="text-[13px] text-muted-foreground">e$</span>
-                      <input
-                        v-model="bidInput"
-                        type="number"
-                        :min="MIN_BID"
-                        step="1"
-                        placeholder="e.g. 35"
-                        :aria-label="`Suggested bid in e$ for ${selectedRow.section.section}`"
-                        class="min-w-0 flex-1 bg-transparent font-mono text-[14px] font-medium outline-none"
-                        @keydown.enter.prevent="saveBid"
-                      />
-                    </label>
-                    <BaseButton size="sm" :disabled="!bidValid || bidAmount === savedBid" @click="saveBid">Save</BaseButton>
-                  </div>
-                  <span v-if="bidInput !== '' && !bidValid" class="text-[12px] text-destructive">Minimum bid is e$ {{ MIN_BID }}.</span>
-                  <span v-else-if="savedBid !== null" class="text-[12px] text-muted-foreground">Your suggestion for {{ selectedRow.section.section }}: e$ {{ savedBid }}</span>
-                </template>
-                <p v-else class="text-[12px] leading-normal text-muted-foreground">
-                  You haven't picked this section. Pick it to suggest a bid for it.
-                  <RouterLink :to="`/rooms/${room.id}`" class="font-medium text-primary hover:underline">Change my picks</RouterLink>
-                </p>
-
-                <ul v-if="suggestions.length" class="flex flex-col gap-1.5 pt-1">
-                  <li v-for="s in suggestions" :key="s.person.id" class="flex max-w-[320px] items-center gap-2 text-[13px]">
-                    <UserAvatar :initials="s.person.initials" :size="24" :you="s.person.you" />
-                    <span class="flex-1">{{ s.person.short }}</span>
-                    <span class="font-mono font-medium">e$ {{ s.amount }}</span>
-                  </li>
-                </ul>
-                <p v-if="avgBid !== null" class="text-[12px] text-muted-foreground">
-                  Average of {{ suggestions.length }} suggestion{{ suggestions.length === 1 ? '' : 's' }} for {{ selectedRow.section.section }}: e$ {{ avgBid }}
-                </p>
-                <p v-else-if="canBid" class="text-[12px] text-muted-foreground">No suggestions for {{ selectedRow.section.section }} yet.</p>
+              <div class="border-t border-border pt-3">
+                <SectionBids :room-id="room.id" :section-id="selectedRow.section.id" :label="selectedRow.section.section" />
               </div>
             </div>
           </Transition>
 
-          <TimetableGrid short row-height="h-[104px]">
+          <TimetableGrid short row-height="min-h-[104px]">
             <template #cell="{ day, slot }">
               <button
                 v-for="r in cardsAt(day, slot)"
@@ -220,7 +264,7 @@ const avgBid = computed(() =>
                 type="button"
                 class="flex w-full flex-col gap-0.5 rounded-sm px-2.5 py-2 text-left leading-normal transition-shadow"
                 :class="[
-                  isLeader(r)
+                  isAccepted(r) || isLeader(r)
                     ? 'border-2 border-success bg-success-tint'
                     : r.count
                       ? 'bg-secondary'
@@ -229,8 +273,8 @@ const avgBid = computed(() =>
                 ]"
                 @click="select(r)"
               >
-                <span class="font-mono text-[12px] font-bold" :class="isLeader(r) && 'text-success'">
-                  {{ r.section.section }}<template v-if="isLeader(r)"> · Leading</template>
+                <span class="font-mono text-[12px] font-bold" :class="(isAccepted(r) || isLeader(r)) && 'text-success'">
+                  {{ r.section.section }}<template v-if="isAccepted(r)"> · Accepted</template><template v-else-if="isLeader(r)"> · {{ state.tie ? 'Tied' : 'Leading' }}</template>
                 </span>
                 <span v-if="r.count" class="text-[12px] text-muted-foreground">
                   <span class="text-[16px] font-bold text-foreground">{{ r.count }}</span> {{ r.count === 1 ? 'vote' : 'votes' }}
@@ -245,6 +289,7 @@ const avgBid = computed(() =>
                     :class="i > 0 && '-ml-1 ring-2 ring-card'"
                   />
                 </span>
+                <span v-if="r.count" class="text-[11px] text-muted-foreground">{{ names(r) }}</span>
               </button>
             </template>
           </TimetableGrid>

@@ -15,9 +15,9 @@ const user = useUserStore()
 
 const links = [
   { key: 'dashboard', label: 'Dashboard', to: '/dashboard' },
+  { key: 'quiz', label: 'Track Quiz', to: '/quiz' },
   { key: 'planner', label: 'Planner', to: '/planner' },
   { key: 'bidding', label: 'Bidding', to: '/bidding' },
-  { key: 'quiz', label: 'Track Quiz', to: '/quiz' },
   { key: 'rooms', label: 'Collab Rooms', to: '/rooms' },
 ]
 

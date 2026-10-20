@@ -41,8 +41,21 @@ export const useUserStore = defineStore('user', () => {
     isSignedIn.value = false
   }
 
-  function completeOnboarding({ major, tracks, year }) {
-    profile.value = { ...profile.value, major, tracks, year }
+  // currentSem: the semester the student is in now, e.g. 'Y2S1'.
+  // takenBySem: modules already taken, by semester, e.g. { Y1S1: ['IS111'], Y1S2: ['IS112'] }.
+  // balance: the student's current e$ (e-credit) balance.
+  // TODO(Backend 2): PATCH /api/users/me with these fields
+  function completeOnboarding({ major, tracks, currentSem, takenBySem = {}, balance: eCredits }) {
+    profile.value = {
+      ...profile.value,
+      major,
+      tracks,
+      currentSem,
+      year: Number(currentSem.match(/\d/)[0]),
+      takenBySem,
+      completed: Object.values(takenBySem).flat(),
+    }
+    if (eCredits != null) balance.value = eCredits
     onboarded.value = true
   }
 

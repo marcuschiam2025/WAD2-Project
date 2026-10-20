@@ -97,7 +97,9 @@ const router = createRouter({
 router.beforeEach((to) => {
   const user = useUserStore()
   if (to.meta.auth && !user.isSignedIn) return { name: 'signin' }
-  if (to.name === 'signin' && user.isSignedIn) return { name: 'dashboard' }
+  // Nobody gets into the app before finishing onboarding
+  if (to.meta.auth && !user.onboarded && to.name !== 'onboarding') return { name: 'onboarding' }
+  if (to.name === 'signin' && user.isSignedIn) return { name: user.onboarded ? 'dashboard' : 'onboarding' }
 })
 
 export default router

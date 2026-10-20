@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { classmates, rooms as sampleRooms, roomPrereqs } from '../data/rooms'
+import { sections } from '../data/bidding'
 
 export const MAX_ROOM_SIZE = 8
 const ME = 'me'
@@ -27,8 +28,58 @@ export const useRoomsStore = defineStore('rooms', () => {
   const rooms = ref(structuredClone(sampleRooms))
   // room id -> section ids the signed-in student picked
   const myVotes = ref({ A1F3: ['IS442-G1', 'IS442-G2'] })
-  // room id -> plan ids imported into the room
-  const importedPlans = ref({})
+
+  // room id -> the section the signed-in student accepted
+  const accepted = ref({})
+
+  const hasVoted = (room, id) =>
+    id === ME ? (myVotes.value[room.id] ?? []).length > 0 : Object.values(room.votes).some((v) => v.includes(id))
+
+  // Who voted for a section (the signed-in student first)
+  function votersOf(room, sectionId) {
+    const mine = (myVotes.value[room.id] ?? []).includes(sectionId)
+    return [...(mine ? [ME] : []), ...(room.votes[sectionId] ?? [])]
+  }
+
+  // Where a room stands. Once everyone has voted, the section(s) with the most votes can be accepted.
+  // Several sections on the same top count is a tie: the student accepts exactly one of them.
+  function roomState(room) {
+    const waiting = room.members.filter((id) => !hasVoted(room, id))
+    const mine = myVotes.value[room.id] ?? []
+    const voted = [...new Set([...mine, ...Object.keys(room.votes)])].filter((sid) => sections.some((s) => s.id === sid))
+    const top = Math.max(0, ...voted.map((sid) => votersOf(room, sid).length))
+    const leaders = top ? voted.filter((sid) => votersOf(room, sid).length === top).sort() : []
+    const allVoted = waiting.length === 0
+    const pick = accepted.value[room.id]
+    return {
+      voted: room.members.length - waiting.length,
+      total: room.members.length,
+      waiting,
+      allVoted,
+      top,
+      leaders,
+      tie: leaders.length > 1,
+      acceptedId: allVoted && leaders.includes(pick) ? pick : null,
+    }
+  }
+
+  // Accepted sections. They also land in the What-If Planner basket and on the Bidding Planner timetable.
+  // TODO(backend): PUT /api/rooms/:id/accept
+  const decided = computed(() =>
+    rooms.value.flatMap((room) => {
+      const st = roomState(room)
+      return st.acceptedId ? [{ roomId: room.id, roomName: room.name, module: room.module, sectionId: st.acceptedId }] : []
+    }),
+  )
+
+  function acceptSection(roomId, sectionId) {
+    const st = roomState(getRoom(roomId))
+    if (st.allVoted && st.leaders.includes(sectionId)) accepted.value[roomId] = sectionId
+  }
+
+  function undoAccept(roomId) {
+    delete accepted.value[roomId]
+  }
 
   function getRoom(id) {
     return rooms.value.find((r) => r.id === id)
@@ -79,6 +130,15 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   function setMyVotes(roomId, sectionIds) {
     myVotes.value[roomId] = sectionIds
+    delete accepted.value[roomId]
+  }
+
+  // Take the signed-in student's picks back (and the bids they suggested for those sections)
+  // TODO(Backend 2): DELETE /api/rooms/:id/votes/me
+  function clearMyVotes(roomId) {
+    myVotes.value[roomId] = []
+    delete accepted.value[roomId]
+    Object.values(getRoom(roomId).suggestedBids).forEach((bids) => delete bids[ME])
   }
 
   // The signed-in student's suggested e$ for one section of the room's module
@@ -94,6 +154,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (!room || !canKick(room, ME, memberId)) return
     room.members = room.members.filter((m) => m !== memberId)
     room.admins = room.admins.filter((m) => m !== memberId)
+    delete accepted.value[roomId]
     Object.keys(room.votes).forEach((s) => (room.votes[s] = room.votes[s].filter((m) => m !== memberId)))
     Object.values(room.suggestedBids).forEach((bids) => delete bids[memberId])
   }
@@ -106,14 +167,14 @@ export const useRoomsStore = defineStore('rooms', () => {
     room.admins = makeAdmin ? [...rest, memberId] : rest
   }
 
-  function importPlans(roomId, planIds) {
-    importedPlans.value[roomId] = planIds
-  }
-
   return {
     rooms,
     myVotes,
-    importedPlans,
+    decided,
+    roomState,
+    votersOf,
+    acceptSection,
+    undoAccept,
     getRoom,
     person,
     searchClassmates,
@@ -121,9 +182,9 @@ export const useRoomsStore = defineStore('rooms', () => {
     createRoom,
     leaveRoom,
     setMyVotes,
+    clearMyVotes,
     setMyBid,
     kickMember,
     setAdmin,
-    importPlans,
   }
 })

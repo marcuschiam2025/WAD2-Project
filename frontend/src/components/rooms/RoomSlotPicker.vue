@@ -8,6 +8,8 @@ import TimetableGrid from '@/components/TimetableGrid.vue'
 const props = defineProps({
   module: { type: String, required: true },
   readonly: Boolean,
+  // section id -> people who voted for it. When given, each slot shows its vote count and who voted.
+  voters: { type: Object, default: null },
 })
 const selected = defineModel({ type: Array, default: () => [] })
 
@@ -23,7 +25,7 @@ const label = (s) => `${days[s.day].slice(0, 3)} ${slots[s.slot].start}–${slot
 </script>
 
 <template>
-  <TimetableGrid short row-height="h-[104px]">
+  <TimetableGrid short row-height="min-h-[104px]">
     <template #cell="{ day, slot }">
       <button
         v-for="s in moduleSections.filter((x) => x.day === day && x.slot === slot)"
@@ -45,6 +47,10 @@ const label = (s) => `${days[s.day].slice(0, 3)} ${slots[s.slot].start}–${slot
         </span>
         <span>{{ moduleName(s.module) }}</span>
         <span>{{ label(s) }}</span>
+        <span v-if="voters" class="mt-0.5 flex flex-col leading-normal">
+          <span class="font-semibold">{{ voters[s.id]?.length ?? 0 }} {{ voters[s.id]?.length === 1 ? 'vote' : 'votes' }}</span>
+          <span class="opacity-80">{{ voters[s.id]?.length ? voters[s.id].map((p) => p.short).join(', ') : 'Nobody yet' }}</span>
+        </span>
       </button>
     </template>
   </TimetableGrid>
