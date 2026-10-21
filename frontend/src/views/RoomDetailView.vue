@@ -31,6 +31,7 @@ const voterMap = computed(() =>
   ),
 )
 const copied = ref(false)
+const copyFailed = ref(false)
 
 // TODO(backend): members, roles and vote status come from GET /api/rooms/:id/members
 const ORDER = { owner: 0, admin: 1, member: 2 }
@@ -56,6 +57,7 @@ const myRole = computed(() => roleOf(room.value, 'me'))
 // The ⋯ menu on a member row, and the confirmation before removing someone
 const menuFor = ref(null)
 const kicking = ref(null)
+const leaving = ref(false)
 const closeMenu = () => (menuFor.value = null)
 onMounted(() => document.addEventListener('click', closeMenu))
 onBeforeUnmount(() => document.removeEventListener('click', closeMenu))
@@ -75,16 +77,38 @@ function confirmKick() {
   kicking.value = null
 }
 
-const link = computed(() => `bidmaxxer.app/room/${room.value.id}`)
+// The async clipboard API is refused in some contexts (embedded previews, no permission), so fall back to a
+// temporary text box and the older copy command before giving up.
+function copyWithFallback(text) {
+  const box = document.createElement('textarea')
+  box.value = text
+  box.setAttribute('readonly', '')
+  box.style.position = 'fixed'
+  box.style.opacity = '0'
+  document.body.appendChild(box)
+  box.select()
+  let ok = false
+  try {
+    ok = document.execCommand('copy')
+  } catch {
+    ok = false
+  }
+  document.body.removeChild(box)
+  return ok
+}
 
 async function copy() {
+  const text = room.value.id
+  let ok = false
   try {
-    await navigator.clipboard.writeText(`https://${link.value}`)
-    copied.value = true
-    setTimeout(() => (copied.value = false), 2000)
+    await navigator.clipboard.writeText(text)
+    ok = true
   } catch {
-    copied.value = false
+    ok = copyWithFallback(text)
   }
+  copied.value = ok
+  copyFailed.value = !ok
+  setTimeout(() => (copied.value = copyFailed.value = false), 2000)
 }
 
 function submit() {
@@ -98,7 +122,7 @@ function unselect() {
 }
 
 function leave() {
-  if (!window.confirm(`Leave ${room.value.name}?`)) return
+  leaving.value = false
   rooms.leaveRoom(room.value.id)
   router.push('/rooms')
 }
@@ -179,17 +203,17 @@ function leave() {
           </div>
 
           <div class="flex flex-col gap-2">
-            <p class="text-overline text-muted-foreground">Invite link</p>
+            <p class="text-overline text-muted-foreground">Room code</p>
             <div class="flex items-center gap-2">
-              <span class="min-w-0 flex-1 truncate rounded-md border border-border bg-background px-2 py-[7px] font-mono text-[11px] font-medium">{{ link }}</span>
-              <BaseButton variant="outline" size="sm" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</BaseButton>
+              <span class="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-[6px] select-all text-center font-mono text-[18px] font-bold tracking-[0.2em]">{{ room.id }}</span>
+              <BaseButton variant="outline" size="sm" @click="copy">{{ copied ? 'Copied' : copyFailed ? 'Copy failed' : 'Copy' }}</BaseButton>
             </div>
             <p class="text-[12px] leading-normal text-muted-foreground">
-              Anyone with this link can join until the room hits {{ room.maxMembers }} members.
+              Share this code so friends can join, until the room hits {{ room.maxMembers }} members.
             </p>
           </div>
 
-          <BaseButton variant="ghost" class="self-start" @click="leave">Leave room</BaseButton>
+          <BaseButton variant="ghost" class="self-start" @click="leaving = true">Leave room</BaseButton>
         </aside>
 
         <!-- Slot picker -->
@@ -213,10 +237,21 @@ function leave() {
       </div>
     </main>
 
+    <BaseModal v-if="leaving" width="w-[400px]" @close="leaving = false">
+      <h2 class="text-h4">Leave {{ room.name }}?</h2>
+      <p class="text-[14px] leading-[22px] text-muted-foreground">
+        Your votes, suggested bids and anything you accepted from this room are removed.
+      </p>
+      <div class="flex justify-end gap-2">
+        <BaseButton variant="ghost" @click="leaving = false">Stay</BaseButton>
+        <BaseButton variant="destructive-outline" @click="leave">Leave room</BaseButton>
+      </div>
+    </BaseModal>
+
     <BaseModal v-if="kicking" width="w-[400px]" @close="kicking = null">
       <h2 class="text-h4">Remove {{ kicking.name }} from {{ room.name }}?</h2>
       <p class="text-[14px] leading-[22px] text-muted-foreground">
-        They lose access to this room, and their votes and suggested bids are removed. They can rejoin with the invite link.
+        They lose access to this room, and their votes and suggested bids are removed. They can rejoin with the room code.
       </p>
       <div class="flex justify-end gap-2">
         <BaseButton variant="ghost" @click="kicking = null">Cancel</BaseButton>

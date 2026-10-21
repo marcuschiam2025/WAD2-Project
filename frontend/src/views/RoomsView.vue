@@ -19,14 +19,19 @@ const joining = ref(false)
 const joinInput = ref('')
 const joinError = ref('')
 
-// Accepts a full invite link (…/room/A1F3-yappers) or just the room code
+// A room is joined with its 6-digit code. The box only takes digits.
+function onJoinInput(e) {
+  joinError.value = ''
+  joinInput.value = e.target.value.replace(/\D/g, '').slice(0, 6)
+}
+
 function join() {
-  const code = joinInput.value.trim().split('/').pop().split('-')[0].replace('#', '').toUpperCase()
-  if (rooms.getRoom(code)) {
+  if (joinInput.value.length !== 6) return
+  if (rooms.getRoom(joinInput.value)) {
     joining.value = false
-    router.push(`/rooms/${code}`)
+    router.push(`/rooms/${joinInput.value}`)
   } else {
-    joinError.value = 'No room found for that link or code.'
+    joinError.value = 'No room found for that code.'
   }
 }
 
@@ -45,7 +50,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
   <div>
     <PageHeader overline="Collaborative plan rooms · AY24/25 Sem 2" title="Collab Rooms">
       <template #actions>
-        <BaseButton variant="outline" @click="joining = true">Join with link</BaseButton>
+        <BaseButton variant="outline" @click="joining = true">Join with code</BaseButton>
         <BaseButton to="/rooms/new">Create room</BaseButton>
       </template>
     </PageHeader>
@@ -109,7 +114,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
           </li>
         </ul>
         <p v-if="!rooms.rooms.length" class="border-t border-border px-5 py-6 text-[13px] text-muted-foreground">
-          You're not in any rooms yet. Create one or join with an invite link.
+          You're not in any rooms yet. Create one or join with a room code.
         </p>
       </section>
     </main>
@@ -117,19 +122,22 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
     <BaseModal v-if="joining" width="w-[440px]" @close="joining = false">
       <h2 class="text-h4">Join a room</h2>
       <label class="flex flex-col gap-1.5">
-        <span class="text-[13px] font-medium">Invite link or room code</span>
+        <span class="text-[13px] font-medium">6-digit room code</span>
         <input
           v-model="joinInput"
-          placeholder="https://bidmaxxer.app/room/A1F3-yappers"
+          placeholder="123456"
+          inputmode="numeric"
+          maxlength="6"
+          autocomplete="off"
           class="rounded-md border border-border px-3 py-[9px] text-[14px] outline-none focus:border-ring"
-          @input="joinError = ''"
+          @input="onJoinInput"
           @keyup.enter="join"
         />
         <span v-if="joinError" class="text-[12px] text-destructive">{{ joinError }}</span>
       </label>
       <div class="flex justify-end gap-2">
         <BaseButton variant="ghost" @click="joining = false">Cancel</BaseButton>
-        <BaseButton :disabled="!joinInput.trim()" @click="join">Join</BaseButton>
+        <BaseButton :disabled="joinInput.length !== 6" @click="join">Join</BaseButton>
       </div>
     </BaseModal>
   </div>

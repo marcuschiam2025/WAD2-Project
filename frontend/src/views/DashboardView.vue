@@ -154,12 +154,14 @@ const alerts = computed(() => {
   return [...new Set(list)]
 })
 
-const comingUp = computed(() =>
-  ordered(deadlines.filter((d) => d.kind !== 'Bid')).map((d) => ({
-    ...d,
-    when: `in ${d.offset} day${d.offset === 1 ? '' : 's'}`,
-  })),
-)
+// BOSS bidding windows: the open round first, then the ones still to come.
+// TODO(backend): replace with GET /api/bidding/rounds (every round with its open and close time)
+const biddingWindows = [
+  { id: 'r1a', name: round.name, open: true, when: `Open, closes ${closesLabel}` },
+  { id: 'r1b', name: 'Round 1B', when: 'Opens in 3 days' },
+  { id: 'r1c', name: 'Round 1C', when: 'Opens in 5 days' },
+  { id: 'r2a', name: 'Round 2A', when: 'Opens in 9 days' },
+]
 </script>
 
 <template>
@@ -304,11 +306,11 @@ const comingUp = computed(() =>
         </div>
 
         <div class="flex flex-col gap-2.5 p-5">
-          <h2 class="text-overline text-muted-foreground">Coming up</h2>
+          <h2 class="text-overline text-muted-foreground">Bidding windows</h2>
           <ul class="flex flex-col gap-2 text-[13px] leading-normal">
-            <li v-for="d in comingUp" :key="d.id" class="flex items-baseline justify-between gap-3">
-              <span class="font-semibold">{{ d.title }}</span>
-              <span class="shrink-0 text-muted-foreground">{{ d.when }}</span>
+            <li v-for="w in biddingWindows" :key="w.id" class="flex items-baseline justify-between gap-3">
+              <span class="font-semibold">{{ w.name }}</span>
+              <span class="shrink-0" :class="w.open ? 'font-medium text-foreground' : 'text-muted-foreground'">{{ w.when }}</span>
             </li>
           </ul>
         </div>

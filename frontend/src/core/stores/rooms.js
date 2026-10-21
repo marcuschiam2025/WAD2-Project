@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { classmates, rooms as sampleRooms, roomPrereqs } from '../data/rooms'
 import { sections } from '../data/bidding'
@@ -27,7 +27,7 @@ export function canSetAdmin(room, actorId, targetId) {
 export const useRoomsStore = defineStore('rooms', () => {
   const rooms = ref(structuredClone(sampleRooms))
   // room id -> section ids the signed-in student picked
-  const myVotes = ref({ A1F3: ['IS442-G1', 'IS442-G2'] })
+  const myVotes = ref({ 482913: ['IS442-G1', 'IS442-G2'] })
 
   // room id -> the section the signed-in student accepted
   const accepted = ref({})
@@ -106,9 +106,17 @@ export const useRoomsStore = defineStore('rooms', () => {
     return c.completed.includes(req.code) ? null : req
   }
 
+  // A unique 6-digit code, which is also the room's id
+  function newRoomCode() {
+    let code
+    do code = String(Math.floor(100000 + Math.random() * 900000))
+    while (rooms.value.some((r) => r.id === code))
+    return code
+  }
+
   // TODO(Backend 2): POST /api/rooms
   function createRoom({ name, description, module, maxMembers, members }) {
-    const id = Math.random().toString(16).slice(2, 6).toUpperCase()
+    const id = newRoomCode()
     rooms.value.unshift({
       id,
       name,
@@ -188,3 +196,6 @@ export const useRoomsStore = defineStore('rooms', () => {
     setAdmin,
   }
 })
+
+// Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useRoomsStore, import.meta.hot))

@@ -1,4 +1,5 @@
 // Sample plan-room data. Shapes mirror backend/models/Room.js.
+// id: the unique 6-digit room code friends type to join.
 // ownerId: the room creator. admins: members the owner promoted (owner and admins can remove people).
 // suggestedBids: section id -> { member id -> the e$ they suggest bidding for that section }.
 
@@ -20,7 +21,7 @@ export const roomPrereqs = {
 
 export const rooms = [
   {
-    id: 'A1F3',
+    id: '482913',
     name: 'Yappers',
     description: 'IS Y3 friends planning Y3S2 bids together',
     module: 'IS442',
@@ -33,7 +34,7 @@ export const rooms = [
     suggestedBids: { 'IS442-G1': { rk: 36, tm: 32 }, 'IS442-G2': { sl: 31 } },
   },
   {
-    id: '7C20',
+    id: '705268',
     name: 'SCIS Study Squad',
     description: 'BA track people syncing IS428 and IS460 sections',
     module: 'IS442',
@@ -45,7 +46,7 @@ export const rooms = [
     suggestedBids: { 'IS442-G1': { jl: 30 } },
   },
   {
-    id: 'E9B1',
+    id: '936041',
     name: 'Exchange Gang',
     description: 'KAIST + NUS exchange mapping, Y3S1',
     module: 'IS442',

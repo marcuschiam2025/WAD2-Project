@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { questions, scoreAnswers } from '../data/quiz'
 
@@ -35,3 +35,6 @@ export const useQuizStore = defineStore('quiz', () => {
 
   return { questions, answers, current, attempts, latest, answeredCount, start, answer, submit }
 })
+
+// Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useQuizStore, import.meta.hot))

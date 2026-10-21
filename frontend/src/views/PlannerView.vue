@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { usePlannerStore, effectiveCode } from '@core/stores/planner'
+import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { modules, tracks, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
@@ -13,6 +13,7 @@ import DegreeChecklist from '@/components/DegreeChecklist.vue'
 import PrereqWarningModal from '@/components/modals/PrereqWarningModal.vue'
 import PlanLimitModal from '@/components/modals/PlanLimitModal.vue'
 import PlanSettingsModal from '@/components/modals/PlanSettingsModal.vue'
+import SemesterFullModal from '@/components/modals/SemesterFullModal.vue'
 import iconSearch from '@/assets/v2/search.svg'
 import iconCheck from '@/assets/figma/check-success.svg'
 import iconAlert from '@/assets/figma/alert-12.svg'
@@ -32,6 +33,7 @@ const tabsRef = ref(null)
 const showPlanLimit = ref(false)
 const showSettings = ref(false)
 const warning = ref(null) // { code, semId }
+const fullSem = ref(null) // semester that refused a module because it already holds the maximum
 const dragging = ref(null)
 const dragOver = ref(null) // semester id under the cursor while dragging
 const query = ref('')
@@ -75,6 +77,19 @@ function goToPlans() {
 
 // --- Drag & drop ---------------------------------------------------------------------------
 const canDrop = (sem) => !sem.loa && status(sem) !== 'done'
+const isFull = (sem) => sem.modules.length >= MAX_MODULES_PER_SEM
+
+// Place a module, or tell the student the semester is full. The room check happens here too, so a
+// semester can never go over the maximum even if the store still holds older code (e.g. after a live reload).
+function place(code, semId) {
+  const sem = plan.value.semesters.find((s) => s.id === semId)
+  if (!hasRoom(sem, code)) {
+    fullSem.value = sem
+    return false
+  }
+  planner.placeModule(code, semId)
+  return true
+}
 
 function onDragStart(e, code) {
   dragging.value = code
@@ -91,7 +106,7 @@ function dropOnSemester(sem) {
   const code = dragging.value
   onDragEnd()
   if (!code || !canDrop(sem)) return
-  planner.placeModule(code, sem.id)
+  if (!place(code, sem.id)) return
   if (planner.hasWarning(plan.value, code, sem.id)) warning.value = { code, semId: sem.id }
 }
 
@@ -122,10 +137,10 @@ const warningInfo = computed(() => {
 
 function resolveWarning(action, target) {
   const w = warningInfo.value
-  if (action === 'prereq') planner.placeModule(target, w.prev.id)
-  if (action === 'coreq') planner.placeModule(target, w.sem.id)
+  if (action === 'prereq' && !place(target, w.prev.id)) return
+  if (action === 'coreq' && !place(target, w.sem.id)) return
   if (action === 'move') {
-    planner.placeModule(w.code, w.next.id)
+    if (!place(w.code, w.next.id)) return
     warning.value = planner.hasWarning(plan.value, w.code, w.next.id) ? { code: w.code, semId: w.next.id } : null
     return
   }
@@ -306,7 +321,7 @@ const requirements = computed(() =>
                   <span v-if="col.sem.loa" class="font-sans text-muted-foreground">LOA</span>
                   <span v-else-if="status(col.sem) === 'now'" class="font-sans font-semibold text-primary">Now</span>
                   <span v-else-if="col.sem.exchange" class="font-sans font-semibold text-primary">Exchange</span>
-                  <span v-else class="text-muted-foreground">{{ col.sem.modules.length }}</span>
+                  <span v-else :class="isFull(col.sem) ? 'font-semibold text-destructive' : 'text-muted-foreground'">{{ col.sem.modules.length }}/{{ MAX_MODULES_PER_SEM }}</span>
                 </div>
 
                 <p v-if="col.sem.loa" class="px-0.5 text-[11.5px] text-muted-foreground">Leave of absence. No modules this term.</p>
@@ -348,9 +363,10 @@ const requirements = computed(() =>
 
                 <div
                   v-if="dragging && dragOver === col.sem.id && !col.sem.modules.includes(dragging)"
-                  class="flex justify-center rounded-sm border-[1.5px] border-dashed border-primary px-2 py-2.5 text-[11.5px] font-medium text-primary"
+                  class="flex justify-center rounded-sm border-[1.5px] border-dashed px-2 py-2.5 text-[11.5px] font-medium"
+                  :class="isFull(col.sem) ? 'border-destructive text-destructive' : 'border-primary text-primary'"
                 >
-                  Drop {{ dragging }} here
+                  {{ isFull(col.sem) ? `Full: ${MAX_MODULES_PER_SEM} modules max` : `Drop ${dragging} here` }}
                 </div>
               </div>
             </template>
@@ -404,6 +420,7 @@ const requirements = computed(() =>
       @add-coreq="resolveWarning('coreq', $event)"
       @move-next="resolveWarning('move')"
     />
+    <SemesterFullModal v-if="fullSem" :sem-label="fullSem.label" :max="MAX_MODULES_PER_SEM" @close="fullSem = null" />
     <PlanLimitModal v-if="showPlanLimit" @close="showPlanLimit = false" @go-to-plans="goToPlans" />
     <PlanSettingsModal v-if="showSettings" @close="showSettings = false" />
   </div>

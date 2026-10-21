@@ -1,9 +1,13 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { modules, requirementBuckets } from '../data/catalogue'
 import { useRoomsStore } from './rooms'
 
 export const MAX_PLANS = 3
+export const MAX_MODULES_PER_SEM = 6
+
+// A semester has room for a module if it already holds it (a move) or is under the maximum
+export const hasRoom = (sem, code) => sem.modules.includes(code) || sem.modules.length < MAX_MODULES_PER_SEM
 
 // Exchange chips look like "CS412 → IS460"; the mapped SMU code is on the right.
 export function effectiveCode(entry) {
@@ -92,10 +96,14 @@ export const usePlannerStore = defineStore('planner', () => {
     basket.value = basket.value.filter((m) => m !== code)
   }
 
+  // Returns false (and changes nothing) when the semester already holds the maximum number of modules
   function placeModule(code, semId) {
     const plan = activePlan.value
+    const sem = plan.semesters[semIndex(plan, semId)]
+    if (!hasRoom(sem, code)) return false
     removeEverywhere(plan, code)
-    plan.semesters[semIndex(plan, semId)].modules.push(code)
+    sem.modules.push(code)
+    return true
   }
 
   function returnToBasket(code) {
@@ -113,7 +121,7 @@ export const usePlannerStore = defineStore('planner', () => {
 
   // Modules accepted in collab rooms are placed in the next semester of every plan (the one being bid for),
   // unless a plan already has them somewhere. Undoing the accept takes them out again, as long as they are still
-  // where they were placed. A plan with no biddable next semester gets the module in the basket instead.
+  // where they were placed. A plan with no biddable next semester (or a full one) gets the module in the basket instead.
   const rooms = useRoomsStore()
   const placedByRoom = new Map() // "planId|code" -> the semester it was placed in
   const basketFromRoom = new Set()
@@ -128,7 +136,7 @@ export const usePlannerStore = defineStore('planner', () => {
           plans.value.forEach((plan) => {
             if (inPlan(plan, code)) return
             const next = plan.semesters[semIndex(plan, plan.currentSem) + 1]
-            if (next && !next.exchange && !next.loa) {
+            if (next && !next.exchange && !next.loa && hasRoom(next, code)) {
               next.modules.push(code)
               placedByRoom.set(`${plan.id}|${code}`, next.id)
             } else needsBasket = true
@@ -242,3 +250,6 @@ export const usePlannerStore = defineStore('planner', () => {
     deletePlan,
   }
 })
+
+// Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(usePlannerStore, import.meta.hot))

@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
 const STORAGE_KEY = 'bidmaxxer:todos'
@@ -56,3 +56,6 @@ export const useTodosStore = defineStore('todos', () => {
 
   return { items, add, toggle, remove, clearDone }
 })
+
+// Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useTodosStore, import.meta.hot))

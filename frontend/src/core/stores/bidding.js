@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { bidHistory, sections, slots, days, MIN_BID } from '../data/bidding'
 import { usePlannerStore, effectiveCode } from './planner'
@@ -143,3 +143,6 @@ export const useBiddingStore = defineStore('bidding', () => {
     slotLabel,
   }
 })
+
+// Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useBiddingStore, import.meta.hot))
