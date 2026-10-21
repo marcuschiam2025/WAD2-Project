@@ -56,6 +56,39 @@ export const bidHistory = {
   ],
 }
 
+// Past results for a single section (the room votes page shows these when you click a section).
+// Sections without their own entry fall back to the module-level history above.
+// TODO(backend): replace with GET /api/bidding/history?section=IS442-G1
+export const sectionHistory = {
+  'IS442-G1': [
+    { term: 'AY24/25 T1', round: '1A', median: 35, min: 28 },
+    { term: 'AY23/24 T2', round: '1A', median: 33, min: 27 },
+    { term: 'AY23/24 T1', round: '1B', median: 29, min: 22 },
+  ],
+  'IS442-G2': [
+    { term: 'AY24/25 T1', round: '1A', median: 31, min: 25 },
+    { term: 'AY23/24 T2', round: '1A', median: 30, min: 24 },
+    { term: 'AY23/24 T1', round: '1B', median: 26, min: 20 },
+  ],
+  'IS442-G3': [
+    { term: 'AY24/25 T1', round: '1A', median: 34, min: 27 },
+    { term: 'AY23/24 T2', round: '1A', median: 31, min: 25 },
+    { term: 'AY23/24 T1', round: '1B', median: 28, min: 21 },
+  ],
+}
+
+export const sectionBidHistory = (section) => sectionHistory[section.id] ?? bidHistory[section.module] ?? []
+
+// Median and mean of the clearing medians across past terms (null when there is no history)
+export function bidStats(history) {
+  if (!history.length) return null
+  const medians = history.map((h) => h.median).sort((a, b) => a - b)
+  const mid = Math.floor(medians.length / 2)
+  const median = medians.length % 2 ? medians[mid] : (medians[mid - 1] + medians[mid]) / 2
+  const mean = medians.reduce((a, b) => a + b, 0) / medians.length
+  return { median, mean: Math.round(mean * 10) / 10 }
+}
+
 export const weightage = {
   IS212: [
     { label: 'Class participation', pct: 10 },

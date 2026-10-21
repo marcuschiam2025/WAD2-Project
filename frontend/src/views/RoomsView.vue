@@ -32,14 +32,12 @@ function join() {
 
 // TODO(backend): votes / status / round come from GET /api/rooms (the sample derives them from room.votes)
 function summary(room) {
-  const voted = new Set(Object.values(room.votes).flat())
-  const count = room.finalised ? room.members.length : voted.size + (rooms.myVotes[room.id]?.length ? 1 : 0)
-  const total = room.members.length
-  const status = room.finalised ? 'finalised' : count === 0 ? 'not-started' : 'voting'
-  return { count, total, status }
+  const st = rooms.roomState(room)
+  const status = st.acceptedId ? 'accepted' : st.allVoted ? 'ready' : st.voted === 0 ? 'not-started' : 'voting'
+  return { count: st.voted, total: st.total, status }
 }
-const statusTone = { voting: 'warning', finalised: 'success', 'not-started': 'neutral' }
-const statusLabel = { voting: 'Voting', finalised: 'Finalised', 'not-started': 'Not started' }
+const statusTone = { voting: 'warning', ready: 'info', accepted: 'success', 'not-started': 'neutral' }
+const statusLabel = { voting: 'Voting', ready: 'Ready to accept', accepted: 'Accepted', 'not-started': 'Not started' }
 const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2h 15m', urgent: i === 0 })
 </script>
 
@@ -56,8 +54,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
       <div class="flex flex-col gap-0.5">
         <h2 class="text-h3">Welcome back, {{ user.profile.firstName }}. Here are your rooms.</h2>
         <p class="text-[14px] text-muted-foreground">
-          Plan the incoming semester with friends: import your What-If plans, see who is taking the same modules, and line
-          up bids together.
+          Plan the incoming semester with friends and line up bids together!
         </p>
       </div>
 
@@ -96,7 +93,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
                 <span class="text-[13px] text-muted-foreground">{{ summary(room).count }} of {{ summary(room).total }} voted</span>
                 <ProgressBar
                   :value="summary(room).count / summary(room).total"
-                  :color="summary(room).status === 'finalised' ? 'bg-success' : 'bg-primary'"
+                  color="bg-primary"
                   track="h-1.5 w-[180px]"
                 />
               </div>

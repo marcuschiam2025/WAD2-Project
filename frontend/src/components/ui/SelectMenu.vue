@@ -96,7 +96,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
             role="option"
             :aria-selected="isSelected(o.value)"
             class="flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-[14px] leading-normal transition-colors"
-            :class="isSelected(o.value) ? 'bg-primary/10 font-medium text-primary' : 'hover:bg-muted'"
+            :class="isSelected(o.value) ? 'bg-primary-tint font-medium text-primary' : 'hover:bg-muted'"
             @click="pick(o)"
           >
             <span

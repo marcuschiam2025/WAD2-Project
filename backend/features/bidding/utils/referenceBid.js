@@ -8,9 +8,20 @@ import { MIN_BID } from '../models/BidCart.js'
 export function referenceBid(history, amount) {
   if (!history.length) return { rating: null, suggested: MIN_BID, mean: null, sd: null }
 
-  const medians = history.map((h) => h.median)
-  const mean = medians.reduce((a, b) => a + b, 0) / medians.length
-  const sd = Math.sqrt(medians.reduce((a, m) => a + (m - mean) ** 2, 0) / medians.length)
+  // Average of the past medians
+  let total = 0
+  for (const entry of history) {
+    total += entry.median
+  }
+  const mean = total / history.length
+
+  // Standard deviation: how far the medians spread out from the average
+  let squaredGaps = 0
+  for (const entry of history) {
+    squaredGaps += (entry.median - mean) ** 2
+  }
+  const sd = Math.sqrt(squaredGaps / history.length)
+
   const suggested = Math.max(MIN_BID, Math.ceil(mean + sd))
 
   let rating = null

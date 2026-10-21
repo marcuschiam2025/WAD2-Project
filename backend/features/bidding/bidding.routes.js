@@ -4,10 +4,13 @@ import * as bidding from './bidding.controller.js'
 const router = Router()
 
 router.get('/sections', bidding.listSections)
+router.get('/round', bidding.getRound)
 router.get('/history/:module', bidding.getHistory)
 router.get('/reference/:module', bidding.getReferenceBid)
+router.get('/weightage/:module', bidding.getWeightage)
 router.get('/cart', bidding.getCart)
 router.put('/cart', bidding.saveCart)
+router.delete('/cart/:code', bidding.dropCartItem)
 router.post('/validate-cart', bidding.validateCart)
 router.get('/co-bids/:partyId', bidding.getCoBids)
 

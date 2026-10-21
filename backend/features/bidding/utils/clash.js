@@ -6,10 +6,14 @@
  */
 export function findClashes(sections) {
   const clashes = []
-  sections.forEach((a, i) => {
-    sections.slice(i + 1).forEach((b) => {
-      if (a.day === b.day && a.slot === b.slot) clashes.push([a.sectionId, b.sectionId])
-    })
-  })
+  for (let i = 0; i < sections.length; i++) {
+    for (let j = i + 1; j < sections.length; j++) {
+      const a = sections[i]
+      const b = sections[j]
+      if (a.day === b.day && a.slot === b.slot) {
+        clashes.push([a.sectionId, b.sectionId])
+      }
+    }
+  }
   return clashes
 }

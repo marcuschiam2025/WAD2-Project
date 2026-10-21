@@ -92,7 +92,7 @@ function retake() {
 
           <Transition :css="false" @enter="popEnter" @leave="popLeave">
             <div v-if="expanded === r.code" class="flex flex-col gap-3 px-4 pb-4">
-              <div class="flex flex-col gap-1 rounded-md bg-primary/10 px-3.5 py-2.5 text-[13px]">
+              <div class="flex flex-col gap-1 rounded-md bg-primary-tint px-3.5 py-2.5 text-[13px]">
                 <p class="flex items-center gap-2 font-semibold text-primary">
                   <img :src="iconSparkles" alt="" class="size-3.5" /> Why {{ trackName(r.code) }}?
                 </p>
@@ -109,7 +109,7 @@ function retake() {
                   <span class="flex-1 text-muted-foreground">{{ modules[code].name }}</span>
                   <span
                     v-if="inBasket(code)"
-                    class="inline-flex items-center gap-1.5 rounded-md bg-success/14 px-2.5 py-1.5 text-[13px] font-medium text-success"
+                    class="inline-flex items-center gap-1.5 rounded-md bg-success-tint px-2.5 py-1.5 text-[13px] font-medium text-success"
                   >
                     <img :src="iconCheck" alt="" class="size-3.5" /> In basket
                   </span>
