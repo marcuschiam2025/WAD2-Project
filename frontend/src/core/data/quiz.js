@@ -6,10 +6,10 @@ export const questions = [
     id: 1,
     prompt: 'What do you most enjoy learning about?',
     options: [
-      { label: 'Finding patterns in data', weights: { BA: 3, SMT: 1 } },
+      { label: 'Finding patterns in data', weights: { BA: 3, SMCT: 1 } },
       { label: 'Understanding how people use products', weights: { PD: 3 } },
       { label: 'Designing reliable technical systems', weights: { FT: 3 } },
-      { label: 'Solving challenges in cities', weights: { SMT: 3, BA: 1 } },
+      { label: 'Solving challenges in cities', weights: { SMCT: 3, BA: 1 } },
     ],
   },
   {
@@ -19,7 +19,7 @@ export const questions = [
       { label: 'The analyst who crunches the numbers', weights: { BA: 3 } },
       { label: 'The designer who sketches the user flow', weights: { PD: 3 } },
       { label: 'The engineer who sets up the backend', weights: { FT: 3 } },
-      { label: 'The researcher who frames the real-world problem', weights: { SMT: 2, PD: 1 } },
+      { label: 'The researcher who frames the real-world problem', weights: { SMCT: 2, PD: 1 } },
     ],
   },
   {
@@ -27,7 +27,7 @@ export const questions = [
     prompt: 'Which assignment sounds the most fun?',
     options: [
       { label: 'Build a dashboard that predicts sales', weights: { BA: 3 } },
-      { label: 'Map traffic flows across Singapore', weights: { SMT: 3 } },
+      { label: 'Map traffic flows across Singapore', weights: { SMCT: 3 } },
       { label: 'Deploy an app that scales to 10,000 users', weights: { FT: 3 } },
       { label: 'Prototype and test a new mobile app', weights: { PD: 3 } },
     ],
@@ -38,8 +38,8 @@ export const questions = [
     options: [
       { label: 'Statistics and spreadsheets', weights: { BA: 3 } },
       { label: 'Programming and debugging', weights: { FT: 2, PD: 1 } },
-      { label: 'Communicating with users and stakeholders', weights: { PD: 2, SMT: 1 } },
-      { label: 'Seeing the big picture across systems', weights: { SMT: 2, FT: 1 } },
+      { label: 'Communicating with users and stakeholders', weights: { PD: 2, SMCT: 1 } },
+      { label: 'Seeing the big picture across systems', weights: { SMCT: 2, FT: 1 } },
     ],
   },
   {
@@ -48,8 +48,8 @@ export const questions = [
     options: [
       { label: 'Deep focus on a hard analytical question', weights: { BA: 2, FT: 1 } },
       { label: 'Fast iterations with lots of feedback', weights: { PD: 3 } },
-      { label: 'Careful planning before building', weights: { FT: 2, SMT: 1 } },
-      { label: 'Field work and talking to the public', weights: { SMT: 3 } },
+      { label: 'Careful planning before building', weights: { FT: 2, SMCT: 1 } },
+      { label: 'Field work and talking to the public', weights: { SMCT: 3 } },
     ],
   },
   {
@@ -59,7 +59,7 @@ export const questions = [
       { label: 'Data analyst at a bank', weights: { BA: 3 } },
       { label: 'Fintech engineer at a bank or startup', weights: { FT: 3 } },
       { label: 'Product intern at a startup', weights: { PD: 3 } },
-      { label: 'Urban tech intern at a government agency', weights: { SMT: 3 } },
+      { label: 'Urban tech intern at a government agency', weights: { SMCT: 3 } },
     ],
   },
   {
@@ -69,7 +69,7 @@ export const questions = [
       { label: 'An insight that changed a decision', weights: { BA: 3 } },
       { label: 'A system that never goes down', weights: { FT: 3 } },
       { label: 'A feature people love using', weights: { PD: 3 } },
-      { label: 'A measurable improvement to a community', weights: { SMT: 3 } },
+      { label: 'A measurable improvement to a community', weights: { SMCT: 3 } },
     ],
   },
   {
@@ -79,7 +79,7 @@ export const questions = [
       { label: 'Leading an analytics team', weights: { BA: 3 } },
       { label: 'Building payment and trading platforms', weights: { FT: 3 } },
       { label: 'Running my own product', weights: { PD: 3 } },
-      { label: 'Shaping smart-city policy', weights: { SMT: 3 } },
+      { label: 'Shaping smart-city policy', weights: { SMCT: 3 } },
     ],
   },
 ]

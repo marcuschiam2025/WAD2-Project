@@ -1,5 +1,10 @@
-// Sample catalogue data used until the frontend is wired to /api/tracks and /api/modules.
-// Shapes mirror backend/models/Track.js and backend/models/Module.js.
+// Sample catalogue data. The track codes match the backend (BA, SMCT, FT, PD).
+// The real module catalogue is loaded into liveModules from GET /api/modules (see stores/catalogue.js);
+// the sample modules below still drive the onboarding pool, the degree checklist and the requirement buckets.
+import { reactive } from 'vue'
+
+// code -> backend Module ({ _id, title, cu, categories, prerequisites, corequisites, ... }), empty while offline
+export const liveModules = reactive({})
 
 export const tracks = [
   {
@@ -11,10 +16,10 @@ export const tracks = [
     recommended: ['IS460', 'IS441', 'IS428'],
   },
   {
-    code: 'SMT',
+    code: 'SMCT',
     name: 'Smart-City Management & Technology',
     short: 'Smart-City',
-    blurb: 'SMT applies sensing, geospatial analytics and systems thinking to urban problems.',
+    blurb: 'SMCT applies sensing, geospatial analytics and systems thinking to urban problems.',
     recommended: ['IS415', 'IS428', 'IS214'],
   },
   {
@@ -72,9 +77,9 @@ export const modules = {
   IS215: { code: 'IS215', name: 'Digital Business – Technologies & Transformation', category: 'major-core', prereqs: [], coreqs: [] },
   IS216: { code: 'IS216', name: 'Web Application Development II', category: 'major-core', prereqs: ['IS113'], coreqs: [] },
   IS217: { code: 'IS217', name: 'Analytics Foundation', category: 'track', tracks: ['BA'], prereqs: [], coreqs: [], compulsory: true },
-  IS415: { code: 'IS415', name: 'Geospatial Analytics & Applications', category: 'track', tracks: ['SMT'], prereqs: ['IS217'], coreqs: [] },
+  IS415: { code: 'IS415', name: 'Geospatial Analytics & Applications', category: 'track', tracks: ['SMCT'], prereqs: ['IS217'], coreqs: [] },
   IS424: { code: 'IS424', name: 'Data Mining & Business Analytics', category: 'track', tracks: ['BA'], prereqs: ['IS217'], coreqs: [] },
-  IS428: { code: 'IS428', name: 'Visual Analytics for Business Intelligence', category: 'track', tracks: ['BA', 'SMT'], prereqs: [], coreqs: [] },
+  IS428: { code: 'IS428', name: 'Visual Analytics for Business Intelligence', category: 'track', tracks: ['BA', 'SMCT'], prereqs: [], coreqs: [] },
   IS441: { code: 'IS441', name: 'Data Visualisation for Business', category: 'depth', tracks: ['BA'], prereqs: [], coreqs: [] },
   IS442: {
     code: 'IS442',
@@ -104,7 +109,7 @@ export const modules = {
 }
 
 export function moduleName(code) {
-  return modules[code]?.name ?? code
+  return modules[code]?.name ?? liveModules[code]?.title ?? code
 }
 
 export function trackName(code) {

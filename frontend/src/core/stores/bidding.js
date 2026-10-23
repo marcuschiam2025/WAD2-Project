@@ -1,11 +1,11 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, ref, watch } from 'vue'
-import { bidHistory, sections, slots, days, MIN_BID } from '../data/bidding'
+import { computed, reactive, ref, watch } from 'vue'
+import { bidHistory, sections, slots, days, weightage, MIN_BID } from '../data/bidding'
+import { api } from '../services/api'
 import { usePlannerStore, effectiveCode } from './planner'
 import { useRoomsStore } from './rooms'
 
-// Starting e$ for a module the student has not bid on yet in this plan
-// TODO(backend): saved bids come from GET /api/bidding/cart?plan=…
+// Starting e$ for a module the student has not bid on yet in this plan (offline, or no saved cart)
 const sampleBids = { IS212: 42, IS213: 30, IS214: 22, IS215: 18, COR3001: 36, IS442: 20 }
 
 // The bidding timetable is the next semester of the chosen What-If plan. Pick the plan with `planId`.
@@ -15,6 +15,13 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   const planId = ref(planner.activePlanId)
   const plan = computed(() => planner.plans.find((p) => p.id === planId.value) ?? planner.plans[0])
+  // Plans loaded from the backend get new ids: follow the planner when the picked plan is gone
+  watch(
+    () => planner.plans.map((p) => p.id),
+    (ids) => {
+      if (!ids.includes(planId.value)) planId.value = planner.activePlanId
+    },
+  )
 
   // The semester after the plan's current one: the one being bid for
   const targetSem = computed(() => {
@@ -37,8 +44,28 @@ export const useBiddingStore = defineStore('bidding', () => {
   const fromRooms = computed(() => rooms.decided.filter((d) => roomCodes.value.includes(d.module)))
   const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c)))
 
-  // Per plan: modules taken out of the cart, the section picked per module, and the e$ typed per module
-  const dropped = ref({})
+  // Per plan: modules taken out of the cart, the section picked per module, and the e$ typed per module.
+  // The dropped list is kept in this browser: the saved cart can't tell a dropped module from a new one.
+  const DROPPED_KEY = 'bidmaxxer:dropped'
+  const dropped = ref(loadDropped())
+  function loadDropped() {
+    try {
+      return JSON.parse(localStorage.getItem(DROPPED_KEY)) ?? {}
+    } catch {
+      return {}
+    }
+  }
+  watch(
+    dropped,
+    () => {
+      try {
+        localStorage.setItem(DROPPED_KEY, JSON.stringify(dropped.value))
+      } catch {
+        // storage blocked: the list still works for this session
+      }
+    },
+    { deep: true },
+  )
   const chosen = ref({})
   const typed = ref({})
 
@@ -52,10 +79,14 @@ export const useBiddingStore = defineStore('bidding', () => {
   )
   const isLocked = (code) => code in locked.value
 
-  // module code -> booked section id
+  // module code -> booked section id (a saved section that no longer exists falls back to the first one)
   const booked = computed(() =>
     Object.fromEntries(
-      inCart.value.map((code) => [code, decidedSection(code) ?? chosen.value[plan.value.id]?.[code] ?? sections.find((s) => s.module === code).id]),
+      inCart.value.map((code) => {
+        const pick = chosen.value[plan.value.id]?.[code]
+        const valid = sections.some((s) => s.id === pick && s.module === code)
+        return [code, decidedSection(code) ?? (valid ? pick : sections.find((s) => s.module === code).id)]
+      }),
     ),
   )
 
@@ -102,17 +133,116 @@ export const useBiddingStore = defineStore('bidding', () => {
     typed.value[id] = { ...typed.value[id], [code]: amount }
   }
 
+  // --- Backend ------------------------------------------------------------------------------
+  // online once GET /api/bidding/round answers. Sections, bid history and weightage are fetched per
+  // module and replace the sample data for that module; modules the backend has nothing for keep the sample.
+  const online = ref(false)
+  const round = ref({ term: 'AY24/25 T2', round: '1A', closesAt: null })
+  const saveError = ref('')
+  // Sample closing time, used while offline or when the backend's round has already closed
+  // (its default BIDDING_ROUND_CLOSES_AT is in Jan 2025)
+  const sampleClose = new Date(Date.now() + (2 * 60 + 15) * 60 * 1000)
+  // The round for the screens: 'AY24/25 T2' -> 'AY24/25 · Sem 2 · Round 1A'
+  const roundInfo = computed(() => {
+    const closes = round.value.closesAt && new Date(round.value.closesAt)
+    return {
+      term: `${round.value.term.replace(/ T(\d)$/,' · Sem $1')} · Round ${round.value.round}`,
+      name: `Round ${round.value.round}`,
+      closesAt: closes > new Date() ? closes : sampleClose,
+    }
+  })
+  const liveSections = reactive(new Set()) // section ids that came from the backend (only these can be saved in a cart)
+  const fetched = new Set() // module codes already asked for
+  const loadedCarts = new Set() // plan ids whose saved cart has been applied
+
+  async function fetchModules(codes) {
+    const todo = codes.filter((c) => !fetched.has(c))
+    if (!todo.length) return
+    todo.forEach((c) => fetched.add(c))
+    const found = await api.sections(todo, round.value.term).catch(() => [])
+    const byModule = {}
+    found.forEach((s) => (byModule[s.module] ??= []).push(s))
+    Object.entries(byModule).forEach(([code, list]) => {
+      for (let i = sections.length - 1; i >= 0; i--) if (sections[i].module === code) sections.splice(i, 1)
+      sections.push(...list)
+      list.forEach((s) => liveSections.add(s.id))
+    })
+    await Promise.all(
+      todo.map(async (code) => {
+        const [history, marks] = await Promise.all([
+          api.bidHistory(code).catch(() => []),
+          api.weightage(code).catch(() => []),
+        ])
+        if (history.length) bidHistory[code] = history.map(({ term, round: r, median, min }) => ({ term, round: r, median, min }))
+        if (marks.length) weightage[code] = marks
+      }),
+    )
+  }
+
+  // The plan's saved cart: the section and e$ per module
+  async function loadCart(id) {
+    if (loadedCarts.has(id)) return
+    loadedCarts.add(id)
+    try {
+      const cart = await api.cart(id, round.value.term)
+      cart.items.forEach((item) => {
+        chosen.value[id] = { ...chosen.value[id], [item.module]: item.sectionId }
+        typed.value[id] = { ...typed.value[id], [item.module]: item.amount }
+      })
+    } catch {
+      loadedCarts.delete(id)
+    }
+  }
+
+  async function load() {
+    try {
+      round.value = await api.round()
+      online.value = true
+    } catch {
+      return // no backend: sample data only
+    }
+    await Promise.all([fetchModules([...inTarget.value, ...rooms.decided.map((d) => d.module)]), loadCart(plan.value.id)])
+  }
+
+  // Modules that show up later (another plan picked, a room accepts a section, the plan is edited)
+  watch([inTarget, () => rooms.decided.map((d) => d.module)], ([codes, roomMods]) => {
+    if (online.value) fetchModules([...codes, ...roomMods])
+  })
+  watch(planId, (id) => {
+    if (online.value) loadCart(id)
+  })
+
   // Take a module out of the cart (it stays in the What-If plan)
-  // TODO(Backend 3): DELETE /api/bidding/cart/:code
   function dropModule(code) {
     const id = plan.value.id
     dropped.value[id] = [...(dropped.value[id] ?? []), code]
     if (selectedModule.value === code) selectedModule.value = null
+    if (online.value) api.dropFromCart(code, id, round.value.term).catch((e) => (saveError.value = e.message))
   }
 
-  // TODO(Backend 3): PUT /api/bidding/cart
-  function save() {
-    savedAt.value = new Date()
+  // Modules whose sections are only sample data can't be saved: the backend doesn't know those sections
+  const unsaved = computed(() => Object.entries(booked.value).filter(([, id]) => !liveSections.has(id)).map(([code]) => code))
+
+  async function save() {
+    saveError.value = ''
+    if (!online.value) {
+      savedAt.value = new Date()
+      return
+    }
+    const items = Object.entries(booked.value)
+      .filter(([, id]) => liveSections.has(id))
+      .map(([code, sectionId]) => ({ module: code, sectionId, amount: Number(bids.value[code]) || 0 }))
+    const low = items.find((i) => i.amount < MIN_BID)
+    if (low) {
+      saveError.value = `Bid at least e$ ${MIN_BID} for ${low.module}.`
+      return
+    }
+    try {
+      await api.saveCart({ planId: plan.value.id, term: round.value.term, items })
+      savedAt.value = new Date()
+    } catch (e) {
+      saveError.value = e.message
+    }
   }
 
   function slotLabel(s) {
@@ -131,6 +261,11 @@ export const useBiddingStore = defineStore('bidding', () => {
     bids,
     selectedModule,
     savedAt,
+    saveError,
+    unsaved,
+    online,
+    round,
+    roundInfo,
     bookedSections,
     allocated,
     clashes,
@@ -139,6 +274,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     swapSection,
     setBid,
     dropModule,
+    load,
     save,
     slotLabel,
   }

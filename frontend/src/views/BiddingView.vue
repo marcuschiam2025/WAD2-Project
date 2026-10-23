@@ -16,7 +16,7 @@ import TimetableModuleCard from '@/components/TimetableModuleCard.vue'
 import BidSidebar from '@/components/BidSidebar.vue'
 import { popEnter, popLeave } from '@/motion'
 
-// TODO(backend): booked sections, bids and alternatives come from the bidding store / @core/data/bidding
+// Booked sections, bids and alternatives come from the bidding store (backend data, sample data offline)
 const bidding = useBiddingStore()
 const planner = usePlannerStore()
 const rooms = useRoomsStore()
@@ -40,8 +40,12 @@ const emptyReason = computed(() => {
   return `${bidding.plan.name} has no biddable modules in ${t.label} (or they were all dropped from the cart). Drag modules into that semester in the What-If Planner.`
 })
 
-// TODO(backend): replace with the current round from GET /api/bidding/round
-const round = { term: 'AY24/25 · Sem 2 · Round 1A', closesIn: '2h 15m' }
+// The current BOSS round (GET /api/bidding/round, via the bidding store)
+const round = computed(() => {
+  const mins = Math.max(0, Math.floor((bidding.roundInfo.closesAt - Date.now()) / 60_000))
+  const closesIn = mins >= 1440 ? `${Math.floor(mins / 1440)}d ${Math.floor((mins % 1440) / 60)}h` : `${Math.floor(mins / 60)}h ${mins % 60}m`
+  return { term: bidding.roundInfo.term, closesIn }
+})
 
 // Alternative sections only appear for the module that has been clicked (selected)
 function cardsAt(day, slot) {

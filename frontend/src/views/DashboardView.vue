@@ -17,12 +17,8 @@ const bidding = useBiddingStore()
 const planner = usePlannerStore()
 const rooms = useRoomsStore()
 
-// TODO(backend): replace with the current BOSS round from GET /api/bidding/round
-const round = {
-  term: 'AY24/25 · Sem 2 · Round 1A',
-  name: 'Round 1A',
-  closesAt: new Date(Date.now() + (2 * 60 + 15) * 60 * 1000),
-}
+// The current BOSS round (GET /api/bidding/round, via the bidding store)
+const round = computed(() => bidding.roundInfo)
 
 const today = new Date()
 const dateLabel = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -30,8 +26,8 @@ const todayIdx = (today.getDay() + 6) % 7 // Monday = 0, same as the bidding tim
 const hhmm = (d) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 const dayName = (offset) => new Date(Date.now() + offset * 86_400_000).toLocaleDateString('en-GB', { weekday: 'short' })
 const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-const closesOffset = Math.round((midnight(round.closesAt) - midnight(today)) / 86_400_000) // days until the round closes
-const closesLabel = `${round.closesAt.toLocaleDateString('en-GB', { weekday: 'short' })} ${hhmm(round.closesAt)}`
+const closesOffset = computed(() => Math.round((midnight(round.value.closesAt) - midnight(today)) / 86_400_000)) // days until the round closes
+const closesLabel = computed(() => `${round.value.closesAt.toLocaleDateString('en-GB', { weekday: 'short' })} ${hhmm(round.value.closesAt)}`)
 
 // Live countdown to the round closing
 const now = ref(Date.now())
@@ -39,7 +35,7 @@ let timer
 onMounted(() => (timer = setInterval(() => (now.value = Date.now()), 30_000)))
 onBeforeUnmount(() => clearInterval(timer))
 const countdown = computed(() => {
-  const mins = Math.max(0, Math.floor((round.closesAt - now.value) / 60_000))
+  const mins = Math.max(0, Math.floor((round.value.closesAt - now.value) / 60_000))
   if (mins >= 24 * 60) return `${Math.floor(mins / 1440)}d ${Math.floor((mins % 1440) / 60)}h`
   return `${Math.floor(mins / 60)}h ${mins % 60}m`
 })
@@ -49,7 +45,7 @@ const left = computed(() => user.balance - bidding.allocated)
 const over = computed(() => left.value < 0)
 const degree = computed(() => buildChecklist(planner.activePlan, modules).totals)
 const stats = computed(() => [
-  { label: `${round.name} closes in`, value: countdown.value, sub: closesLabel, accent: 'border-t-warning!' },
+  { label: `${round.value.name} closes in`, value: countdown.value, sub: closesLabel.value, accent: 'border-t-warning!' },
   { label: 'Balance', value: `e$ ${user.balance.toLocaleString()}`, sub: 'Available to bid', accent: 'border-t-primary!' },
   {
     label: 'Cart total',
@@ -72,11 +68,11 @@ const stats = computed(() => [
 // --- Schedule -----------------------------------------------------------------------------
 // TODO(backend): replace with GET /api/users/me/feed — assignment deadlines and quizzes.
 // offset = days from today. Classes below come from the booked sections in the bidding store.
-const deadlines = [
-  { id: 'bid', kind: 'Bid', title: 'Submit bid cart', meta: `${round.name} closes`, offset: closesOffset, time: hhmm(round.closesAt) },
+const deadlines = computed(() => [
+  { id: 'bid', kind: 'Bid', title: 'Submit bid cart', meta: `${round.value.name} closes`, offset: closesOffset.value, time: hhmm(round.value.closesAt) },
   { id: 'quiz', kind: 'Due', title: 'IS111 Quiz 3', meta: 'Mon, Week 8', offset: 5 },
   { id: 'asg', kind: 'Due', title: 'IS216 Assignment 2', meta: 'Wed, Week 9', offset: 12 },
-]
+])
 
 const classes = computed(() =>
   bidding.bookedSections.map((s) => ({
@@ -94,7 +90,7 @@ const ordered = (list) => [...list].sort((a, b) => (a.offset ?? 99) - (b.offset 
 
 const tab = ref('today')
 const schedule = computed(() => {
-  const all = ordered([...classes.value, ...deadlines])
+  const all = ordered([...classes.value, ...deadlines.value])
   const items = tab.value === 'today' ? all.filter((i) => i.offset === 0) : all.filter((i) => i.offset <= 6)
   return items.map((i) => ({
     ...i,
@@ -156,12 +152,12 @@ const alerts = computed(() => {
 
 // BOSS bidding windows: the open round first, then the ones still to come.
 // TODO(backend): replace with GET /api/bidding/rounds (every round with its open and close time)
-const biddingWindows = [
-  { id: 'r1a', name: round.name, open: true, when: `Open, closes ${closesLabel}` },
+const biddingWindows = computed(() => [
+  { id: 'r1a', name: round.value.name, open: true, when: `Open, closes ${closesLabel.value}` },
   { id: 'r1b', name: 'Round 1B', when: 'Opens in 3 days' },
   { id: 'r1c', name: 'Round 1C', when: 'Opens in 5 days' },
   { id: 'r2a', name: 'Round 2A', when: 'Opens in 9 days' },
-]
+])
 </script>
 
 <template>
