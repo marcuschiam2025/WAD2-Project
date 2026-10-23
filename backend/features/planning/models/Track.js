@@ -1,18 +1,17 @@
 import mongoose from 'mongoose'
 
-// IS track and its requirements. Requirements differ by intake, so (code, intake) is unique.
-const trackSchema = new mongoose.Schema({
-  code: { type: String, required: true, uppercase: true }, // e.g. BA
-  name: { type: String, required: true },
-  short: String,
-  intake: { type: Number, required: true },
-  blurb: String,
-  requiredCu: { type: Number, default: 4 },
-  compulsory: [String], // module codes
-  electives: [String],
-  recommended: [String], // starter basket shown on match results
-})
+// A track within a major's curriculum. Its rules live in the requirements collection (ownerId = this _id).
+const trackSchema = new mongoose.Schema(
+  {
+    _id: { type: String, required: true }, // e.g. BSC-IS_AY2025_BA
+    majorId: { type: String, ref: 'Major', required: true },
+    trackCode: { type: String, required: true }, // e.g. BA
+    name: { type: String, required: true },
+    description: String,
+    source: String,
+    lastChecked: Date,
+  },
+  { versionKey: false }, // seeded, read-only data
+)
 
-trackSchema.index({ code: 1, intake: 1 }, { unique: true })
-
-export default mongoose.model('Track', trackSchema)
+export default mongoose.model('Track', trackSchema, 'tracks')
