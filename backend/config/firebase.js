@@ -1,7 +1,6 @@
 //import functions from firebase's own library
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
 
 const app = getApps().length
   ? getApps()[0] //if getApps().length >0, evaluates to true, firebase connection is already set up, reuse that connection
@@ -16,12 +15,10 @@ const app = getApps().length
       }),
     });
 
-//Exports 2 objects:
+//Exports 1 object:
 //auth used by middleware function requireAuth() to verify login token
+//(user info such as role is stored in MongoDB, see features/auth/models/User.js)
 export const auth = getAuth(app);
-// db stores information for each user eg role
-//(since we doing on mongo can probably delete)
-export const db = getFirestore(app);
 
 //Exports 1 function:
 //verifyFirebase() checks that the firebase connection is working properly and prints the success message on the console
