@@ -2,6 +2,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { modules, liveModules, requirementBuckets } from '../data/catalogue'
 import { api } from '../services/api'
+import { buildChecklist } from '../utils/degreeChecklist'
 import { useCatalogueStore } from './catalogue'
 import { useRoomsStore } from './rooms'
 import { useUserStore } from './user'
@@ -127,20 +128,49 @@ export const usePlannerStore = defineStore('planner', () => {
     loading ??= (async () => {
       await catalogue.load()
       let list = await api.plans()
-      if (!list.length) list = [await api.createPlan(firstPlan())]
+      const isNew = !list.length
+      if (isNew) list = [await api.createPlan(firstPlan())]
+      if (isNew) user.profile.appliedToPlans = true // firstPlan already used the onboarding answers
       plans.value = list.map(fromApi)
       plans.value.forEach(remember)
       activePlanId.value = plans.value[0].id
       online.value = true
       syncError.value = ''
       placeDecided()
-      plans.value.forEach((p) => refreshCheck(p.id))
+      plans.value.forEach((p) => {
+        refreshCheck(p.id)
+        catalogue.loadMajor(p.majorId)
+      })
     })().catch((e) => {
       loading = null
       if (e.status) syncError.value = e.message // the backend answered with an error (0 = not running: stay on samples)
     })
     return loading
   }
+
+  // Onboarding answers -> the student's existing plans (a brand-new student's first plan is built from them
+  // in firstPlan instead). Completed semesters get the modules entered in onboarding, the current semester and
+  // tracks are updated, and future semesters keep their modules minus any now marked as already taken.
+  function applyOnboarding(plan) {
+    const p = user.profile
+    const taken = p.takenBySem ?? {}
+    const takenCodes = new Set(Object.values(taken).flat())
+    if (p.currentSem && plan.semesters.some((s) => s.id === p.currentSem)) plan.currentSem = p.currentSem
+    const now = semIndex(plan, plan.currentSem)
+    plan.semesters.forEach((s, i) => {
+      s.modules = i < now ? [...(taken[s.id] ?? [])] : s.modules.filter((m) => !takenCodes.has(effectiveCode(m)))
+    })
+    if (plan.majorId) plan.tracks = (p.tracks ?? []).map(trackCode).slice(0, 2)
+  }
+  watch(
+    () => online.value && user.onboarded && user.profile.appliedToPlans === false,
+    (pending) => {
+      if (!pending) return
+      plans.value.forEach(applyOnboarding) // the deep watch on plans saves them
+      user.profile.appliedToPlans = true
+    },
+    { immediate: true },
+  )
 
   // Throw away unsaved edits and load the plans as the backend has them
   function reload() {
@@ -208,11 +238,14 @@ export const usePlannerStore = defineStore('planner', () => {
     const now = semIndex(plan, plan.currentSem)
     const placedAt = (c) =>
       plan.semesters.findIndex((s) => s.modules.some((m) => effectiveCode(m) === c))
+    const exempt = user.profile.exempted ?? []
     const prereqMet = (c) => {
+      if (exempt.includes(c)) return true
       const at = placedAt(c)
       return at !== -1 && at < target
     }
     const coreqMet = (c) => {
+      if (exempt.includes(c)) return true
       const at = placedAt(c)
       return at === target || (at !== -1 && at < now)
     }
@@ -255,6 +288,14 @@ export const usePlannerStore = defineStore('planner', () => {
 
   function removeFromBasket(code) {
     basket.value = basket.value.filter((m) => m !== code)
+  }
+
+  // Empties the basket, except modules a collab room decided on. Returns the removed codes (for undo).
+  function clearBasket() {
+    const keep = new Set(rooms.decided.map((d) => d.module))
+    const removed = basket.value.filter((m) => !keep.has(m))
+    basket.value = basket.value.filter((m) => keep.has(m))
+    return removed
   }
 
   // Modules accepted in collab rooms are placed in the next semester of every plan (the one being bid for),
@@ -395,6 +436,19 @@ export const usePlannerStore = defineStore('planner', () => {
   // The backend's requirement check for the active plan (null offline, or when the plan has no major)
   const activeCheck = computed(() => checks.value[activePlan.value.id] ?? null)
 
+  // Outstanding Modules: the 36 courses of the course progression (data/degree.js), matched against the backend's
+  // module catalogue (its tags, e.g. CORE:NUMERACY, and the track course lists) when it is loaded, else the sample one
+  const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModules : modules))
+  const exempted = computed(() => user.profile.exempted ?? [])
+  const checklist = computed(() =>
+    buildChecklist(activePlan.value, checklistCatalogue.value, {
+      exempted: exempted.value,
+      freeExempt: user.profile.freeExemptions ?? 0,
+      markedDone: user.profile.markedDone ?? [],
+      trackReqs: catalogue.online ? catalogue.trackRequirements : null, // each track's compulsory course + list
+    }),
+  )
+
   const hasAnyWarning = computed(() => {
     const plan = activePlan.value
     return plan.semesters.some((s) => s.modules.some((m) => hasWarning(plan, m, s.id)))
@@ -407,6 +461,9 @@ export const usePlannerStore = defineStore('planner', () => {
     online,
     syncError,
     activeCheck,
+    checklist,
+    checklistCatalogue,
+    exempted,
     load,
     reload,
     basket,
@@ -422,6 +479,7 @@ export const usePlannerStore = defineStore('planner', () => {
     returnToBasket,
     addToBasket,
     removeFromBasket,
+    clearBasket,
     addSemester,
     toggleExchange,
     addPlan,

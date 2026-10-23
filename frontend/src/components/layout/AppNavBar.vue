@@ -6,6 +6,7 @@ import { popEnter, popLeave } from '@/motion'
 import BrandLogo from './BrandLogo.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
 import iconBell from '@/assets/v2/bell.svg'
+import iconProfile from '@/assets/v2/user.svg'
 import iconSettings from '@/assets/v2/settings.svg'
 import iconLogout from '@/assets/v2/logout.svg'
 
@@ -95,6 +96,13 @@ function logOut() {
               type="button"
               class="flex items-center gap-2.5 rounded-sm p-2.5 text-left text-[14px] hover:bg-muted"
               @click="go('/profile')"
+            >
+              <img :src="iconProfile" alt="" class="size-4" /> Profile
+            </button>
+            <button
+              type="button"
+              class="flex items-center gap-2.5 rounded-sm p-2.5 text-left text-[14px] hover:bg-muted"
+              @click="go('/settings')"
             >
               <img :src="iconSettings" alt="" class="size-4" /> Settings
             </button>

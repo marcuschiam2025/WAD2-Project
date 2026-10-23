@@ -1,9 +1,12 @@
 <script setup>
-// Onboarding form: course, tracks, current semester, modules already taken (dragged into their semester), e-credits.
+// Onboarding form: course, tracks, current semester, modules already taken (dragged into their semester),
+// modules exempted from (optional), e-credits.
+// The same form edits these later from the profile page (/profile/degree), prefilled with the saved answers.
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@core/stores/user'
-import { tracks, modules } from '@core/data/catalogue'
+import { usePlannerStore, effectiveCode } from '@core/stores/planner'
+import { tracks, moduleName } from '@core/data/catalogue'
 import { SEM_IDS } from '@core/data/degree'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import SelectMenu from '@/components/ui/SelectMenu.vue'
@@ -13,17 +16,25 @@ import iconRemove from '@/assets/figma/icon-remove.svg'
 import iconGrip from '@/assets/figma/icon-grip.svg'
 
 const router = useRouter()
+const route = useRoute()
 const user = useUserStore()
+const planner = usePlannerStore()
+
+// Editing from the profile page: start from what the student saved before
+const editing = route.name === 'profile-degree'
+const saved = editing ? user.profile : {}
+// Track codes saved before the catalogue used the backend's codes
+const savedTracks = (saved.tracks ?? []).map((c) => (c === 'SMT' ? 'SMCT' : c))
 
 const MAX_TRACKS = 2
 // TODO(backend): programmes come from GET /api/programmes. Only Information Systems is open for now.
 const programmes = [{ value: 'Information Systems', label: 'BSc Information Systems' }]
 
 const major = ref(programmes[0].value)
-const selectedTracks = ref([])
-const undecided = ref(false) // wants to take the track quiz instead of picking now
-const currentSem = ref(null)
-const eCredits = ref('')
+const selectedTracks = ref(savedTracks)
+const undecided = ref(editing && !savedTracks.length) // wants to take the track quiz instead of picking now
+const currentSem = ref(saved.currentSem ?? null)
+const eCredits = ref(editing ? String(user.balance) : '')
 
 function toggleTrack(code) {
   undecided.value = false
@@ -39,13 +50,28 @@ function toggleUndecided() {
 // Modules already taken: search adds them to the basket, then drag each into the semester it was taken in.
 // Only semesters before the current one are open, because those are the ones that are done.
 const basket = ref([])
-const placed = ref(Object.fromEntries(SEM_IDS.map((id) => [id, []])))
+const placed = ref(Object.fromEntries(SEM_IDS.map((id) => [id, [...(saved.takenBySem?.[id] ?? [])]])))
 const dragging = ref(null)
 const dragOver = ref(null)
 
 const doneSems = computed(() => (currentSem.value ? SEM_IDS.slice(0, SEM_IDS.indexOf(currentSem.value)) : []))
 const placedCodes = computed(() => Object.values(placed.value).flat())
 const allCodes = computed(() => [...basket.value, ...placedCodes.value])
+
+// Modules the student is exempted from. They count as cleared in Outstanding Modules, with no semester.
+const exempted = ref([...(saved.exempted ?? [])])
+const takenOrExempt = computed(() => [...allCodes.value, ...exempted.value])
+function addExemption(m) {
+  if (!takenOrExempt.value.includes(m.code)) exempted.value = [...exempted.value, m.code]
+}
+function removeExemption(code) {
+  exempted.value = exempted.value.filter((c) => c !== code)
+}
+
+// Free electives exempted without a specific module (e.g. diploma credit). The degree has 6 free electives.
+const MAX_FREE_EXEMPT = 6
+const freeExempt = ref(saved.freeExemptions ?? 0)
+const hasExemptions = computed(() => exempted.value.length > 0 || freeExempt.value > 0)
 const emptySems = computed(() => doneSems.value.filter((id) => !placed.value[id].length))
 
 function unplace(code) {
@@ -72,12 +98,23 @@ function drop(semId) {
   else basket.value = [...basket.value, code]
 }
 
-// A semester that is no longer "done" gives its modules back to the basket
+// A semester that is no longer "done" gives its modules back to the basket.
+// Editing: those modules just leave the "taken" list (the plan keeps them as planned), and a semester that has
+// just become done starts with the modules the active plan has in it.
 watch(currentSem, () => {
   SEM_IDS.filter((id) => !doneSems.value.includes(id)).forEach((id) => {
-    basket.value = [...basket.value, ...placed.value[id]]
+    if (!editing) basket.value = [...basket.value, ...placed.value[id]]
     placed.value[id] = []
   })
+  if (editing) {
+    const taken = new Set([...basket.value, ...Object.values(placed.value).flat()])
+    doneSems.value
+      .filter((id) => !placed.value[id].length)
+      .forEach((id) => {
+        const fromPlan = planner.activePlan.semesters.find((s) => s.id === id)?.modules.map(effectiveCode) ?? []
+        placed.value[id] = fromPlan.filter((c) => !taken.has(c))
+      })
+  }
   if (!doneSems.value.length) basket.value = []
 })
 
@@ -106,9 +143,12 @@ function submit() {
     tracks: selectedTracks.value,
     currentSem: currentSem.value,
     takenBySem: Object.fromEntries(doneSems.value.filter((id) => placed.value[id].length).map((id) => [id, placed.value[id]])),
+    exempted: exempted.value,
+    freeExemptions: freeExempt.value,
     balance: eValue.value,
   })
-  router.push(undecided.value ? '/quiz/attempt' : '/dashboard')
+  if (editing) router.push('/profile')
+  else router.push(undecided.value ? '/quiz/attempt' : '/dashboard')
 }
 
 // Section number badge: turns into a green tick once that section is complete
@@ -121,18 +161,27 @@ const badge = (n) => [
 <template>
   <div class="flex min-h-screen flex-col">
     <header class="flex items-center gap-4 bg-card px-8 py-5">
-      <button type="button" aria-label="Back" class="rounded-md border border-border bg-card p-2 hover:bg-muted" @click="router.push('/')">
+      <button
+        type="button"
+        aria-label="Back"
+        class="rounded-md border border-border bg-card p-2 hover:bg-muted"
+        @click="router.push(editing ? '/profile' : '/')"
+      >
         <img :src="iconBack" alt="" class="size-4" />
       </button>
-      <p class="text-overline text-muted-foreground">Set up your profile</p>
+      <p class="text-overline text-muted-foreground">{{ editing ? 'Profile · Degree details' : 'Set up your profile' }}</p>
     </header>
 
     <main class="flex flex-1 justify-center px-8 pt-12 pb-16">
       <form class="flex w-[720px] max-w-full flex-col gap-6" @submit.prevent="submit">
         <div class="flex flex-col gap-1.5">
-          <h1 class="text-[30px] leading-normal font-bold tracking-[-0.3px]">Tell us about your degree</h1>
+          <h1 class="text-[30px] leading-normal font-bold tracking-[-0.3px]">{{ editing ? 'Edit your degree details' : 'Tell us about your degree' }}</h1>
           <p class="text-[15px] text-muted-foreground">
-            We use this to build your roadmap, check prerequisites and work out how much you can bid.
+            {{
+              editing
+                ? 'Saving updates every What-If plan: your finished semesters, current semester and tracks. Modules planned for later semesters stay.'
+                : 'We use this to build your roadmap, check prerequisites and work out how much you can bid.'
+            }}
           </p>
         </div>
 
@@ -224,7 +273,7 @@ const badge = (n) => [
               You're in your first semester, so you haven't taken any modules yet. Nothing to add here.
             </p>
             <template v-else>
-              <ModuleSearchBox :exclude="allCodes" @pick="addModule" />
+              <ModuleSearchBox live :exclude="takenOrExempt" @pick="addModule" />
 
               <!-- Basket: search results land here, then drag each one into its semester -->
               <div
@@ -245,7 +294,7 @@ const badge = (n) => [
                   >
                     <img :src="iconGrip" alt="" class="size-3" />
                     <span class="font-mono font-bold">{{ code }}</span>
-                    <span class="max-w-[160px] truncate text-muted-foreground">{{ modules[code].name }}</span>
+                    <span class="max-w-[160px] truncate text-muted-foreground">{{ moduleName(code) }}</span>
                     <button type="button" :aria-label="`Remove ${code}`" @click="unplace(code)">
                       <img :src="iconRemove" alt="" class="size-3" />
                     </button>
@@ -279,7 +328,7 @@ const badge = (n) => [
                     @dragend="dragging = dragOver = null"
                   >
                     <span class="font-mono text-[12px] font-bold">{{ code }}</span>
-                    <span class="line-clamp-2 text-[11px] text-muted-foreground">{{ modules[code].name }}</span>
+                    <span class="line-clamp-2 text-[11px] text-muted-foreground">{{ moduleName(code) }}</span>
                     <button
                       type="button"
                       :aria-label="`Move ${code} back to the basket`"
@@ -300,10 +349,63 @@ const badge = (n) => [
             </template>
           </section>
 
-          <!-- 5. e-credits -->
+          <!-- 5. Exemptions (optional) -->
           <section class="flex flex-col gap-3 p-6">
             <div class="flex items-center gap-3">
-              <span :class="badge(5)">{{ sectionDone[4] ? '✓' : 5 }}</span>
+              <span
+                class="flex size-6 shrink-0 items-center justify-center rounded-full font-mono text-[12px] font-bold"
+                :class="hasExemptions ? 'bg-success-tint text-success' : 'bg-secondary text-muted-foreground'"
+              >{{ hasExemptions ? '✓' : 5 }}</span>
+              <h2 class="text-h4">Are you exempted from any modules?</h2>
+              <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Optional</span>
+            </div>
+            <ModuleSearchBox live :exclude="takenOrExempt" placeholder="Search for a module you're exempted from" @pick="addExemption" />
+            <div v-if="exempted.length" class="flex flex-wrap gap-2">
+              <span
+                v-for="code in exempted"
+                :key="code"
+                class="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px]"
+              >
+                <span class="font-mono font-bold">{{ code }}</span>
+                <span class="max-w-[200px] truncate text-muted-foreground">{{ moduleName(code) }}</span>
+                <button type="button" :aria-label="`Remove exemption for ${code}`" @click="removeExemption(code)">
+                  <img :src="iconRemove" alt="" class="size-3" />
+                </button>
+              </span>
+            </div>
+            <!-- Free electives exempted without a specific module -->
+            <div class="flex items-center justify-between gap-4 rounded-lg border border-border px-3.5 py-3">
+              <span class="flex flex-col gap-0.5 leading-normal">
+                <span class="text-[14px] font-semibold">Free elective exemptions</span>
+                <span class="text-[12px] text-muted-foreground">Free electives you're exempted from without a specific module, e.g. diploma credit.</span>
+              </span>
+              <div class="flex shrink-0 items-center gap-2" role="group" aria-label="Free elective exemptions">
+                <button
+                  type="button"
+                  aria-label="One fewer free elective exemption"
+                  :disabled="freeExempt === 0"
+                  class="flex size-8 items-center justify-center rounded-md border border-border text-[16px] hover:bg-muted disabled:opacity-40"
+                  @click="freeExempt--"
+                >−</button>
+                <span class="w-6 text-center font-mono text-[15px] font-bold" aria-live="polite">{{ freeExempt }}</span>
+                <button
+                  type="button"
+                  aria-label="One more free elective exemption"
+                  :disabled="freeExempt >= MAX_FREE_EXEMPT"
+                  class="flex size-8 items-center justify-center rounded-md border border-border text-[16px] hover:bg-muted disabled:opacity-40"
+                  @click="freeExempt++"
+                >+</button>
+              </div>
+            </div>
+            <p class="text-[12px] text-muted-foreground">
+              E.g. from A-levels, a diploma or a placement test. Exempted modules and free electives count as cleared, so they won't show up as outstanding.
+            </p>
+          </section>
+
+          <!-- 6. e-credits -->
+          <section class="flex flex-col gap-3 p-6">
+            <div class="flex items-center gap-3">
+              <span :class="badge(5)">{{ sectionDone[4] ? '✓' : 6 }}</span>
               <h2 class="text-h4">How many e-credits do you have?</h2>
             </div>
             <label class="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-[9px] focus-within:border-ring">
@@ -329,7 +431,7 @@ const badge = (n) => [
             :disabled="!!missing"
             class="inline-flex items-center rounded-md bg-primary px-5 py-[11px] text-[15px] leading-normal font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
-            {{ undecided ? 'Finish and take the quiz' : 'Finish setup' }}
+            {{ editing ? 'Save changes' : undecided ? 'Finish and take the quiz' : 'Finish setup' }}
           </button>
         </div>
       </form>

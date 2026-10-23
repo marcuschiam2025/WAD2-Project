@@ -1,7 +1,7 @@
 <script setup>
 // Overlay / Module Detail
 import { computed } from 'vue'
-import { modules } from '@core/data/catalogue'
+import { modules, moduleName } from '@core/data/catalogue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import iconClose from '@/assets/figma/icon-close.svg'
@@ -27,7 +27,7 @@ const facts = computed(() => [
     <div class="flex items-start gap-3">
       <div class="flex flex-1 flex-col gap-1">
         <p class="text-overline text-primary">{{ code }} · {{ mod.cu ?? 1 }} CU · {{ trackLabel }}</p>
-        <h2 class="text-h3">{{ mod.name }}</h2>
+        <h2 class="text-h3">{{ moduleName(code) }}</h2>
       </div>
       <button type="button" aria-label="Close" class="rounded-sm p-0.5 hover:bg-muted" @click="emit('close')">
         <img :src="iconClose" alt="" class="size-[18px]" />

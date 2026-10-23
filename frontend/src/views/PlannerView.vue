@@ -112,6 +112,20 @@ function dropOnSemester(sem) {
   if (planner.hasWarning(plan.value, code, sem.id)) warning.value = { code, semId: sem.id }
 }
 
+// Clearing the basket can be undone for a few seconds, in case it was a mis-click
+const clearedCodes = ref(null)
+let undoTimer
+const clearable = computed(() => planner.basket.some((code) => !roomDecision(code)))
+function clearBasket() {
+  clearedCodes.value = planner.clearBasket()
+  clearTimeout(undoTimer)
+  undoTimer = setTimeout(() => (clearedCodes.value = null), 6000)
+}
+function undoClear() {
+  clearedCodes.value?.forEach((code) => planner.addToBasket(code))
+  clearedCodes.value = null
+}
+
 function dropOnBasket() {
   if (dragging.value) planner.returnToBasket(dragging.value)
   onDragEnd()
@@ -153,7 +167,7 @@ function resolveWarning(action, target) {
 const q = computed(() => query.value.trim().toLowerCase())
 const matches = (m) => !q.value || m.code.toLowerCase().includes(q.value) || m.name.toLowerCase().includes(q.value)
 const basket = computed(() =>
-  planner.basket.map((code) => modules[code] ?? { code, name: moduleName(code) }).filter(matches),
+  planner.basket.map((code) => ({ ...modules[code], code, name: moduleName(code) })).filter(matches),
 )
 
 // Search: GET /api/modules?q=… when the backend is up (debounced), the sample catalogue otherwise
@@ -247,7 +261,15 @@ const onTrack = computed(() => !planner.hasAnyWarning && (planner.activeCheck?.o
           <div class="flex flex-col gap-1">
             <div class="flex items-center justify-between">
               <h2 class="text-h4">Module basket</h2>
-              <span class="text-[13px] text-muted-foreground">{{ planner.basket.length }}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-[13px] text-muted-foreground">{{ planner.basket.length }}</span>
+                <button
+                  v-if="clearable"
+                  type="button"
+                  class="rounded-sm px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground hover:bg-muted hover:text-destructive"
+                  @click="clearBasket"
+                >Clear</button>
+              </div>
             </div>
             <p class="text-[12px] text-muted-foreground">Saved from Match Results and search.</p>
           </div>
@@ -262,18 +284,30 @@ const onTrack = computed(() => !planner.hasAnyWarning && (planner.activeCheck?.o
               v-for="m in basket"
               :key="m.code"
               draggable="true"
-              class="flex cursor-grab items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-[opacity,border-color] active:cursor-grabbing"
+              class="group flex cursor-grab items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-[opacity,border-color] active:cursor-grabbing"
               :class="dragging === m.code ? 'border-primary opacity-50' : 'border-border hover:border-primary/50'"
               @dragstart="onDragStart($event, m.code)"
               @dragend="onDragEnd"
             >
               <img :src="iconGrip" alt="" class="size-3.5" />
-              <div class="flex min-w-0 flex-col leading-normal">
+              <div class="flex min-w-0 flex-1 flex-col leading-normal">
                 <span class="font-mono text-[13px] font-bold">{{ m.code }}</span>
                 <span class="truncate text-[12px] text-muted-foreground">{{ m.name }}</span>
               </div>
+              <button
+                v-if="!roomDecision(m.code)"
+                type="button"
+                draggable="false"
+                :aria-label="`Remove ${m.code} from the basket`"
+                class="shrink-0 rounded-sm px-1 text-[12px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
+                @click.stop="planner.removeFromBasket(m.code)"
+              >✕</button>
             </li>
           </ul>
+          <p v-if="clearedCodes?.length" class="flex items-center justify-between rounded-md bg-muted px-2.5 py-2 text-[12px]">
+            Cleared {{ clearedCodes.length }} module{{ clearedCodes.length === 1 ? '' : 's' }}
+            <button type="button" class="font-semibold text-primary hover:underline" @click="undoClear">Undo</button>
+          </p>
 
           <div v-if="searchResults.length" class="flex flex-col gap-1.5">
             <p class="text-overline text-muted-foreground">Add from catalogue</p>

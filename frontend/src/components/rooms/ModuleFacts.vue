@@ -19,7 +19,9 @@ const facts = computed(() => moduleFacts(modules[props.code], planner.activePlan
 const taken = computed(() => {
   const t = facts.value.taken
   if (!t) return ['neutral', 'Not taken, and not in your plan']
-  return t.status === 'cleared' ? ['success', `Taken · ${t.semId}`] : ['info', `Not yet · planned for ${t.semId}`]
+  if (t.status === 'cleared') return ['success', `Taken · ${t.semId}`]
+  if (t.status === 'inProgress') return ['warning', `Taking it now · ${t.semId}`]
+  return ['info', `Not yet · planned for ${t.semId}`]
 })
 </script>
 

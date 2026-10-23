@@ -108,8 +108,9 @@ export const modules = {
   IS483: { code: 'IS483', name: 'IS Project Experience (Analytics)', category: 'track', tracks: ['BA'], prereqs: [], coreqs: [] },
 }
 
+// The backend's title wins: some sample entries reuse real codes as placeholders (e.g. COR3001 is really Big Questions)
 export function moduleName(code) {
-  return modules[code]?.name ?? liveModules[code]?.title ?? code
+  return liveModules[code]?.title ?? modules[code]?.name ?? code
 }
 
 export function trackName(code) {

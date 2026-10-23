@@ -85,6 +85,19 @@ const routes = [
     component: () => import('@/views/ProfileView.vue'),
     meta: { layout: 'app', auth: true },
   },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('@/views/SettingsView.vue'),
+    meta: { layout: 'app', auth: true },
+  },
+  {
+    // The onboarding form, prefilled, to edit semester / tracks / modules taken / exemptions later
+    path: '/profile/degree',
+    name: 'profile-degree',
+    component: () => import('@/views/OnboardingView.vue'),
+    meta: { layout: 'bare', auth: true },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 

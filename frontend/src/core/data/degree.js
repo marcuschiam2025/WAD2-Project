@@ -7,6 +7,8 @@
 //             codes  -> by module code     basket -> by basket (managing | tss | cmw)
 //             track  -> your first track   anyIs  -> any IS track / depth / related course
 //             free   -> any SMU course
+//   tag     (optional) with the backend catalogue, any module carrying this tag also fills a 'codes' slot,
+//           e.g. CORE:ETHICS
 //   window  [first, last] semester the progression recommends (Y1S1 = Year 1, semester 1)
 //   how     PASG = pre-assigned by the school, Bid = you bid for it in BOSS
 //   note    pre/co-requisites from the spreadsheet
@@ -41,16 +43,16 @@ export const degreeGroups = [
       // IS111 is the stand-in used by the sample catalogue
       { id: 'modes', label: 'Modes of Thinking', code: 'COR-IS1704', title: 'Computational Thinking and Programming', rule: 'codes', codes: ['COR-IS1704', 'IS111'], window: ['Y1S1', 'Y1S1'], how: 'PASG' },
       // STAT151 is the stand-in used by the sample catalogue
-      { id: 'numeracy', label: 'Numeracy', title: 'Introductory Statistics', rule: 'codes', codes: ['STAT151'], window: ['Y1S1', 'Y2S2'] },
-      { id: 'writing', label: 'Writing and Reasoning', rule: 'codes', codes: [], window: ['Y1S1', 'Y1S2'], how: 'PASG' },
-      { id: 'internship', label: 'Internship', title: 'After Year 2, summer or term time', rule: 'codes', codes: [], window: ['Y3S1', 'Y4S1'] },
+      { id: 'numeracy', label: 'Numeracy', title: 'Introductory Statistics', rule: 'codes', codes: ['COR-STAT1202', 'COR-STAT1203', 'STAT151'], window: ['Y1S1', 'Y2S2'] },
+      { id: 'writing', label: 'Writing and Reasoning', rule: 'codes', codes: [], tag: 'CORE:WRITING_REASONING', window: ['Y1S1', 'Y1S2'], how: 'PASG' },
+      { id: 'internship', label: 'Internship', title: 'After Year 2, summer or term time', rule: 'codes', codes: [], tag: 'CORE:INTERNSHIP', window: ['Y3S1', 'Y4S1'] },
     ],
   },
   {
     key: 'uni-com',
     label: 'University Core · Communities',
     slots: [
-      { id: 'economics', label: 'Economics and Society', rule: 'codes', codes: [], window: ['Y1S1', 'Y1S2'], how: 'PASG' },
+      { id: 'economics', label: 'Economics and Society', rule: 'codes', codes: [], tag: 'CORE:ECON_SOCIETY', window: ['Y1S1', 'Y1S2'], how: 'PASG' },
       { id: 'tss', label: 'Technology, Science & Society Elective', rule: 'basket', basket: 'tss', window: ['Y1S1', 'Y4S1'] },
       { id: 'cmw', label: 'Cultures of the Modern World Elective', rule: 'basket', basket: 'cmw', window: ['Y1S1', 'Y4S1'] },
       { id: 'community', label: 'Community Service', title: 'Anytime, summer or December', rule: 'codes', codes: [], window: ['Y1S1', 'Y4S2'] },
@@ -60,8 +62,8 @@ export const degreeGroups = [
     key: 'uni-civ',
     label: 'University Core · Civilisations',
     slots: [
-      { id: 'ethics', label: 'Ethics and Social Responsibility', rule: 'codes', codes: [], window: ['Y3S1', 'Y4S2'] },
-      { id: 'big-questions', label: 'Big Questions', rule: 'codes', codes: [], window: ['Y1S1', 'Y1S2'], how: 'PASG' },
+      { id: 'ethics', label: 'Ethics and Social Responsibility', rule: 'codes', codes: [], tag: 'CORE:ETHICS', window: ['Y3S1', 'Y4S2'] },
+      { id: 'big-questions', label: 'Big Questions', rule: 'codes', codes: [], tag: 'CORE:BIG_QUESTIONS', window: ['Y1S1', 'Y1S2'], how: 'PASG' },
     ],
   },
   {
@@ -112,5 +114,8 @@ export const gradRequirements = [
 
 // Recommended: exchange in Y3 semester 2 or Y4 semester 1
 export const globalExposure = { label: 'Global Exposure', window: ['Y2S1', 'Y4S1'], detail: 'Recommended exchange in Y3S2 or Y4S1' }
+
+// Checklist lines done outside of modules, which the student can mark as done themselves (checklist line id -> label)
+export const MARK_DONE = { internship: 'Internship', community: 'Community Service', exposure: 'Global Exposure' }
 
 export const GRAD_LABELS = { sustainability: 'Sustainability', 'sg-asia': 'Singapore & Asia Studies' }

@@ -29,6 +29,7 @@ const years = [SEM_IDS.slice(0, 2), SEM_IDS.slice(2, 4), SEM_IDS.slice(4, 6), SE
 const summary = computed(() => {
   const { rec, chip: c } = props.item
   const when = { now: 'Recommended this semester', later: 'Coming up', late: 'Past the recommended term' }[rec.tone]
+  if (c.tone === 'inProgress') return `In progress this semester (${rec.placed})`
   return c.tone === 'planned' ? `In your plan (${rec.placed}) · ${when.toLowerCase()}` : when
 })
 </script>

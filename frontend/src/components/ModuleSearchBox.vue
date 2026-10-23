@@ -1,24 +1,33 @@
 <script setup>
 // Search box for modules: results float under it while you type, nothing is listed until then.
 // Emits `pick` with the chosen catalogue module. Modules in `exclude` (codes) are left out of the results.
-import { computed, ref } from 'vue'
-import { modules } from '@core/data/catalogue'
+// `live` searches the backend's full module catalogue once it has loaded (the sample catalogue until then).
+import { computed, onMounted, ref } from 'vue'
+import { modules, liveModules } from '@core/data/catalogue'
+import { useCatalogueStore } from '@core/stores/catalogue'
 import iconSearch from '@/assets/figma/icon-search.svg'
 
 const props = defineProps({
   exclude: { type: Array, default: () => [] },
   disabled: Boolean,
   placeholder: { type: String, default: 'Search by module code or name' },
+  live: Boolean,
 })
 const emit = defineEmits(['pick'])
 
-// TODO(backend): results come from GET /api/modules?q=… instead of filtering the sample catalogue
-const all = Object.values(modules).sort((a, b) => a.code.localeCompare(b.code))
+const catalogue = useCatalogueStore()
+onMounted(() => props.live && catalogue.load())
+const all = computed(() =>
+  (props.live && catalogue.online
+    ? Object.values(liveModules).map((m) => ({ code: m._id, name: m.title }))
+    : Object.values(modules)
+  ).sort((a, b) => a.code.localeCompare(b.code)),
+)
 const query = ref('')
 const matches = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return []
-  return all.filter((m) => !props.exclude.includes(m.code) && `${m.code} ${m.name}`.toLowerCase().includes(q)).slice(0, 8)
+  return all.value.filter((m) => !props.exclude.includes(m.code) && `${m.code} ${m.name}`.toLowerCase().includes(q)).slice(0, 8)
 })
 
 function pick(m) {

@@ -4,9 +4,8 @@ import { useUserStore } from '@core/stores/user'
 import { useBiddingStore } from '@core/stores/bidding'
 import { usePlannerStore, effectiveCode } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
-import { modules, moduleName } from '@core/data/catalogue'
+import { moduleName } from '@core/data/catalogue'
 import { slots, bidHistory, rateBid } from '@core/data/bidding'
-import { buildChecklist } from '@core/utils/degreeChecklist'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
@@ -43,7 +42,7 @@ const countdown = computed(() => {
 // --- Stat cards ---------------------------------------------------------------------------
 const left = computed(() => user.balance - bidding.allocated)
 const over = computed(() => left.value < 0)
-const degree = computed(() => buildChecklist(planner.activePlan, modules).totals)
+const degree = computed(() => planner.checklist.totals)
 const stats = computed(() => [
   { label: `${round.value.name} closes in`, value: countdown.value, sub: closesLabel.value, accent: 'border-t-warning!' },
   { label: 'Balance', value: `e$ ${user.balance.toLocaleString()}`, sub: 'Available to bid', accent: 'border-t-primary!' },
@@ -58,7 +57,7 @@ const stats = computed(() => [
     label: 'Degree',
     value: String(degree.value.cleared),
     unit: `/ ${degree.value.required} courses cleared`,
-    sub: `${degree.value.planned} planned${degree.value.late ? ` · ${degree.value.late} behind` : ''}`,
+    sub: `${degree.value.inProgress} in progress · ${degree.value.planned} planned${degree.value.late ? ` · ${degree.value.late} behind` : ''}`,
     subDanger: degree.value.late > 0,
     accent: 'border-t-primary!',
     to: '/planner',
@@ -143,8 +142,8 @@ const alerts = computed(() => {
       list.push(`${effectiveCode(entry)} · ${why}`)
     }),
   )
-  buildChecklist(plan, modules)
-    .groups.flatMap((g) => g.slots)
+  planner.checklist.groups
+    .flatMap((g) => g.slots)
     .filter((s) => s.urgency === 'late')
     .forEach((s) => list.push(`${s.label} · behind (recommended ${s.rec.label})`))
   return [...new Set(list)]

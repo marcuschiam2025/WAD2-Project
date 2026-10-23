@@ -1,38 +1,85 @@
 <script setup>
-// What-If Planner / Degree checklist: only the courses still to clear, out of the 36 in the degree.
+// What-If Planner / Degree checklist: only the courses still to clear (cleared = in a semester before the current one).
 // Click a course on the left -> a second column lists the modules you could take for it -> click one for its details.
+// The 36 lines follow the course progression; with the backend, the modules come from its catalogue
+// (e.g. Numeracy = any CORE:NUMERACY course, Managing Elective 2 = any CORE:MANAGING course).
 import { computed, ref, watch } from 'vue'
 import { usePlannerStore } from '@core/stores/planner'
-import { modules, moduleName } from '@core/data/catalogue'
-import { BASKETS, GRAD_LABELS } from '@core/data/degree'
-import { buildChecklist, candidatesFor } from '@core/utils/degreeChecklist'
+import { useUserStore } from '@core/stores/user'
+import { useCatalogueStore } from '@core/stores/catalogue'
+import { moduleName } from '@core/data/catalogue'
+import { bidHistory } from '@core/data/bidding'
+import { BASKETS, GRAD_LABELS, MARK_DONE } from '@core/data/degree'
+import { candidatesFor } from '@core/utils/degreeChecklist'
 import { slideEnter, slideLeave } from '@/motion'
 import { semesterTone, semesterToneLabel } from '@/semesterTones'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import DegreeChecklistRow from '@/components/DegreeChecklistRow.vue'
 
-// TODO(backend): cleared modules should come from the student's completed-module history, not just the plan
 const planner = usePlannerStore()
+const user = useUserStore()
+const catalogue = useCatalogueStore()
 const plan = computed(() => planner.activePlan)
-const checklist = computed(() => buildChecklist(plan.value, modules))
+const checklist = computed(() => planner.checklist)
 const totals = computed(() => checklist.value.totals)
 const pct = (n) => `${(n / totals.value.required) * 100}%`
 
-// Finished courses are hidden: only planned and not-yet-planned ones are listed.
+// Hide the lines being taken this semester too, if the student turns it on (remembered in this browser)
+const HIDE_KEY = 'bidmaxxer:hideInProgress'
+const hideInProgress = ref(readHide())
+function readHide() {
+  try {
+    return localStorage.getItem(HIDE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+watch(hideInProgress, (on) => {
+  try {
+    localStorage.setItem(HIDE_KEY, String(on))
+  } catch {
+    // storage blocked: the toggle still works for this visit
+  }
+})
+
+// Finished courses are hidden: only in-progress, planned and not-yet-planned ones are listed
+const shown = (s) => s.status !== 'cleared' && !(hideInProgress.value && s.status === 'inProgress')
 const sections = computed(() =>
   [
-    ...checklist.value.groups.map((g) => ({ key: g.key, label: g.label, items: g.slots.filter((s) => s.status !== 'cleared') })),
-    { key: 'other', label: 'Graduation requirements & exposure', items: checklist.value.other.filter((o) => o.status !== 'cleared') },
+    ...checklist.value.groups.map((g) => ({ key: g.key, label: g.label, items: g.slots.filter(shown) })),
+    { key: 'other', label: 'Graduation requirements & exposure', items: checklist.value.other.filter(shown) },
   ].filter((s) => s.items.length),
 )
-const left = computed(() => totals.value.planned + totals.value.todo)
+const left = computed(() => totals.value.inProgress + totals.value.planned + totals.value.todo)
 
 const selectedId = ref(null)
 const moduleKey = ref(null)
 const item = computed(() => sections.value.flatMap((s) => s.items).find((i) => i.id === selectedId.value) ?? null)
-const candidates = computed(() => (item.value ? candidatesFor(item.value, plan.value, modules) : []))
+// The modules that can fill a checklist line, from the backend catalogue (or the sample one offline)
+const candidatesOf = (i) => candidatesFor(i, plan.value, planner.checklistCatalogue, planner.exempted)
+
+const candidates = computed(() => (item.value ? candidatesOf(item.value) : []))
+// Long lists (baskets, electives) get a filter box
+const optionQuery = ref('')
+const shownCandidates = computed(() => {
+  const q = optionQuery.value.trim().toLowerCase()
+  if (!q) return candidates.value
+  return candidates.value.filter((m) => m.code.toLowerCase().includes(q) || m.name.toLowerCase().includes(q))
+})
 const selectedModule = computed(() => candidates.value.find((m) => m.key === moduleKey.value) ?? null)
+
+// The list leaves descriptions out, so fetch the picked module from GET /api/modules/:code
+watch(selectedModule, (m) => {
+  if (m?.live) catalogue.loadDetail(m.code)
+})
+const description = computed(() => {
+  const m = selectedModule.value
+  if (!m?.live) return m?.description ?? 'Course description will be loaded from the module catalogue.'
+  const d = catalogue.details[m.code]
+  if (!d) return 'Loading the course description…'
+  return d.description || 'No description in the catalogue yet.'
+})
 
 function selectItem(i) {
   if (selectedId.value === i.id) {
@@ -41,7 +88,8 @@ function selectItem(i) {
     return
   }
   selectedId.value = i.id
-  const list = candidatesFor(i, plan.value, modules)
+  optionQuery.value = ''
+  const list = candidatesOf(i)
   moduleKey.value = list.length === 1 ? list[0].key : null
 }
 
@@ -53,21 +101,63 @@ watch(
   },
 )
 
-const tags = (m) => [
-  ...(m.basket ? [`${BASKETS[m.basket]} basket`] : []),
-  ...(m.tracks ?? []),
-  ...(m.grad ?? []).map((g) => GRAD_LABELS[g]),
-]
+// Catalogue tags in the database -> readable labels
+const FULFILS_LABEL = {
+  'CORE:MANAGING': 'Managing basket',
+  'CORE:TECH_SCIENCE_SOCIETY': 'Technology, Science & Society basket',
+  'CORE:CULTURES_MODERN_WORLD': 'Cultures of the Modern World basket',
+  'CORE:INTERNSHIP': 'Internship',
+  'CORE:GLOBAL_EXPOSURE': 'Global Exposure',
+  'GRAD:SUSTAINABILITY': 'Sustainability',
+  'GRAD:SG_ASIA_STUDIES': 'Singapore & Asia Studies',
+  'GRAD:DIGITAL_TECH': 'Digital Technology',
+}
+const CATEGORY_LABEL = { IS: 'IS course', IS_TRACK: 'IS track course', IS_RELATED: 'IS related course' }
+
+// Internship, Community Service and Global Exposure can be marked as done; the line then counts as cleared
+// and leaves the list (undo it from the profile page)
+function markDone(i) {
+  user.markDone(i.id)
+  selectedId.value = null
+  moduleKey.value = null
+}
+
+const tags = (m) =>
+  m.live
+    ? [...m.categories.map((c) => CATEGORY_LABEL[c] ?? c), ...m.fulfils.map((f) => FULFILS_LABEL[f] ?? f)]
+    : [
+        ...(m.basket ? [`${BASKETS[m.basket]} basket`] : []),
+        ...(m.tracks ?? []),
+        ...(m.grad ?? []).map((g) => GRAD_LABELS[g]),
+      ]
 
 const placementPill = (p) =>
-  !p ? ['neutral', 'Not in your plan'] : p.status === 'cleared' ? ['success', `Cleared · ${p.semId}`] : ['info', `Planned · ${p.semId}`]
+  !p
+    ? ['neutral', 'Not in your plan']
+    : {
+        cleared: ['success', `Cleared · ${p.semId}`],
+        inProgress: ['warning', `In progress · ${p.semId}`],
+        planned: ['info', `Planned · ${p.semId}`],
+      }[p.status]
 
-const facts = (m) => [
+// [['IS111', 'CS101'], ['IS217']] -> "IS111 or CS101, and IS217"
+const requisiteText = (groups) => groups.map((g) => g.join(' or ')).join(', and ') || 'None'
+const offeredText = (terms) => (terms.length ? `Term ${terms.map((t) => t.replace(/^T/, '')).join(' & ')}` : 'Not listed')
+
+const facts = (m) =>
+  m.live
+    ? [
+        { label: 'Offered', value: offeredText(m.termsOffered) },
+        { label: 'Median bid', value: bidHistory[m.code]?.length ? `e$ ${bidHistory[m.code][0].median}` : '—', mono: !!bidHistory[m.code]?.length },
+        { label: 'Prerequisites', value: requisiteText(m.prerequisites) },
+        { label: 'Co-requisites', value: requisiteText(m.corequisites) },
+      ]
+    : [
   { label: 'Offered', value: m.offered ?? 'Term 1 & 2' },
   { label: 'Median bid', value: m.medianBid ? `e$ ${m.medianBid}` : '—', mono: !!m.medianBid },
   { label: 'Prerequisites', value: m.prereqs?.map((c) => `${c} ${moduleName(c)}`).join(', ') || 'None' },
   { label: 'Co-requisites', value: m.coreqs?.map((c) => `${c} ${moduleName(c)}`).join(', ') || 'None' },
-]
+      ]
 
 const inBasket = computed(() => !!selectedModule.value && planner.basket.includes(selectedModule.value.code))
 const addLabel = computed(() => {
@@ -88,13 +178,28 @@ const addLabel = computed(() => {
     <div class="flex flex-col gap-3">
       <div class="flex h-2 overflow-hidden rounded-full bg-border">
         <span class="bg-success transition-[width] duration-500" :style="{ width: pct(totals.cleared) }" />
+        <span class="bg-warning transition-[width] duration-500" :style="{ width: pct(totals.inProgress) }" />
         <span class="bg-primary transition-[width] duration-500" :style="{ width: pct(totals.planned) }" />
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <StatusPill tone="success">{{ totals.cleared }} cleared</StatusPill>
+        <StatusPill tone="warning">{{ totals.inProgress }} in progress</StatusPill>
         <StatusPill tone="info">{{ totals.planned }} planned</StatusPill>
         <StatusPill tone="neutral">{{ totals.todo }} not in your plan yet</StatusPill>
         <StatusPill v-if="totals.late" tone="destructive">{{ totals.late }} behind the recommended term</StatusPill>
+        <button
+          type="button"
+          :aria-pressed="hideInProgress"
+          class="ml-auto flex items-center gap-2 rounded-md border px-2.5 py-1 text-[12.5px] font-medium transition-colors"
+          :class="hideInProgress ? 'border-warning bg-warning-tint' : 'border-border hover:bg-muted'"
+          @click="hideInProgress = !hideInProgress"
+        >
+          <span
+            class="flex size-3.5 items-center justify-center rounded-[3px] border text-[10px] leading-none"
+            :class="hideInProgress ? 'border-warning bg-warning text-white' : 'border-border'"
+          >{{ hideInProgress ? '✓' : '' }}</span>
+          Hide in progress
+        </button>
       </div>
       <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-muted-foreground">
         <span class="font-medium text-foreground">Semester tags</span>
@@ -106,7 +211,8 @@ const addLabel = computed(() => {
     </div>
 
     <p v-if="!sections.length" class="rounded-md bg-success-tint px-4 py-3 text-[13px] font-medium">
-      All {{ totals.required }} courses are cleared.
+      <template v-if="left">Everything left is in progress this semester. Turn off "Hide in progress" to see it.</template>
+      <template v-else>All {{ totals.required }} courses are cleared.</template>
     </p>
 
     <div v-else class="flex h-[560px] overflow-hidden rounded-lg border border-border">
@@ -137,9 +243,19 @@ const addLabel = computed(() => {
             <p class="text-[12px] text-muted-foreground">
               Recommended {{ item.rec.label }}<template v-if="candidates.length"> · {{ candidates.length }} option{{ candidates.length === 1 ? '' : 's' }}</template>
             </p>
+            <BaseButton v-if="item.id in MARK_DONE" size="sm" variant="outline" class="mt-2 self-start" @click="markDone(item)">
+              Mark as done
+            </BaseButton>
           </div>
-          <ul v-if="candidates.length" class="flex-1 divide-y divide-border overflow-y-auto">
-            <li v-for="m in candidates" :key="m.key">
+          <div v-if="candidates.length > 12" class="border-b border-border px-4 py-2">
+            <input
+              v-model="optionQuery"
+              :placeholder="`Filter ${candidates.length} courses...`"
+              class="w-full rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[13px] outline-none focus:border-ring"
+            />
+          </div>
+          <ul v-if="shownCandidates.length" class="flex-1 divide-y divide-border overflow-y-auto">
+            <li v-for="m in shownCandidates" :key="m.key">
               <button
                 type="button"
                 class="flex w-full items-start gap-2 px-4 py-3 text-left transition-colors"
@@ -154,13 +270,14 @@ const addLabel = computed(() => {
                 <span
                   v-if="m.placement"
                   class="shrink-0 rounded-full px-1.5 text-[10.5px] font-semibold"
-                  :class="m.placement.status === 'cleared' ? 'bg-success-tint text-foreground' : 'bg-primary-tint text-primary'"
+                  :class="{ cleared: 'bg-success-tint text-foreground', inProgress: 'bg-warning-tint text-warning', planned: 'bg-primary-tint text-primary' }[m.placement.status]"
                 >{{ m.placement.semId }}</span>
               </button>
             </li>
           </ul>
+          <p v-else-if="candidates.length" class="px-4 py-4 text-[13px] text-muted-foreground">No course matches "{{ optionQuery }}".</p>
           <p v-else class="px-4 py-4 text-[13px] leading-normal text-muted-foreground">
-            {{ item.detail }}. Mark a semester as an exchange in Plan settings to count this.
+            {{ item.detail }}.<template v-if="item.rule === 'exposure'"> Mark a semester as an exchange in Plan settings to count this.</template>
           </p>
         </div>
       </Transition>
@@ -187,10 +304,7 @@ const addLabel = computed(() => {
             <template v-if="!selectedModule.stub">
               <div class="flex flex-col gap-2">
                 <p class="text-[13px] font-semibold">Description</p>
-                <!-- TODO(backend): description / offered / median bid come from GET /api/modules/:code -->
-                <p class="rounded-lg bg-muted px-3.5 py-3 text-[14px] leading-[22px]">
-                  {{ selectedModule.description ?? 'Course description will be loaded from the module catalogue.' }}
-                </p>
+                <p class="rounded-lg bg-muted px-3.5 py-3 text-[14px] leading-[22px] whitespace-pre-line">{{ description }}</p>
               </div>
               <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div v-for="f in facts(selectedModule)" :key="f.label" class="flex flex-col gap-0.5 leading-normal">

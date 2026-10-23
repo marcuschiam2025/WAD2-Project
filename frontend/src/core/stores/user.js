@@ -43,9 +43,11 @@ export const useUserStore = defineStore('user', () => {
 
   // currentSem: the semester the student is in now, e.g. 'Y2S1'.
   // takenBySem: modules already taken, by semester, e.g. { Y1S1: ['IS111'], Y1S2: ['IS112'] }.
+  // exempted: modules the student is exempted from (they count as cleared, with no semester).
+  // freeExemptions: how many free electives they are exempted from (e.g. diploma credit), not tied to a module.
   // balance: the student's current e$ (e-credit) balance.
   // TODO(Backend 2): PATCH /api/users/me with these fields
-  function completeOnboarding({ major, tracks, currentSem, takenBySem = {}, balance: eCredits }) {
+  function completeOnboarding({ major, tracks, currentSem, takenBySem = {}, exempted = [], freeExemptions = 0, balance: eCredits }) {
     profile.value = {
       ...profile.value,
       major,
@@ -54,9 +56,23 @@ export const useUserStore = defineStore('user', () => {
       year: Number(currentSem.match(/\d/)[0]),
       takenBySem,
       completed: Object.values(takenBySem).flat(),
+      exempted,
+      freeExemptions,
+      // the planner copies these answers into the student's existing plans, then sets this to true
+      appliedToPlans: false,
     }
     if (eCredits != null) balance.value = eCredits
     onboarded.value = true
+  }
+
+  // Internship / Community Service / Global Exposure, done outside of modules (ids from MARK_DONE in data/degree.js)
+  function markDone(id) {
+    const done = profile.value.markedDone ?? []
+    if (!done.includes(id)) profile.value.markedDone = [...done, id]
+  }
+
+  function unmarkDone(id) {
+    profile.value.markedDone = (profile.value.markedDone ?? []).filter((d) => d !== id)
   }
 
   function revokeAccess() {
@@ -90,6 +106,8 @@ export const useUserStore = defineStore('user', () => {
     signIn,
     signOut,
     completeOnboarding,
+    markDone,
+    unmarkDone,
     revokeAccess,
   }
 })

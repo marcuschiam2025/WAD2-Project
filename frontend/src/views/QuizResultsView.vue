@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useQuizStore } from '@core/stores/quiz'
 import { useUserStore } from '@core/stores/user'
 import { usePlannerStore } from '@core/stores/planner'
-import { modules, tracks, trackName } from '@core/data/catalogue'
+import { modules, tracks, trackName, moduleName } from '@core/data/catalogue'
 import { popEnter, popLeave } from '@/motion'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -106,7 +106,7 @@ function retake() {
                   class="flex items-center gap-3 rounded-md border border-border px-3.5 py-2.5 text-[13px]"
                 >
                   <span class="w-12 font-mono font-bold">{{ code }}</span>
-                  <span class="flex-1 text-muted-foreground">{{ modules[code].name }}</span>
+                  <span class="flex-1 text-muted-foreground">{{ moduleName(code) }}</span>
                   <span
                     v-if="inBasket(code)"
                     class="inline-flex items-center gap-1.5 rounded-md bg-success-tint px-2.5 py-1.5 text-[13px] font-medium text-success"
