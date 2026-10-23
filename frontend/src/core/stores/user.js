@@ -42,7 +42,8 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // currentSem: the semester the student is in now, e.g. 'Y2S1'.
-  // takenBySem: modules already taken, by semester, e.g. { Y1S1: ['IS111'], Y1S2: ['IS112'] }.
+  // takenBySem: modules taken, by semester, e.g. { Y1S1: ['IS111'], Y1S2: ['IS112'] }, including the ones being
+  // taken in currentSem. completed leaves those out: they aren't finished yet.
   // exempted: modules the student is exempted from (they count as cleared, with no semester).
   // freeExemptions: how many free electives they are exempted from (e.g. diploma credit), not tied to a module.
   // balance: the student's current e$ (e-credit) balance.
@@ -55,7 +56,9 @@ export const useUserStore = defineStore('user', () => {
       currentSem,
       year: Number(currentSem.match(/\d/)[0]),
       takenBySem,
-      completed: Object.values(takenBySem).flat(),
+      completed: Object.entries(takenBySem)
+        .filter(([id]) => id !== currentSem)
+        .flatMap(([, codes]) => codes),
       exempted,
       freeExemptions,
       // the planner copies these answers into the student's existing plans, then sets this to true

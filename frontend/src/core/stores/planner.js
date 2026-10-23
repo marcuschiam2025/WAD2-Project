@@ -149,8 +149,8 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   // Onboarding answers -> the student's existing plans (a brand-new student's first plan is built from them
-  // in firstPlan instead). Completed semesters get the modules entered in onboarding, the current semester and
-  // tracks are updated, and future semesters keep their modules minus any now marked as already taken.
+  // in firstPlan instead). Completed semesters and the current one get the modules entered in onboarding, the
+  // current semester and tracks are updated, and future semesters keep their modules minus any now marked as taken.
   function applyOnboarding(plan) {
     const p = user.profile
     const taken = p.takenBySem ?? {}
@@ -158,7 +158,7 @@ export const usePlannerStore = defineStore('planner', () => {
     if (p.currentSem && plan.semesters.some((s) => s.id === p.currentSem)) plan.currentSem = p.currentSem
     const now = semIndex(plan, plan.currentSem)
     plan.semesters.forEach((s, i) => {
-      s.modules = i < now ? [...(taken[s.id] ?? [])] : s.modules.filter((m) => !takenCodes.has(effectiveCode(m)))
+      s.modules = i <= now ? [...(taken[s.id] ?? [])] : s.modules.filter((m) => !takenCodes.has(effectiveCode(m)))
     })
     if (plan.majorId) plan.tracks = (p.tracks ?? []).map(trackCode).slice(0, 2)
   }
