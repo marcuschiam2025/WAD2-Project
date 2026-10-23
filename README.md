@@ -20,8 +20,9 @@ pnpm install           # run this first after cloning
 pnpm dev               # pnpm build for a production build
 ```
 
-For local work without Firebase, set `AUTH_DEV_BYPASS=true` in `backend/.env` and send an
-`x-dev-uid: some.name.2024` header. The bypass is ignored when `NODE_ENV=production`.
+To try login before the frontend handles it, set `FIREBASE_WEB_API_KEY` in `backend/.env` and open
+http://localhost:4000/test (a temporary page in `backend/test-page/`, not served when `NODE_ENV=production`).
+New users are created in MongoDB as `role: 'student'`; make someone an admin by setting `role: 'admin'` on their document.
 
 The Pinia stores currently run on the sample data in `frontend/src/core/data`, so the UI works without the API.
 Each store has `TODO(Backend n)` comments marking where to call `frontend/src/core/services/api.js` instead.
@@ -54,10 +55,11 @@ backend/
 ├── server.js              # entry point: connects to MongoDB, starts the server
 ├── app.js                 # Express app: CORS, JSON, /api routes, error handling
 ├── config/                # db.js (Mongo connection), firebase.js (Firebase Admin)
-├── middleware/            # errorHandler.js (shared by every feature)
+├── middleware/            # auth.js (requireAuth, requireAdmin), errorHandler.js (shared by every feature)
+├── test-page/             # TEMPORARY login test page served at /test
 ├── routes/index.js        # mounts every feature's routes under /api
 └── features/              # one folder per feature: *.routes.js → *.controller.js → models/
-    ├── auth/              # Firebase sign-in: auth.middleware.js (verify ID token → req.user), users, User model
+    ├── auth/              # users routes/controller, User model (findOrCreate on first login, role)
     ├── planning/          # modules, tracks, majors, What-If plans (max 3) + utils/requirementChecker
     ├── quiz/              # Track Finder questions, attempts, recommendations + utils/trackScoring
     ├── bidding/           # BOSS sections, bid history, bid cart, cart clash check + utils/referenceBid, clash
@@ -76,6 +78,7 @@ Note that `frontend/src/core/router/` is page navigation for the Vue app, while 
 | GET | `/modules`, `/modules/:code` | public, `?track=BA&category=track&q=` |
 | GET | `/majors`, `/majors/:id` | public |
 | GET / PATCH | `/users/me` | profile setup, completed modules, basket, consents |
+| GET | `/users/admin-check` | admins only, for testing `requireAdmin` |
 | GET | `/quiz/questions` | weights hidden from the client |
 | POST | `/quiz/attempts` | `{ answers }` → scored % fit per track |
 | GET | `/quiz/attempts`, `/quiz/attempts/:id/recommendations` | up to 3 modules for each of the top 2 tracks |
