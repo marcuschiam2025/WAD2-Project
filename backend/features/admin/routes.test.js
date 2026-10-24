@@ -19,7 +19,7 @@ test('admin endpoints enforce backend roles and page history without exposing sn
       const headers = role ? { 'x-test-role': role } : {}
       assert.equal((await fetch(url, { headers })).status, 403)
       assert.equal((await fetch(`${url}/audit`, { headers })).status, 403)
-      for (const [method, path] of [['GET', '/modules'], ['GET', '/modules/IS216'], ['POST', '/modules'], ['PUT', '/modules/IS216'], ['POST', '/modules/IS216/archive'], ['POST', '/modules/IS216/restore'], ['DELETE', '/modules/IS216']]) assert.equal((await fetch(`${url}${path}`, { method, headers })).status, 403)
+      for (const [method, path] of [['GET', '/modules'], ['GET', '/modules/IS216'], ['POST', '/modules'], ['PUT', '/modules/IS216'], ['POST', '/modules/IS216/archive'], ['POST', '/modules/IS216/restore'], ['DELETE', '/modules/IS216'], ['GET', '/sections'], ['POST', '/sections'], ['PUT', '/sections/2026-27_T2/IS216/G1']]) assert.equal((await fetch(`${url}${path}`, { method, headers })).status, 403)
     }
     const headers = { 'x-test-role': 'admin' }
     assert.equal((await fetch(url, { headers })).status, 200)

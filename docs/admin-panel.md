@@ -2,7 +2,7 @@
 
 Branch: `feat/admin-catalogue`. This chunk provides protected staff access,
 `/admin`, paginated change history, an audited transaction helper and revision
-filters for subsequent catalogue editors. The module create/edit editor is now implemented (see below). Archive/restore and guarded deletion are also implemented. Schedule,
+filters for subsequent catalogue editors. The module create/edit editor is now implemented (see below). Archive/restore and guarded deletion are also implemented. The section create/edit editor is also implemented. Section lifecycle,
 curriculum and bidding editors remain pending. No existing academic data is migrated.
 
 ## Provision the demo admin
@@ -124,3 +124,35 @@ skipped; all 13 frontend tests passed and the production build passed. The dedic
   skipped; all 13 frontend tests and production build passed. Dependency queries
   were validated through read-only MongoDB calls. Live archive/restore/delete
   interactions remain for user review; no modules were changed by those checks.
+
+## Sections and schedules — create/edit chunk
+
+- `/admin` includes a section editor. Load by module code and academic term;
+  create sections or edit existing ones. Module, term and section code are fixed
+  after creation. New sections require an active catalogue module.
+- Instructor, optional capacity, up to 14 weekly meetings (including weekends),
+  venues, and an optional final exam date/time/venue are editable. Times are
+  Singapore local time. Exam dates are stored at Singapore midnight.
+- The service rejects invalid dates, reversed/invalid time ranges, overlapping
+  weekly meetings within one section, unexpected fields and stale revisions.
+  It does not validate instructor/venue availability across different sections.
+- `GET /api/admin/sections?module=IS216&term=2026-27_T2`,
+  `POST /api/admin/sections`, and
+  `PUT /api/admin/sections/:term/:code/:section` are admin-only.
+  Updates require the revision loaded by the editor.
+- Native collection writes use validated shared timetable fields and the existing
+  MongoDB transaction/audit helper. They bypass the incompatible legacy Section
+  Mongoose write schema. The live collection already has a unique index on
+  moduleCode/termKey/sectionCode. New records also use a deterministic canonical ID.
+- Legacy rows are read through the existing adapter. On save, their MongoDB ID
+  and any legacy public sectionId remain unchanged; exact shared meetings/exam
+  fields are added. Existing saved ballots and cart links therefore retain IDs.
+  Legacy exam text must be converted to structured exam details before saving.
+- Existing student choices are not silently changed or cancelled. Students must
+  refresh their timetable and review clashes; normal cart save validation uses
+  current schedules. Open tabs do not receive a live push notification.
+- Section archive/delete and bidding-round configuration remain separate chunks.
+- Verification: 88 backend tests passed, one database integration test skipped;
+  all 13 frontend tests and the production build passed. Read-only live checks
+  confirmed the IS216 editor response and collection indexes. No shared timetable
+  records were mutated for testing. User create/edit/reload review is pending.

@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@core/stores/user'
 import { api } from '@core/services/api'
+import SectionEditor from '@/components/admin/SectionEditor.vue'
 import ModuleEditor from '@/components/admin/ModuleEditor.vue'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
 
@@ -30,7 +31,6 @@ async function load(more = false) {
 async function signOut() { generation++; await user.signOut(); await router.push('/signin') }
 onMounted(() => load())
 const sections = [
-  ['Sections & schedules', 'Term offerings, class meetings and exams.'],
   ['Tracks & curricula', 'Track modules and requirements by intake.'],
   ['Bidding rounds', 'Terms, rounds and submission deadlines.'],
 ]
@@ -53,6 +53,7 @@ const sections = [
     <p v-if="busy && !verified" class="mt-6" role="status">Checking staff access…</p>
     <template v-if="verified">
       <ModuleEditor @saved="load()" />
+      <SectionEditor @saved="load()" />
       <section aria-label="Catalogue management" class="mt-8 grid gap-4 sm:grid-cols-2">
         <article v-for="[title, description] in sections" :key="title" class="rounded-lg border border-border bg-card p-5">
           <h2 class="font-semibold">{{ title }}</h2>

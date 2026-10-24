@@ -54,6 +54,9 @@ export const api = {
   archiveAdminModule: (code, revision) => request('POST', `/admin/modules/${encodeURIComponent(code)}/archive`, { revision }),
   restoreAdminModule: (code, revision) => request('POST', `/admin/modules/${encodeURIComponent(code)}/restore`, { revision }),
   deleteAdminModule: (code, revision) => request('DELETE', `/admin/modules/${encodeURIComponent(code)}`, { revision }),
+  adminSections: (module, term) => request('GET', `/admin/sections${query({ module, term })}`),
+  createAdminSection: (data) => request('POST', '/admin/sections', data),
+  updateAdminSection: (data) => request('PUT', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}`, data),
   adminOverview: () => request('GET', '/admin'),
   adminAudit: (before) => request('GET', `/admin/audit${query({ before })}`),
   // Users / profile
