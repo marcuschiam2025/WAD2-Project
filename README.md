@@ -122,3 +122,13 @@ Note that `frontend/src/core/router/` is page navigation for the Vue app, while 
 | POST | `/bidding/validate-cart` | `{ sectionIds }` → duplicate module, class time and exam clashes |
 | GET | `/bidding/co-bids/:partyId` | which party members bid for which section |
 | POST | `/calendar/export` | `{ accessToken, sectionIds, termStart }` → Google Calendar API v3 |
+
+### Legacy plan index repair
+
+If an older Atlas database still has the unique `degreePlans.userId_1_slot_1` index,
+creating plans can fail with `Duplicate value`: the current schema uses `user` and has no `slot`.
+From `backend/`, inspect with `node --env-file=.env scripts/repair-plan-index.js`, then
+apply with `node --env-file=.env scripts/repair-plan-index.js --apply`.
+The repair removes only that exact obsolete index, preserves documents and current indexes,
+and refuses to proceed if documents still contain the legacy fields. Run once per database;
+it is safe to rerun. Do not use a blanket index synchronization against a shared database.

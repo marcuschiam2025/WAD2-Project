@@ -28,3 +28,14 @@ Next slices: persistent recommendation basket/planner handoff; planner correctne
 - Latest verification: 52 backend tests pass, one opt-in replica-set test skipped; two frontend tests pass; Vite build passes.
 - Still awaiting the user's real onboarding save/refresh check. No claim yet that the full project is complete.
 - Rooms are not wired to `/parties` yet. Bidding still uses some sample catalogue/round data. Basket writes and quiz-to-basket action are next.
+
+### First real setup verification and repair
+
+The user's setup save succeeded, but first-plan creation failed with MongoDB 11000.
+Atlas retained the obsolete unique index `degreePlans.userId_1_slot_1`, while the
+current model uses `user` and no `slot`. Both missing legacy values collided with
+an existing plan. Read-only inspection confirmed zero documents containing either
+legacy field. Added a guarded, dry-run-by-default migration and three regression
+tests, then applied the targeted index removal. No plan documents were removed.
+Retried the dashboard successfully and refreshed it: identity, profile balance,
+module progress and the saved plan restored. Latest backend suite: 55 pass, 1 skip.
