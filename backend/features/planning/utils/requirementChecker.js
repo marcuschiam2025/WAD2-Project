@@ -215,9 +215,16 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue })
       }
     }
 
-    const hasProblem = prereqs.length > 0 || coreqs.length > 0 || exclusions.length > 0 || rules.length > 0
+    // A course that hasn't run in about 2 years may have been retired
+    const notOffered = mod.offeredRecently === false
+
+    const hasProblem = prereqs.length > 0 || coreqs.length > 0 || exclusions.length > 0 || rules.length > 0 || notOffered
     if (hasProblem) {
-      warnings.push({ module: placement.code, semester: placement.semester, prereqs, coreqs, exclusions, rules })
+      const warning = { module: placement.code, semester: placement.semester, prereqs, coreqs, exclusions, rules }
+      if (notOffered) {
+        warning.notOffered = { lastOffered: mod.lastOffered ?? null }
+      }
+      warnings.push(warning)
     }
   }
 

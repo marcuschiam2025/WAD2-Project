@@ -5,8 +5,8 @@ export const MAX_PLANS = 3
 // A plan may have up to 2 leave-of-absence terms, used only for an internship
 export const MAX_LOA_TERMS = 2
 
-// Planner-only catalogue entry for an internship (see scripts/build-catalogue.js)
-export const INTERNSHIP_CODE = 'INTERNSHIP'
+// SMU's internship course, added to the catalogue by scripts/build-catalogue.js
+export const INTERNSHIP_CODE = 'COR1001'
 
 const semesterSchema = new mongoose.Schema(
   {

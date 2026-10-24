@@ -55,14 +55,22 @@ export const api = {
   vote: (id, sectionIds) => request('PUT', `/rooms/${id}/votes`, { sectionIds }),
   roomUpdates: (id, since) => request('GET', `/rooms/${id}/updates?since=${since}`),
 
-  // BOSS bidding
-  sections: (moduleCode) => request('GET', `/bidding/sections?module=${moduleCode}`),
-  bidHistory: (moduleCode) => request('GET', `/bidding/history/${moduleCode}`),
-  referenceBid: (moduleCode, amount, round) =>
-    request('GET', `/bidding/reference/${moduleCode}?amount=${amount}&round=${round}`),
-  cart: () => request('GET', '/bidding/cart'),
-  saveCart: (cart) => request('PUT', '/bidding/cart', cart),
+  // BOSS bidding. term is BOSS's label, e.g. "AY26/27 T2" (encoded, since it has a slash and a space)
+  round: () => request('GET', '/bidding/round'),
+  sections: (moduleCodes, term) =>
+    request('GET', `/bidding/sections?modules=${[].concat(moduleCodes).join(',')}&term=${encodeURIComponent(term)}`),
+  bidHistory: (moduleCode, round) => request('GET', `/bidding/history/${moduleCode}${round ? `?round=${round}` : ''}`),
+  referenceBid: (moduleCode, amount, round, term) =>
+    request('GET', `/bidding/reference/${moduleCode}?amount=${amount}&round=${round}&term=${encodeURIComponent(term)}`),
+  weightage: (moduleCode) => request('GET', `/bidding/weightage/${moduleCode}`),
+  cart: (planId, term) => request('GET', `/bidding/cart?planId=${planId}&term=${encodeURIComponent(term)}`),
+  saveCart: (planId, term, items) => request('PUT', '/bidding/cart', { planId, term, items }),
+  dropCartItem: (planId, term, moduleCode) =>
+    request('DELETE', `/bidding/cart/${moduleCode}?planId=${planId}&term=${encodeURIComponent(term)}`),
+  // { valid, clashes: [{ type: 'duplicate-module' | 'time' | 'final-exam-clash', a, b, ... }] }
+  validateCart: (sectionIds, term) => request('POST', '/bidding/validate-cart', { sectionIds, term }),
 
   // Google Calendar
-  exportCalendar: (accessToken, sectionIds) => request('POST', '/calendar/export', { accessToken, sectionIds }),
+  exportCalendar: (accessToken, sectionIds, term, termStart) =>
+    request('POST', '/calendar/export', { accessToken, sectionIds, term, termStart }),
 }

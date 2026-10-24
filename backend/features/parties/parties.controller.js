@@ -146,7 +146,7 @@ export async function saveVotes(req, res) {
 export async function getVotes(req, res) {
   const party = await findPartyForMember(req)
   await party.populate('votes.user', MEMBER_FIELDS)
-  const sections = await Section.find({ module: party.module }).sort({ day: 1, slot: 1 })
+  const sections = await Section.find({ module: party.module }).sort({ term: 1, sectionId: 1 })
   res.json(
     sections.map((s) => {
       const voters = party.votes.filter((v) => v.sectionIds.includes(s.sectionId)).map((v) => v.user)

@@ -3,7 +3,7 @@ import BidHistory from './models/BidHistory.js'
 import BidCart from './models/BidCart.js'
 import Party from '../parties/models/Party.js'
 import { referenceBid } from './utils/referenceBid.js'
-import { findClashes } from './utils/clash.js'
+import { findClashes, findMeetingClash } from './utils/clash.js'
 import { toSectionView } from './utils/sectionView.js'
 import { WEIGHTAGE } from './utils/weightage.js'
 import { httpError } from '../../middleware/errorHandler.js'
@@ -84,7 +84,7 @@ export async function listSections(req, res) {
     filter.module = req.query.module
   }
 
-  const sections = await Section.find(filter).sort({ module: 1, day: 1, slot: 1 }).lean()
+  const sections = await Section.find(filter).sort({ module: 1, sectionId: 1 }).lean()
 
   const result = []
   for (const section of sections) {
@@ -157,7 +157,7 @@ export async function saveCart(req, res) {
   for (const item of items) {
     sectionIds.push(item.sectionId)
   }
-  const sections = await Section.find({ sectionId: { $in: sectionIds } })
+  const sections = await Section.find({ sectionId: { $in: sectionIds }, term: term })
   if (sections.length !== items.length) {
     throw httpError(400, 'Unknown section in cart')
   }
@@ -197,7 +197,7 @@ export async function dropCartItem(req, res) {
 
 // The fields the validation response shows for a section
 function summary(section) {
-  return { sectionId: section.sectionId, section: section.section, module: section.module }
+  return { sectionId: section.sectionId, section: section.section, module: section.module, title: section.title }
 }
 
 // exam is a display string such as "28 Apr 2025 · 13:00 – 16:00", so only identical slots are caught
@@ -205,22 +205,21 @@ function hasExam(section) {
   return section.exam && section.exam !== 'No final exam'
 }
 
-// POST /api/bidding/validate-cart { sectionIds } — duplicate module, class time and final exam clashes
+// POST /api/bidding/validate-cart { sectionIds, term } — duplicate module, class time and final exam clashes
 export async function validateCart(req, res) {
   const { sectionIds } = req.body
   if (!Array.isArray(sectionIds)) throw httpError(400, 'sectionIds must be an array')
+  const term = requireTerm(req.body.term)
 
   const uniqueIds = [...new Set(sectionIds)] // Remove duplicates
-  const sections = await Section.find({ sectionId: { $in: uniqueIds } })
-  if (sections.length !== uniqueIds.length) throw httpError(400, 'Some sections not found')
-
-  // Sections from different terms can't be in the same cart
-  const terms = new Set()
-  for (const section of sections) {
-    terms.add(section.term)
-  }
-  if (terms.size > 1) {
-    throw httpError(400, 'All sections must be in the same term')
+  const sections = await Section.find({ sectionId: { $in: uniqueIds }, term: term })
+  if (sections.length !== uniqueIds.length) {
+    // Name the ones that are missing, e.g. a typo or a section from another term
+    const missing = []
+    for (const id of uniqueIds) {
+      if (!findSection(sections, id)) missing.push(id)
+    }
+    throw httpError(400, `Not sections in ${term}: ${missing.join(', ')}`)
   }
 
   const clashes = []
@@ -232,8 +231,9 @@ export async function validateCart(req, res) {
       if (a.module === b.module) {
         clashes.push({ type: 'duplicate-module', a: summary(a), b: summary(b) })
       }
-      if (a.day === b.day && a.slot === b.slot) {
-        clashes.push({ type: 'time', a: summary(a), b: summary(b), day: a.day, slot: a.slot })
+      const timeClash = findMeetingClash(a, b)
+      if (timeClash) {
+        clashes.push({ type: 'time', a: summary(a), b: summary(b), day: timeClash.day, times: [timeClash.a, timeClash.b] })
       }
       if (hasExam(a) && a.exam === b.exam) {
         clashes.push({ type: 'final-exam-clash', a: summary(a), b: summary(b), finalExam: a.exam })

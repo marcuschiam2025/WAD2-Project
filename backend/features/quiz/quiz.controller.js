@@ -39,7 +39,7 @@ export async function listAttempts(req, res) {
 }
 
 // GET /api/quiz/attempts/:id/recommendations — up to 3 of each top-2 track's listed courses,
-// skipping modules already completed and those whose prereqs aren't met.
+// skipping modules already completed, those whose prereqs aren't met, and those not offered in about 2 years.
 export async function getRecommendations(req, res) {
   const attempt = await QuizAttempt.findOne({ _id: req.params.id, user: req.user._id })
   if (!attempt) throw httpError(404, 'Attempt not found')
@@ -51,7 +51,7 @@ export async function getRecommendations(req, res) {
       const trackDoc = await Track.findOne({ trackCode: track }).sort({ majorId: -1 })
       const reqs = trackDoc ? await Requirement.find({ ownerId: trackDoc._id }).sort({ order: 1 }) : []
       const listed = [...new Set(reqs.flatMap((r) => r.modules))] // compulsory course first
-      const found = await Module.find({ _id: { $in: listed } }, { description: 0 })
+      const found = await Module.find({ _id: { $in: listed }, offeredRecently: { $ne: false } }, { description: 0 })
       const modules = listed
         .map((code) => found.find((m) => m._id === code))
         .filter(Boolean)
