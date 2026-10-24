@@ -1,7 +1,9 @@
 import crypto from 'node:crypto'
 import Party from './models/Party.js'
 import Module from '../planning/models/Module.js'
-import Section from '../bidding/models/Section.js'
+import { loadSections, roundSettings } from '../bidding/section.repository.js'
+import { canonicalTerm } from '../bidding/utils/sectionData.js'
+import { toSectionView } from '../bidding/utils/sectionView.js'
 import { unmetGroups } from '../planning/utils/requisites.js'
 import { httpError } from '../../middleware/errorHandler.js'
 
@@ -116,31 +118,51 @@ export async function banMember(req, res) {
   res.json(party)
 }
 
-// PUT /api/parties/:id/votes { sectionIds } — my preferred slots for the party's module
-export async function saveVotes(req, res) {
-  const party = await findPartyForMember(req)
-  const sectionIds = [...new Set(req.body.sectionIds ?? [])]
-  const valid = await Section.countDocuments({ sectionId: { $in: sectionIds }, module: party.module })
-  if (valid !== sectionIds.length) throw httpError(400, `All sections must belong to ${party.module}`)
-
-  const mine = party.votes.find((v) => v.user.equals(req.user._id))
-  if (mine) mine.sectionIds = sectionIds
-  else party.votes.push({ user: req.user._id, sectionIds })
-  await party.save()
-  res.json(party.votes)
+async function votingTerm(party, requested) {
+  let term
+  try { term = canonicalTerm(requested ?? party.term ?? (await roundSettings()).term) }
+  catch { throw httpError(400, 'A valid section catalogue term is required') }
+  if (party.term && term !== party.term) throw httpError(409, 'This party is voting for a different term. Refresh the room.')
+  return term
 }
 
-// GET /api/parties/:id/votes — per-section counts and voters
+// A ballot replaces only the signed-in member's picks. The room pins its term on first save.
+export async function saveVotes(req, res) {
+  const party = await findPartyForMember(req)
+  const { sectionIds } = req.body
+  if (!Array.isArray(sectionIds) || sectionIds.length > 100 || sectionIds.some(id => typeof id !== 'string' || !id.trim())) throw httpError(400, 'sectionIds must be an array of section IDs')
+  const term = await votingTerm(party, req.body.term)
+  const ids = [...new Set(sectionIds)]
+  if (ids.some(id => id.includes(':') && (id.split(':').length !== 3 || !id.startsWith(`${term}:${party.module}:`) || !id.split(':')[2]))) throw httpError(400, `Choose sections of ${party.module} in ${term}`)
+  const sections = ids.length ? await loadSections({ term, modules: [party.module], ids }) : []
+  if (sections.length !== ids.length || sections.some(section => section.module !== party.module || section.term !== term || !ids.includes(section.sectionId))) throw httpError(400, `Choose sections of ${party.module} in ${term}`)
+  const updated = await Party.findOneAndUpdate({ _id: party._id, members: req.user._id, term: { $in: [null, term] } }, [{ $set: {
+    term,
+    votes: { $concatArrays: [{ $filter: { input: { $ifNull: ['$votes', []] }, as: 'ballot', cond: { $ne: ['$$ballot.user', req.user._id] } } }, [{ user: req.user._id, sectionIds: ids }]] },
+    finalisedSection: null,
+  } }], { new: true })
+  if (!updated) throw httpError(409, 'Membership or voting term changed. Refresh the room before saving.')
+  res.json({ term, sectionIds: ids })
+}
+
 export async function getVotes(req, res) {
   const party = await findPartyForMember(req)
+  const term = await votingTerm(party, req.query?.term)
+  const sections = await loadSections({ term, modules: [party.module] })
   await party.populate('votes.user', MEMBER_FIELDS)
-  const sections = await Section.find({ module: party.module }).sort({ day: 1, slot: 1 })
-  res.json(
-    sections.map((s) => {
-      const voters = party.votes.filter((v) => v.sectionIds.includes(s.sectionId)).map((v) => v.user)
-      return { section: s, count: voters.length, voters, finalised: party.finalisedSection === s.sectionId }
+  const memberIds = new Set(party.members.map(member => String(member._id ?? member)))
+  const validIds = new Set(sections.map(section => section.sectionId))
+  const ballots = party.votes.filter(ballot => ballot.user && memberIds.has(String(ballot.user._id ?? ballot.user)))
+  const mine = ballots.find(ballot => String(ballot.user._id ?? ballot.user) === String(req.user._id))
+  res.json({ term, memberCount: memberIds.size,
+    votedCount: new Set(ballots.filter(ballot => ballot.sectionIds.some(id => validIds.has(id))).map(ballot => String(ballot.user._id ?? ballot.user))).size,
+    mySectionIds: (mine?.sectionIds ?? []).filter(id => validIds.has(id)),
+    missingSectionIds: (mine?.sectionIds ?? []).filter(id => !validIds.has(id)),
+    rows: sections.map(section => {
+      const voters = [...new Map(ballots.filter(ballot => ballot.sectionIds.includes(section.sectionId)).map(ballot => [String(ballot.user._id), { _id: String(ballot.user._id), name: ballot.user.name || 'Member' }])).values()]
+      return { section: toSectionView(section), count: voters.length, voters }
     }),
-  )
+  })
 }
 
 // POST /api/parties/:id/finalise { sectionId } — owner locks in the agreed slot

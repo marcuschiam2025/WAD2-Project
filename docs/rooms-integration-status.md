@@ -24,6 +24,17 @@
 - Full refresh preserved the created room and admin membership. Joining by its invite code returned the same room with one member, without duplication.
 - This check room is retained for review. No other student was added or messaged.
 
+## Part 2 — section voting
+
+- The room detail screen reads real module sections and vote counts through `GET /api/parties/:id/votes`.
+- Every weekly meeting, venue and final exam is displayed. No sample alternatives or bid statistics are used.
+- `PUT /api/parties/:id/votes` replaces the current member's ballot atomically, preserving other members' ballots. Saving no selections clears the vote.
+- The first saved ballot pins the room's catalogue term. Later votes must belong to that term and module.
+- Vote counts exclude people who are no longer members. Failed saves retain confirmed choices and show an error. Account changes discard stale responses.
+- The visible screen polls results every 10 seconds, without overwriting unsaved edits.
+- Browser verification in the retained integration-check room: saved IS216 G1, reloaded and confirmed the checkbox and count; cleared the test ballot and verified the count returned to zero. No section was accepted or added to bidding.
+- Current verification: 68 backend tests pass, one existing replica-set test skipped; nine frontend tests pass; production build passes.
+
 ## Next chunk
 
-Connect voting, shared-section reads, member updates and accepted sections. The old local voting/admin controls are not exposed in the connected UI. The old votes route temporarily redirects to the room detail screen. Joining with a second real account still needs an interactive multi-user check.
+Connect admin acceptance and the bidding handoff, then member-management controls. The old votes URL redirects to the room detail screen where voting now lives. A second real account is still needed for interactive multi-user verification; membership, term validation and exclusion of former members are covered by automated tests.

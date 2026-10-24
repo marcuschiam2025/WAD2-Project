@@ -7,6 +7,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
+import RoomVotingPanel from '@/components/rooms/RoomVotingPanel.vue'
 const rooms = useRoomsStore(), route = useRoute(), router = useRouter()
 const room = computed(() => rooms.getRoom(route.params.id))
 const copied = ref(false), error = ref(''), leaving = ref(false), confirmLeave = ref(false)
@@ -34,7 +35,7 @@ async function leave() {
           <p class="text-xs text-muted-foreground">Share this code with friends who want to join. Room capacity and prerequisite checks are applied by the server.</p>
         </section>
         <section class="card flex flex-col gap-4 p-5"><h2 class="font-semibold">Members · {{ room.members.length }} / {{ room.maxMembers }}</h2><ul class="flex flex-col gap-3"><li v-for="id in room.members" :key="id" class="flex items-center gap-3"><UserAvatar :initials="rooms.person(id).initials" :you="id === 'me'" /><span>{{ rooms.person(id).name }}</span><span v-if="roleOf(room,id) === 'owner'" class="text-xs text-primary">Party admin</span></li></ul><BaseButton variant="outline" :disabled="rooms.loading" @click="rooms.load">Refresh members</BaseButton></section>
-        <p class="rounded-md border border-border p-4 text-sm text-muted-foreground">Room creation and membership are connected. Section voting and member-management controls are being connected next.</p>
+        <RoomVotingPanel :room-id="room.id" />
         <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>
         <p v-if="rooms.error" role="alert" class="text-sm text-destructive">{{ rooms.error }}</p>
         <BaseButton variant="outline" :disabled="leaving" @click="confirmLeave = true">{{ leaving ? 'Leaving…' : 'Leave room' }}</BaseButton>

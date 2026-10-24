@@ -29,6 +29,8 @@ export function canSetAdmin(room, actorId, targetId) {
 export const useRoomsStore = defineStore('rooms', () => {
   const rooms = ref([])
   const people = ref({})
+  const voteBoards = ref({}), voteLoading = ref({}), voteSaving = ref({}), voteErrors = ref({})
+  const voteRequests = new Map()
   const loading = ref(false), busy = ref(false), online = ref(false), error = ref('')
   let revision = 0, listRequest = 0
   // room id -> section ids the signed-in student picked
@@ -39,6 +41,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   const user = useUserStore()
   watch(() => user.uid, () => {
     revision++; listRequest++
+    voteBoards.value = {}; voteLoading.value = {}; voteSaving.value = {}; voteErrors.value = {}; voteRequests.clear()
     people.value = {}; loading.value = false; busy.value = false; online.value = false; error.value = ''
     rooms.value = []
     myVotes.value = {}
@@ -187,6 +190,40 @@ export const useRoomsStore = defineStore('rooms', () => {
     delete myVotes.value[id]; delete accepted.value[id]
   }
 
+  async function loadVotes(roomId, { quiet = false } = {}) {
+    const version = revision, request = (voteRequests.get(roomId) ?? 0) + 1
+    voteRequests.set(roomId, request)
+    voteLoading.value[roomId] = true
+    if (!quiet) voteErrors.value[roomId] = ''
+    try {
+      const board = await api.roomVotes(roomId)
+      if (version !== revision || request !== voteRequests.get(roomId)) return
+      voteBoards.value[roomId] = board
+      myVotes.value[roomId] = board.mySectionIds
+      return board
+    } catch (failure) {
+      if (version === revision && request === voteRequests.get(roomId)) voteErrors.value[roomId] = failure.message
+    } finally { if (version === revision && request === voteRequests.get(roomId)) voteLoading.value[roomId] = false }
+  }
+  async function saveRoomVotes(roomId, ids) {
+    if (voteSaving.value[roomId] || !voteBoards.value[roomId]) return false
+    const version = revision
+    const term = voteBoards.value[roomId].term
+    voteRequests.set(roomId, (voteRequests.get(roomId) ?? 0) + 1)
+    voteLoading.value[roomId] = false
+    voteSaving.value[roomId] = true; voteErrors.value[roomId] = ''
+    try {
+      const saved = await api.vote(roomId, [...ids], term)
+      if (version !== revision) return false
+      voteBoards.value[roomId] = { ...voteBoards.value[roomId], mySectionIds: saved.sectionIds }
+      myVotes.value[roomId] = saved.sectionIds
+      delete accepted.value[roomId]
+      await loadVotes(roomId)
+      return version === revision
+    } catch (failure) { if (version === revision) voteErrors.value[roomId] = failure.message; return false }
+    finally { if (version === revision) voteSaving.value[roomId] = false }
+  }
+
   function setMyVotes(roomId, sectionIds) {
     myVotes.value[roomId] = sectionIds
     delete accepted.value[roomId]
@@ -228,6 +265,7 @@ export const useRoomsStore = defineStore('rooms', () => {
 
   return {
     rooms, loading, busy, online, error, load, joinRoom,
+    voteBoards, voteLoading, voteSaving, voteErrors, loadVotes, saveRoomVotes,
     myVotes,
     decided,
     roomState,

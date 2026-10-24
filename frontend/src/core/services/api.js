@@ -82,7 +82,8 @@ export const api = {
   createRoom: (room) => request('POST', '/parties', room),
   joinRoom: (inviteCode) => request('POST', '/parties/join', { inviteCode }),
   leaveRoom: (id) => request('DELETE', `/parties/${id}/members/me`),
-  vote: (id, sectionIds) => request('PUT', `/parties/${id}/votes`, { sectionIds }),
+  vote: (id, sectionIds, term) => request('PUT', `/parties/${id}/votes`, { sectionIds, term }),
+  roomVotes: (id) => request('GET', `/parties/${id}/votes`),
   roomUpdates: (id, since) => request('GET', `/parties/${id}/updates?since=${since}`),
 
   // BOSS bidding
