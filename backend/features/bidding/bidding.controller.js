@@ -8,7 +8,6 @@ import { toSectionView } from './utils/sectionView.js'
 import { WEIGHTAGE } from './utils/weightage.js'
 import { httpError } from '../../middleware/errorHandler.js'
 
-const CURRENT_TERM = 'AY24/25 T2'
 const CURRENT_ROUND = '1A'
 const HISTORY_TERMS = 3
 // Used until the User model stores a balance (the Bidding screen shows e$ 210)
@@ -37,6 +36,14 @@ function requirePlanId(planId) {
   return planId
 }
 
+// The term comes from the frontend, e.g. "AY26/27 T2"
+function requireTerm(term) {
+  if (!term) {
+    throw httpError(400, 'term is required')
+  }
+  return term
+}
+
 // The saved bids for one plan in one term. An empty cart when the student has not saved one yet.
 async function getCartFor(user, planId, term) {
   const cart = await BidCart.findOne({ user: user._id, plan: planId, term: term })
@@ -58,10 +65,10 @@ function findSection(sections, sectionId) {
   return null
 }
 
-// GET /api/bidding/sections?modules=IS212,IS213&term=AY24/25 T2 — the screen's sections
+// GET /api/bidding/sections?modules=IS212,IS213&term=AY26/27 T2 — the screen's sections
 // ?module=IS212 still works for one module
 export async function listSections(req, res) {
-  const filter = { term: req.query.term ?? CURRENT_TERM }
+  const filter = { term: requireTerm(req.query.term) }
 
   // "IS212, is213" becomes ["IS212", "IS213"]
   const modules = []
@@ -88,22 +95,31 @@ export async function listSections(req, res) {
 
 // GET /api/bidding/round — the BOSS round the planner is bidding in
 export function getRound(_req, res) {
-  res.json({ term: CURRENT_TERM, round: CURRENT_ROUND, closesAt: ROUND_CLOSES_AT })
+  res.json({ round: CURRENT_ROUND, closesAt: ROUND_CLOSES_AT })
 }
 
 // GET /api/bidding/history/:module?round=1A
 export async function getHistory(req, res) {
-  const filter = { module: req.params.module }
+  const filter = { module: req.params.module.toUpperCase() }
   if (req.query.round) filter.round = req.query.round
   res.json(await BidHistory.find(filter).sort({ term: -1 }))
 }
 
-// GET /api/bidding/reference/:module?amount=42&round=1A — Safe / Competitive / At risk
+// GET /api/bidding/reference/:module?amount=42&round=1A&term=AY26/27 T2 — Safe / Competitive / At risk
+// round is required: medians from different rounds can't be averaged together.
+// With term, only the terms before it count ("AY25/26 T2" < "AY26/27 T1" as strings)
 export async function getReferenceBid(req, res) {
-  const filter = { module: req.params.module }
-  if (req.query.round) filter.round = req.query.round
+  if (!req.query.round) throw httpError(400, 'round is required')
+
+  let amount
+  if (req.query.amount !== undefined) {
+    amount = Number(req.query.amount)
+    if (req.query.amount === '' || Number.isNaN(amount)) throw httpError(400, 'amount must be a number')
+  }
+
+  const filter = { module: req.params.module.toUpperCase(), round: req.query.round }
+  if (req.query.term) filter.term = { $lt: req.query.term }
   const history = await BidHistory.find(filter).sort({ term: -1 }).limit(HISTORY_TERMS)
-  const amount = req.query.amount !== undefined ? Number(req.query.amount) : undefined
   res.json({ ...referenceBid(history, amount), history })
 }
 
@@ -115,7 +131,7 @@ export function getWeightage(req, res) {
 // GET /api/bidding/cart?planId=…&term=… — the saved bids for one What-If plan
 export async function getCart(req, res) {
   const planId = requirePlanId(req.query.planId)
-  const term = req.query.term ?? CURRENT_TERM
+  const term = requireTerm(req.query.term)
   res.json(await getCartFor(req.user, planId, term))
 }
 
@@ -124,7 +140,7 @@ export async function getCart(req, res) {
 // above the balance. Returns any clashes in the booked sections.
 export async function saveCart(req, res) {
   const planId = requirePlanId(req.body.planId)
-  const term = req.body.term ?? CURRENT_TERM
+  const term = requireTerm(req.body.term)
   const items = req.body.items ?? []
 
   // A module can only be in the cart once
@@ -171,7 +187,7 @@ export async function saveCart(req, res) {
 // DELETE /api/bidding/cart/:code?planId=…&term=… — takes one module out of the plan's cart
 export async function dropCartItem(req, res) {
   const planId = requirePlanId(req.query.planId)
-  const term = req.query.term ?? CURRENT_TERM
+  const term = requireTerm(req.query.term)
   await BidCart.updateOne(
     { user: req.user._id, plan: planId, term: term },
     { $pull: { items: { module: req.params.code } } },
@@ -243,8 +259,9 @@ function isListed(list, memberId) {
   return false
 }
 
-// GET /api/bidding/co-bids/:partyId — which party members are bidding for which section of the party's module
+// GET /api/bidding/co-bids/:partyId?term=AY26/27 T2 — which party members are bidding for which section of the party's module
 export async function getCoBids(req, res) {
+  const term = requireTerm(req.query.term)
   const party = await Party.findById(req.params.partyId).populate('members', 'name email')
   if (!party) throw httpError(404, 'Party not found')
   if (!findMember(party, req.user._id)) throw httpError(403, 'You are not a member of this party')
@@ -253,7 +270,7 @@ export async function getCoBids(req, res) {
   for (const member of party.members) {
     memberIds.push(member._id)
   }
-  const carts = await BidCart.find({ user: { $in: memberIds }, term: CURRENT_TERM })
+  const carts = await BidCart.find({ user: { $in: memberIds }, term: term })
 
   // sectionId -> the party members bidding for it. A member with carts for two plans is listed once.
   const bySection = {}
