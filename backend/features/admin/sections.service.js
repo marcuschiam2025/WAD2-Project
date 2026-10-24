@@ -47,11 +47,11 @@ export function validateSectionInput(input) {
   return { ...identity, instructor: text(input.instructor ?? '', 'instructor'), capacity, classSlots, finalExam }
 }
 export function sectionSnapshot(raw) {
-  return Object.fromEntries(['_id', 'moduleCode', 'termKey', 'sectionCode', 'instructor', 'capacity', 'classSlots', 'finalExam', 'sectionId', 'module', 'term', 'section', 'day', 'slot', 'prof', 'venue', 'exam', 'revision'].filter(key => raw[key] !== undefined).map(key => [key, raw[key]]))
+  return Object.fromEntries(['_id', 'moduleCode', 'termKey', 'sectionCode', 'instructor', 'capacity', 'classSlots', 'finalExam', 'sectionId', 'module', 'term', 'section', 'day', 'slot', 'prof', 'venue', 'exam', 'revision', 'archived'].filter(key => raw[key] !== undefined).map(key => [key, raw[key]]))
 }
 export function sectionEditorView(raw) {
   const normalized = normalizeSection(raw)
-  return { moduleCode: normalized.module, termKey: normalized.term, sectionCode: normalized.section, sectionId: normalized.sectionId, revision: raw.revision ?? 0, instructor: normalized.prof ?? '', capacity: raw.capacity ?? null,
+  return { moduleCode: normalized.module, termKey: normalized.term, sectionCode: normalized.section, sectionId: normalized.sectionId, archived: raw.archived === true, revision: raw.revision ?? 0, instructor: normalized.prof ?? '', capacity: raw.capacity ?? null,
     classSlots: normalized.sessions.map(({ day, start, end, venue }) => ({ day: days[day], start, end, venue: venue ?? '' })),
     finalExam: normalized.examPeriod ? { ...normalized.examPeriod, venue: raw.finalExam?.venue ?? '' } : null,
     legacyExamNote: !raw.moduleCode && raw.exam && raw.exam !== 'No final exam' ? raw.exam : null,
@@ -74,6 +74,25 @@ export function createSectionEditor({ change, read, activeModule, insert, update
       const after = creating ? await insert({ _id: id, ...data, revision: 0 }, session) : await update(before, data, session)
       if (!after) throw httpError(409, 'Section changed. Reload before saving.')
       return { before: before ? sectionSnapshot(before) : null, after: sectionSnapshot(after) }
+    })
+    return sectionEditorView(result.after)
+  } }
+}
+
+export function createSectionLifecycle({ change, read, activeModule, update }) {
+  return { async apply(actor, identity, input, archived) {
+    if (actor?.role !== 'admin') throw httpError(403, 'Admins only')
+    const key = sectionIdentity(identity)
+    if (!input || Object.keys(input).some(field => field !== 'revision')) fail('Only the displayed revision is accepted')
+    revisionFilter('unused', input.revision)
+    const result = await change({ actor, entity: 'section', entityId: `${key.termKey}:${key.moduleCode}:${key.sectionCode}`, action: archived ? 'archive' : 'update' }, async session => {
+      const before = await read(key, session)
+      if (!before) throw httpError(404, 'Section not found')
+      if ((before.revision ?? 0) !== input.revision) throw httpError(409, 'Section changed. Reload before continuing.')
+      if (!archived && !await activeModule(key.moduleCode, session)) fail('Restore the active module before restoring its section')
+      const after = await update(before, { archived }, session)
+      if (!after) throw httpError(409, 'Section changed. Reload before continuing.')
+      return { before: sectionSnapshot(before), after: sectionSnapshot(after) }
     })
     return sectionEditorView(result.after)
   } }

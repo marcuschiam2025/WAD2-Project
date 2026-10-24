@@ -6,8 +6,9 @@ export async function availableTerms() {
  const [old,shared]=await Promise.all([Section.collection.distinct('term'),Section.collection.distinct('termKey')])
  return [...new Set([...old,...shared].filter(Boolean).map(canonicalTerm))].sort().reverse()
 }
-export async function loadSections({term,modules,ids}={}) {
+export async function loadSections({term,modules,ids,includeArchived=!!ids}={}) {
  const and=[]
+ if(!includeArchived) and.push({archived:{$ne:true}})
  if(term) { const key=canonicalTerm(term);and.push({$or:[{term:key},{term:termLabel(key)},{termKey:key}]}) }
  if(modules?.length) and.push({$or:[{module:{$in:modules}},{moduleCode:{$in:modules}}]})
  if(ids) {

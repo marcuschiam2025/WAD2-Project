@@ -39,11 +39,11 @@ export const useBiddingStore = defineStore('bidding', () => {
   // Modules decided in collab rooms are bid for whichever plan is picked
   const roomCodes = computed(() => rooms.decided.map((d) => d.module).filter((c) => sections.some((s) => s.module === c && liveSections.has(s.id))))
   const planCodes = computed(() => [
-    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c && liveSections.has(s.id))), ...roomCodes.value, ...Object.keys(chosen.value[plan.value.id] ?? {}).filter(code => sections.some(s => s.module === code && liveSections.has(s.id)))]),
+    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))), ...roomCodes.value, ...Object.keys(chosen.value[plan.value.id] ?? {}).filter(code => sections.some(s => s.module === code && liveSections.has(s.id)))]),
   ])
   // Modules in the timetable only because a collab room decided on them (not in the plan's next semester)
   const fromRooms = computed(() => rooms.decided.filter((d) => roomCodes.value.includes(d.module)))
-  const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c && liveSections.has(s.id))))
+  const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))))
 
   // Per plan: modules taken out of the cart, the section picked per module, and the e$ typed per module.
   // The dropped list is kept in this browser: the saved cart can't tell a dropped module from a new one.
@@ -86,7 +86,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       inCart.value.map((code) => {
         const pick = chosen.value[plan.value.id]?.[code]
         const valid = sections.some((s) => s.id === pick && s.module === code && liveSections.has(s.id))
-        return [code, decidedSection(code) ?? (valid ? pick : sections.find((s) => s.module === code && liveSections.has(s.id)).id)]
+        return [code, decidedSection(code) ?? (valid ? pick : sections.find((s) => s.module === code && !s.archived && liveSections.has(s.id))?.id)]
       }),
     ),
   )
@@ -107,16 +107,17 @@ export const useBiddingStore = defineStore('bidding', () => {
   watch(planId, () => (selectedModule.value = null))
 
   const bookedSections = computed(() => Object.values(booked.value).map((id) => sections.find((s) => s.id === id)))
+  const archivedSelections = computed(() => bookedSections.value.filter(s => s?.archived).map(s => `${s.module} ${s.section}`))
   const allocated = computed(() => Object.values(bids.value).reduce((a, b) => a + (Number(b) || 0), 0))
 
   function sectionsFor(code) {
-    return sections.filter((s) => s.module === code && liveSections.has(s.id))
+    return sections.filter((s) => s.module === code && !s.archived && liveSections.has(s.id))
   }
 
   const clashes = computed(() => new Set([...findClashes(bookedSections.value), ...findExamClashes(bookedSections.value)].flat()))
 
   function swapSection(code, sectionId) {
-    if (isLocked(code)) return
+    if (isLocked(code) || !sections.some(s => s.id === sectionId && s.module === code && !s.archived && liveSections.has(s.id))) return
     const id = plan.value.id
     chosen.value[id] = { ...chosen.value[id], [code]: sectionId }
   }
@@ -281,6 +282,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       saveError.value = 'Connect to the server and select a catalogue term before saving your bids.'
       return false
     }
+    if (archivedSelections.value.length) { saveError.value = 'A selected section has been archived. Choose an active alternative or remove the module before saving.'; return false }
     if (clashes.value.size) { saveError.value = 'Resolve class or final-exam clashes before saving.'; return false }
     const items = Object.entries(booked.value).map(([code, sectionId]) => ({ module: code, sectionId, amount: Number(bids.value[code]) }))
     if (items.some(item => !Number.isFinite(item.amount) || item.amount < MIN_BID)) { saveError.value = `Bid at least e$ ${MIN_BID} for every module.`; return false }
@@ -344,6 +346,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     round,
     roundInfo,
     bookedSections,
+    archivedSelections,
     allocated,
     clashes,
     bidHistory,

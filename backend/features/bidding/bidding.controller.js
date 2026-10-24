@@ -73,7 +73,7 @@ function findSection(sections, sectionId) {
 export async function listSections(req, res) {
   const term = await selectedTerm(req.query.term)
   const modules = String(req.query.modules ?? req.query.module ?? '').split(',').map(code => code.trim().toUpperCase()).filter(Boolean)
-  res.json((await loadSections({ term, modules })).map(toSectionView))
+  res.json((await loadSections({ term, modules, includeArchived: true })).map(toSectionView))
 }
 
 // Catalogue fallback is labelled explicitly; no closing time or active round is invented.
@@ -119,6 +119,7 @@ export async function saveCart(req, res) {
   const balance = getBalance(req.user)
   const total = validateCartItems(items, balance)
   const sections = await loadSections({ term, ids: items.map(item => item.sectionId) })
+  if (sections.some(section => section.archived)) throw httpError(409, 'A selected section has been archived. Choose an active alternative or remove that module before saving.')
   if (sections.length !== items.length) throw httpError(400, 'Unknown section in cart for this term')
   for (const item of items) {
     const section = findSection(sections, item.sectionId)
@@ -178,6 +179,7 @@ export async function validateCart(req, res) {
   const uniqueIds = [...new Set(sectionIds)] // Remove duplicates
   if (uniqueIds.some(id => typeof id !== 'string')) throw httpError(400, 'Invalid section ID')
   const sections = await loadSections({ ids: uniqueIds })
+  if (sections.some(section => section.archived)) throw httpError(409, 'A selected section has been archived. Review your choices.')
   if (sections.length !== uniqueIds.length) throw httpError(400, 'Some sections not found')
 
   // Sections from different terms can't be in the same cart

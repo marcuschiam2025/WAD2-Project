@@ -57,6 +57,8 @@ export const api = {
   adminSections: (module, term) => request('GET', `/admin/sections${query({ module, term })}`),
   createAdminSection: (data) => request('POST', '/admin/sections', data),
   updateAdminSection: (data) => request('PUT', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}`, data),
+  archiveAdminSection: (data) => request('POST', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/archive`, { revision: data.revision }),
+  restoreAdminSection: (data) => request('POST', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/restore`, { revision: data.revision }),
   adminOverview: () => request('GET', '/admin'),
   adminAudit: (before) => request('GET', `/admin/audit${query({ before })}`),
   // Users / profile

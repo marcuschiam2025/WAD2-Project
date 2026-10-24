@@ -36,3 +36,30 @@ test('section updates use audit transaction and loaded revision without changing
   row = null; known = false
   await assert.rejects(service.save(actor, input, true), /active module/)
 })
+
+test('archive and restore retain section identity, audit changes and reject stale or unauthorized actions', async () => {
+  const { createSectionLifecycle } = await import('./sections.service.js')
+  assert.equal(typeof createSectionLifecycle, 'function', 'section lifecycle is required')
+  let row = { _id: 'db-row', ...input, revision: 0 }, event, active = true
+  const service = createSectionLifecycle({
+    change: async (meta, fn) => { const result = await fn('tx'); event = { ...meta, ...result }; return result },
+    read: async () => row,
+    activeModule: async () => active,
+    update: async (before, data, session) => { assert.equal(session, 'tx'); row = { ...before, ...data, revision: before.revision + 1 }; return row },
+  })
+  const identity = { moduleCode: 'IS216', termKey: '2026-27_T2', sectionCode: 'G1' }, actor = { role: 'admin', _id: 'staff' }
+  await assert.rejects(service.apply({ role: 'student' }, identity, { revision: 0 }, true), { status: 403 })
+  await assert.rejects(service.apply(actor, identity, {}, true), { status: 400 })
+  const archived = await service.apply(actor, identity, { revision: 0 }, true)
+  assert.equal(archived.archived, true)
+  assert.equal(event.action, 'archive')
+  assert.equal(archived.sectionId, '2026-27_T2:IS216:G1')
+  await assert.rejects(service.apply(actor, identity, { revision: 0 }, false), { status: 409 })
+  active = false
+  await assert.rejects(service.apply(actor, identity, { revision: 1 }, false), /active module/)
+  active = true
+  const restored = await service.apply(actor, identity, { revision: 1 }, false)
+  assert.equal(restored.archived, false)
+  assert.equal(restored.sectionId, archived.sectionId)
+  assert.equal(event.after.revision, 2)
+})

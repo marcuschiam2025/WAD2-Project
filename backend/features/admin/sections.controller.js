@@ -4,7 +4,7 @@ import { canonicalTerm, termLabel } from '../bidding/utils/sectionData.js'
 import { httpError } from '../../middleware/errorHandler.js'
 import { revisionFilter } from './changes.js'
 import { auditedChange } from './audit.service.js'
-import { createSectionEditor, sectionEditorView, sectionIdentity } from './sections.service.js'
+import { createSectionEditor, createSectionLifecycle, sectionEditorView, sectionIdentity } from './sections.service.js'
 import { moduleCode } from './modules.service.js'
 
 function identityFilter({ termKey, moduleCode, sectionCode }) {
@@ -35,3 +35,12 @@ export async function updateAdminSection(req, res) {
   if (Object.keys(path).some(key => req.body?.[key] !== path[key])) throw httpError(400, 'Module, term and section code cannot change after creation')
   res.json(await editor.save(req.user, req.body))
 }
+
+const lifecycle = createSectionLifecycle({
+  change: auditedChange, read,
+  activeModule: (code, session) => Module.exists({ _id: code, archived: { $ne: true } }).session(session),
+  update: (before, data, session) => Section.collection.findOneAndUpdate(revisionFilter(before._id, before.revision ?? 0), { $set: data, $inc: { revision: 1 } }, { session, returnDocument: 'after', includeResultMetadata: false }),
+})
+const pathIdentity = req => ({ termKey: req.params.term, moduleCode: req.params.code, sectionCode: req.params.section })
+export async function archiveAdminSection(req, res) { res.json(await lifecycle.apply(req.user, pathIdentity(req), req.body, true)) }
+export async function restoreAdminSection(req, res) { res.json(await lifecycle.apply(req.user, pathIdentity(req), req.body, false)) }

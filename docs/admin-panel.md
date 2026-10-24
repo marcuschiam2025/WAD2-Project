@@ -2,8 +2,8 @@
 
 Branch: `feat/admin-catalogue`. This chunk provides protected staff access,
 `/admin`, paginated change history, an audited transaction helper and revision
-filters for subsequent catalogue editors. The module create/edit editor is now implemented (see below). Archive/restore and guarded deletion are also implemented. The section create/edit editor is also implemented. Section lifecycle,
-curriculum and bidding editors remain pending. No existing academic data is migrated.
+filters for subsequent catalogue editors. The module create/edit editor is now implemented (see below). Archive/restore and guarded deletion are also implemented. The section create/edit editor is also implemented. Section archive/restore is implemented too. Curriculum and bidding editors
+remain pending. No existing academic data is migrated.
 
 ## Provision the demo admin
 
@@ -156,3 +156,32 @@ skipped; all 13 frontend tests passed and the production build passed. The dedic
   all 13 frontend tests and the production build passed. Read-only live checks
   confirmed the IS216 editor response and collection indexes. No shared timetable
   records were mutated for testing. User create/edit/reload review is pending.
+
+## Section archive and restore
+
+- The user confirmed section create/edit/reload worked; that reviewed chunk was
+  pushed as `e0e911f` on `feat/admin-catalogue`.
+- Admin section forms now expose archive/restore with a confirmation panel.
+  Both actions require the loaded revision and share the audit transaction.
+  Restoring requires the parent module to be active. No section hard-delete
+  endpoint is exposed.
+- `POST /api/admin/sections/:term/:code/:section/archive` and `.../restore`
+  accept `{ revision }`. The record, timetable, section ID, votes and carts remain
+  stored. Normal schedule edits preserve the archived flag.
+- Active room voting, leader confirmation and room-to-bidding handoff exclude
+  archived sections. Stored ballots are untouched; unavailable picks are shown
+  in the existing warning. Restoring makes retained votes count again and can
+  make a retained confirmation eligible again. Students should review decisions.
+- Student bidding responses include archive flags so a saved archived selection
+  remains visible. It is not silently replaced with another section. Archived
+  alternatives cannot be newly selected. New cart saves and validation reject
+  archived sections; students must switch or remove them. Saved comparison views
+  retain the course and block calendar export until the cart is reviewed.
+- Repository reads by saved IDs retain archived records for historical rendering;
+  active discovery excludes them. Student tabs must reload to receive changes.
+- Archive versus a simultaneous student save is not protected by a global
+  cross-collection lock: an existing cart may remain saved and later become
+  archived. Subsequent validation rejects it; no BOSS allocation is performed.
+- Automated tests cover role/revision guards, restoration eligibility, retained
+  section IDs, backend bid rejection, historical visibility and frontend swap/save
+  behaviour. No live timetable records were archived or restored during testing.

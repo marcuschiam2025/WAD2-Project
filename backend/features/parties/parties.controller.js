@@ -155,7 +155,7 @@ export async function saveVotes(req, res) {
   const term = await votingTerm(party, req.body.term)
   const ids = [...new Set(sectionIds)]
   if (ids.some(id => id.includes(':') && (id.split(':').length !== 3 || !id.startsWith(`${term}:${party.module}:`) || !id.split(':')[2]))) throw httpError(400, `Choose sections of ${party.module} in ${term}`)
-  const sections = ids.length ? await loadSections({ term, modules: [party.module], ids }) : []
+  const sections = ids.length ? await loadSections({ term, modules: [party.module], ids, includeArchived: false }) : []
   if (sections.length !== ids.length || sections.some(section => section.module !== party.module || section.term !== term || !ids.includes(section.sectionId))) throw httpError(400, `Choose sections of ${party.module} in ${term}`)
   const updated = await Party.findOneAndUpdate({ _id: party._id, members: req.user._id, term: { $in: [null, term] } }, [{ $set: {
     term,
