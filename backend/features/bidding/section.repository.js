@@ -1,9 +1,10 @@
 import Section from './models/Section.js'
+import BiddingSettings from './models/BiddingSettings.js'
 import { canonicalTerm, termLabel, normalizeSection } from './utils/sectionData.js'
 
 // Native reads retain fields from both catalogue schemas. This adapter never rewrites records.
-export async function availableTerms() {
- const [old,shared]=await Promise.all([Section.collection.distinct('term'),Section.collection.distinct('termKey')])
+export async function availableTerms(session) {
+ const [old,shared]=await Promise.all([Section.collection.distinct('term', {}, { session }),Section.collection.distinct('termKey', {}, { session })])
  return [...new Set([...old,...shared].filter(Boolean).map(canonicalTerm))].sort().reverse()
 }
 export async function loadSections({term,modules,ids,includeArchived=!!ids}={}) {
@@ -18,8 +19,9 @@ export async function loadSections({term,modules,ids,includeArchived=!!ids}={}) 
  const rows=await Section.collection.find(and.length?{$and:and}:{}).toArray()
  return rows.map(normalizeSection).sort((a,b)=>a.module.localeCompare(b.module)||a.section.localeCompare(b.section))
 }
-export async function roundSettings(env=process.env) {
- const terms=await availableTerms()
+export async function roundSettings(env=process.env, readSettings=()=>BiddingSettings.findById('active').lean()) {
+ const [terms,saved]=await Promise.all([availableTerms(),readSettings()])
+ if(saved) return {term:saved.term,round:saved.round,closesAt:new Date(saved.closesAt).toISOString(),availableTerms:terms,configured:true,source:'staff'}
  const term=env.BIDDING_TERM?canonicalTerm(env.BIDDING_TERM):terms[0]??null
  const closesAt=env.BIDDING_ROUND_CLOSES_AT?new Date(env.BIDDING_ROUND_CLOSES_AT):null
  if(closesAt && !Number.isFinite(closesAt.getTime())) throw new Error('Invalid BIDDING_ROUND_CLOSES_AT')

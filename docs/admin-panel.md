@@ -209,3 +209,17 @@ Verified: 93 backend tests passed, one integration test skipped; 18 frontend tes
 ### Checklist presentation review
 
 The live checklist heading is Degree Requirements. Incomplete requirements use neutral Partial/Incomplete badges instead of semester recommendations. The summary says still incomplete, and does not describe partially filled requirements as absent from the plan. Browser inspection confirmed the new heading, progress labels and removed recommendation legend. All 19 frontend tests and production build passed. The user requested pushing this chunk before the additional manual course-placement test.
+
+## Active bidding-round editor (local review)
+
+Bidding round tab configures one active term, round name and closing time. Terms come from existing section records; add sections before selecting a new term. Times are entered/reviewed explicitly in Singapore time and stored as UTC instants. Past closing times are allowed with a review notice. Staff-saved MongoDB settings take precedence over environment settings; without a staff record the original environment/catalogue fallback remains.
+
+GET/PUT `/api/admin/bidding-round` require the existing admin guard. Writes validate the term, round label, calendar date and explicit timezone; use revision checks and the same audit transaction as the settings change. The singleton `_id` prevents multiple active records. GET `/api/bidding/round` reads these settings, so student reloads use the new round and section term. Existing carts retain their term identities. Dates remain a planning reference, not a BOSS submission gateway; saving personal plans is not blocked by the deadline.
+
+This chunk does not introduce round-history CRUD, a new-term wizard, opening times or actual bid submission. Server-configured values remain until the first staff save; subsequent staff edits replace active settings. Admin users receive a review step and unsaved-change protection. No live round settings were written during development. Manual save/reload and student display review are pending.
+
+Verification: 95 backend tests passed, one skipped; 20 frontend tests passed; production build passed. Coverage includes authorization, stale saves, transaction/audit wiring, term validation, date rollover rejection, saved-setting precedence, and Singapore time conversion.
+
+### Active round review completed
+
+The user confirmed admin save/reload persistence and the final test passed. A read-only live MongoDB/service check also confirmed the student round service returns the saved staff term, round and identical UTC closing instant. User approved pushing the chunk.

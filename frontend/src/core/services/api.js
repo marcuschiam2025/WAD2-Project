@@ -47,6 +47,8 @@ function query(params) {
 }
 
 export const api = {
+  adminRound: () => request('GET', '/admin/bidding-round'),
+  saveAdminRound: data => request('PUT', '/admin/bidding-round', data),
   adminModules: (params = {}) => request('GET', `/admin/modules${query(params)}`),
   adminModule: (code) => request('GET', `/admin/modules/${encodeURIComponent(code)}`),
   createAdminModule: (data) => request('POST', '/admin/modules', data),

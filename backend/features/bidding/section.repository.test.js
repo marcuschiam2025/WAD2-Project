@@ -12,14 +12,16 @@ test('repository reads shared sections by canonical ID and exposes catalogue fal
     return { toArray: async () => [{ moduleCode:'IS216',termKey:'2026-27_T1',sectionCode:'G11',instructor:'Test',classSlots:[{day:'THU',start:'12:00',end:'13:30'},{day:'FRI',start:'12:00',end:'13:30'}],finalExam:null }] }
   }
   try {
-    assert.deepEqual(await roundSettings({}), { term:'2026-27_T1',round:null,closesAt:null,availableTerms:['2026-27_T1'],configured:false,source:'catalogue' })
-    const configured = await roundSettings({BIDDING_TERM:'AY26/27 T1',BIDDING_ROUND:'1A',BIDDING_ROUND_CLOSES_AT:'2026-10-30T12:00:00+08:00'})
+    assert.deepEqual(await roundSettings({}, async () => null), { term:'2026-27_T1',round:null,closesAt:null,availableTerms:['2026-27_T1'],configured:false,source:'catalogue' })
+    const configured = await roundSettings({BIDDING_TERM:'AY26/27 T1',BIDDING_ROUND:'1A',BIDDING_ROUND_CLOSES_AT:'2026-10-30T12:00:00+08:00'}, async () => null)
     assert.equal(configured.closesAt,'2026-10-30T04:00:00.000Z')
     assert.equal(configured.configured,true)
+    const saved = await roundSettings({ BIDDING_TERM: '2026-27_T1', BIDDING_ROUND: 'OLD' }, async () => ({ term: '2026-27_T2', round: '2A', closesAt: new Date('2026-11-01T04:00:00Z') }))
+    assert.equal(saved.term, '2026-27_T2'); assert.equal(saved.round, '2A'); assert.equal(saved.source, 'staff'); assert.equal(saved.closesAt, '2026-11-01T04:00:00.000Z')
     const rows = await loadSections({term:'2026-27_T1',ids:['2026-27_T1:IS216:G11']})
     assert.equal(rows[0].sessions.length,2)
     assert.ok(JSON.stringify(filters[0]).includes('sectionCode'))
-    await assert.rejects(roundSettings({BIDDING_ROUND_CLOSES_AT:'bad'}), /Invalid/)
+    await assert.rejects(roundSettings({BIDDING_ROUND_CLOSES_AT:'bad'}, async () => null), /Invalid/)
   } finally {
     Object.assign(Section.collection,original)
   }

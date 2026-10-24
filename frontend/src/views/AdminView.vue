@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@core/stores/user'
 import { api } from '@core/services/api'
+import RoundEditor from '@/components/admin/RoundEditor.vue'
 import CurriculumEditor from '@/components/admin/CurriculumEditor.vue'
 import SectionEditor from '@/components/admin/SectionEditor.vue'
 import ModuleEditor from '@/components/admin/ModuleEditor.vue'
@@ -32,9 +33,6 @@ async function load(more = false) {
 }
 async function signOut() { generation++; await user.signOut(); await router.push('/signin') }
 onMounted(() => load())
-const sections = [
-  ['Bidding rounds', 'Terms, rounds and submission deadlines.'],
-]
 </script>
 
 <template>
@@ -54,18 +52,12 @@ const sections = [
     <p v-if="busy && !verified" class="mt-6" role="status">Checking staff access…</p>
     <template v-if="verified">
       <nav class="mt-8 flex flex-wrap gap-2" aria-label="Catalogue editors">
-        <button v-for="[key, label] in [['modules', 'Modules'], ['sections', 'Sections & schedules'], ['curricula', 'Tracks & curricula']]" :key="key" type="button" :aria-pressed="activeEditor === key" class="rounded-md border border-border px-4 py-2 text-sm" :class="activeEditor === key ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'" @click="activeEditor = key">{{ label }}</button>
+        <button v-for="[key, label] in [['modules', 'Modules'], ['sections', 'Sections & schedules'], ['curricula', 'Tracks & curricula'], ['round', 'Bidding round']]" :key="key" type="button" :aria-pressed="activeEditor === key" class="rounded-md border border-border px-4 py-2 text-sm" :class="activeEditor === key ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'" @click="activeEditor = key">{{ label }}</button>
       </nav>
       <ModuleEditor v-show="activeEditor === 'modules'" @saved="load()" />
       <SectionEditor v-show="activeEditor === 'sections'" @saved="load()" />
       <CurriculumEditor v-show="activeEditor === 'curricula'" @saved="load()" />
-      <section aria-label="Catalogue management" class="mt-8 grid gap-4 sm:grid-cols-2">
-        <article v-for="[title, description] in sections" :key="title" class="rounded-lg border border-border bg-card p-5">
-          <h2 class="font-semibold">{{ title }}</h2>
-          <p class="mt-2 text-sm text-muted-foreground">{{ description }}</p>
-          <p class="mt-4 text-xs text-muted-foreground">Editing coming soon</p>
-        </article>
-      </section>
+      <RoundEditor v-show="activeEditor === 'round'" @saved="load()" />
       <section class="mt-10" aria-labelledby="history-title">
         <div class="flex items-center justify-between gap-4">
           <h2 id="history-title" class="text-xl font-semibold">Recent changes</h2>
