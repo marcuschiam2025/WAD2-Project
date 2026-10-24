@@ -76,7 +76,7 @@ const routes = [
   {
     path: '/rooms/:id/votes',
     name: 'room-votes',
-    component: () => import('@/views/RoomVotesView.vue'),
+    redirect: to => `/rooms/${to.params.id}`,
     meta: { layout: 'app', auth: true, nav: 'rooms' },
   },
   {

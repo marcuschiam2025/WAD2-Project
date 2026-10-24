@@ -18,7 +18,8 @@ const partySchema = new mongoose.Schema(
     banned: [{ type: ObjectId, ref: 'User' }],
     votes: [{ _id: false, user: { type: ObjectId, ref: 'User' }, sectionIds: [String] }],
     finalisedSection: String,
-    importedPlans: [{ _id: false, user: { type: ObjectId, ref: 'User' }, plan: { type: ObjectId, ref: 'Plan' } }],
+    // Historical field only: no import route and never exposed on room reads.
+    importedPlans: { type: [{ _id: false, user: { type: ObjectId, ref: 'User' }, plan: { type: ObjectId, ref: 'Plan' } }], select: false },
     comments: [
       {
         user: { type: ObjectId, ref: 'User' },

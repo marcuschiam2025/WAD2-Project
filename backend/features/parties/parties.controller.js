@@ -1,6 +1,5 @@
 import crypto from 'node:crypto'
 import Party from './models/Party.js'
-import User from '../auth/models/User.js'
 import Module from '../planning/models/Module.js'
 import Section from '../bidding/models/Section.js'
 import { unmetGroups } from '../planning/utils/requisites.js'
@@ -16,7 +15,7 @@ async function missingPrereqs(user, moduleCode) {
 
 async function uniqueInviteCode() {
   for (;;) {
-    const code = crypto.randomBytes(2).toString('hex').toUpperCase()
+    const code = crypto.randomBytes(3).toString('hex').toUpperCase()
     if (!(await Party.exists({ inviteCode: code }))) return code
   }
 }
@@ -34,44 +33,30 @@ async function findPartyForMember(req) {
 // GET /api/parties — parties I'm in
 export async function listParties(req, res) {
   const parties = await Party.find({ members: req.user._id })
-    .select('name description module inviteCode maxMembers members updatedAt')
+    .select('name description module inviteCode maxMembers members owner votes updatedAt')
     .populate('members', MEMBER_FIELDS)
     .sort({ updatedAt: -1 })
   res.json(parties)
 }
 
-// POST /api/parties { name, description, module, maxMembers, memberEmails? }
-// Invitees missing the module's prerequisites are returned in `blocked` instead of being added.
+// POST /api/parties { name, module } — creator is the party admin.
 export async function createParty(req, res) {
-  const { name, description, module, maxMembers, memberEmails = [] } = req.body
-  const party = new Party({
-    name,
-    description,
-    module,
-    maxMembers,
-    inviteCode: await uniqueInviteCode(),
-    owner: req.user._id,
-    members: [req.user._id],
-  })
-
-  const blocked = []
-  const invitees = await User.find({ email: { $in: memberEmails.map((e) => String(e).toLowerCase()) } })
-  for (const invitee of invitees) {
-    if (party.members.length >= party.maxMembers) break
-    const missing = await missingPrereqs(invitee, module)
-    if (missing.length) blocked.push({ email: invitee.email, name: invitee.name, missing })
-    else if (!isMember(party, invitee)) party.members.push(invitee._id)
-  }
-
+  const { name, module } = req.body
+  if (typeof name !== 'string' || !name.trim() || name.trim().length > 80 || typeof module !== 'string' || !/^[A-Z][A-Z0-9-]{1,24}$/.test(module)) throw httpError(400, 'Provide a party name and valid module code')
+  if (!await Module.exists({ _id: module })) throw httpError(400, 'Choose a module from the catalogue')
+  const party = new Party({ name: name.trim(), module, inviteCode: await uniqueInviteCode(), owner: req.user._id, members: [req.user._id] })
   await party.save()
-  res.status(201).json({ party, blocked })
+  await party.populate('members', MEMBER_FIELDS)
+  res.status(201).json({ party })
 }
 
 // POST /api/parties/join { inviteCode }
 export async function joinParty(req, res) {
-  const party = await Party.findOne({ inviteCode: String(req.body.inviteCode ?? '').toUpperCase() })
+  const inviteCode = typeof req.body.inviteCode === 'string' ? req.body.inviteCode.trim().toUpperCase() : ''
+  if (!/^[A-Z0-9]{4,8}$/.test(inviteCode)) throw httpError(400, 'Enter a room code of 4–8 letters or numbers')
+  const party = await Party.findOne({ inviteCode })
   if (!party) throw httpError(404, 'No party found for that invite code')
-  if (isMember(party, req.user)) return res.json(party)
+  if (isMember(party, req.user)) { await party.populate('members', MEMBER_FIELDS); return res.json(party) }
   if (party.banned.some((id) => id.equals(req.user._id))) throw httpError(403, 'You cannot join this party')
   if (party.members.length >= party.maxMembers) throw httpError(409, 'This party is full')
 
@@ -80,9 +65,13 @@ export async function joinParty(req, res) {
     return res.status(403).json({ error: `Missing prerequisite for ${party.module}`, missing })
   }
 
-  party.members.push(req.user._id)
-  await party.save()
-  res.json(party)
+  // Capacity is checked in the write so simultaneous joins cannot overfill a room.
+  const joined = await Party.findOneAndUpdate({ _id: party._id, banned: { $ne: req.user._id },
+    $or: [{ members: req.user._id }, { $expr: { $lt: [{ $size: '$members' }, '$maxMembers'] } }] },
+    { $addToSet: { members: req.user._id } }, { new: true, runValidators: true })
+  if (!joined) throw httpError(409, 'This room is full or no longer available')
+  await joined.populate('members', MEMBER_FIELDS)
+  res.json(joined)
 }
 
 // GET /api/parties/:id
@@ -90,7 +79,6 @@ export async function getParty(req, res) {
   const party = await findPartyForMember(req)
   await party.populate([
     { path: 'members', select: MEMBER_FIELDS },
-    { path: 'importedPlans.plan' },
     { path: 'comments.user', select: MEMBER_FIELDS },
   ])
   res.json(party)
@@ -162,17 +150,6 @@ export async function finaliseSection(req, res) {
   party.finalisedSection = req.body.sectionId
   await party.save()
   res.json(party)
-}
-
-// PUT /api/parties/:id/plans { planIds } — share my What-If plans with the party
-export async function sharePlans(req, res) {
-  const party = await findPartyForMember(req)
-  party.importedPlans = [
-    ...party.importedPlans.filter((p) => !p.user.equals(req.user._id)),
-    ...(req.body.planIds ?? []).map((plan) => ({ user: req.user._id, plan })),
-  ]
-  await party.save()
-  res.json(party.importedPlans)
 }
 
 // POST /api/parties/:id/comments { module, text }

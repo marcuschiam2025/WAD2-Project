@@ -89,7 +89,7 @@ backend/
     ├── planning/          # modules, tracks, majors, What-If plans (max 3) + utils/requirementChecker
     ├── quiz/              # Track Finder questions, attempts, recommendations + utils/trackScoring
     ├── bidding/           # BOSS sections, bid history, bid cart, cart clash check + utils/referenceBid, clash
-    ├── parties/           # parties of classmates: members, invite code, slot votes, shared plans, comments
+    ├── parties/           # parties of classmates: members, invite code, slot votes and comments
     └── calendar/          # timetable export (Google for now; Microsoft/Outlook planned, not confirmed)
 ```
 
@@ -116,7 +116,6 @@ Note that `frontend/src/core/router/` is page navigation for the Vue app, while 
 | GET | `/parties/:id`, `/parties/:id/updates?since=` | `updates` returns 204 when nothing changed (short polling) |
 | PUT / GET | `/parties/:id/votes` | slot votes for the party's module |
 | POST | `/parties/:id/finalise`, `/parties/:id/ban` | owner only |
-| PUT | `/parties/:id/plans` | share What-If plans with the party |
 | POST | `/parties/:id/comments` | |
 | DELETE | `/parties/:id/members/me` | leave party |
 | GET | `/bidding/sections?module=`, `/bidding/history/:module?round=` | |
@@ -140,3 +139,7 @@ it is safe to rerun. Do not use a blanket index synchronization against a shared
 ### Saved bidding plans and calendar downloads
 
 The saved plans screen displays persisted bid carts for the catalogue term, not confirmed BOSS allocations. Calendar downloads use every weekly meeting and require the first teaching Monday and number of consecutive weeks. Recess weeks, holidays and exams are not added or removed automatically. The frontend downloads an `.ics` file; Firebase sign-in alone does not grant Google Calendar access.
+
+### Collab Rooms — first integration chunk
+
+Party creation asks only for party name and module code from the shared catalogue. The signed-in creator is the party admin (the existing backend `owner` field). Invitations use the server-issued code; existing codes remain supported. Rooms do not import What-If plans, and the former plan-sharing route is removed. Room listing, creation, joining, member refresh and leaving use `/api/parties`. Voting and member management are not enabled in the connected UI yet.

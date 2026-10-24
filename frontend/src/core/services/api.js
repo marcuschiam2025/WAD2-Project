@@ -76,14 +76,14 @@ export const api = {
   checkPlan: (id) => request('GET', `/plans/${id}/check`),
 
   // Collab rooms
-  // TODO(Backend 2): the backend has /api/parties; the rooms store still runs on sample data
-  rooms: () => request('GET', '/rooms'),
-  room: (id) => request('GET', `/rooms/${id}`),
-  createRoom: (room) => request('POST', '/rooms', room),
-  joinRoom: (code) => request('POST', '/rooms/join', { code }),
-  leaveRoom: (id) => request('DELETE', `/rooms/${id}/members/me`),
-  vote: (id, sectionIds) => request('PUT', `/rooms/${id}/votes`, { sectionIds }),
-  roomUpdates: (id, since) => request('GET', `/rooms/${id}/updates?since=${since}`),
+  // Frontend rooms map to the backend's parties resource.
+  rooms: () => request('GET', '/parties'),
+  room: (id) => request('GET', `/parties/${id}`),
+  createRoom: (room) => request('POST', '/parties', room),
+  joinRoom: (inviteCode) => request('POST', '/parties/join', { inviteCode }),
+  leaveRoom: (id) => request('DELETE', `/parties/${id}/members/me`),
+  vote: (id, sectionIds) => request('PUT', `/parties/${id}/votes`, { sectionIds }),
+  roomUpdates: (id, since) => request('GET', `/parties/${id}/updates?since=${since}`),
 
   // BOSS bidding
   round: () => request('GET', '/bidding/round'),

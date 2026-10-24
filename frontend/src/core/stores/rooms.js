@@ -1,5 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { api } from '../services/api'
 import { classmates, roomPrereqs } from '../data/rooms'
 import { useUserStore } from './user'
 import { sections } from '../data/bidding'
@@ -27,6 +28,9 @@ export function canSetAdmin(room, actorId, targetId) {
 
 export const useRoomsStore = defineStore('rooms', () => {
   const rooms = ref([])
+  const people = ref({})
+  const loading = ref(false), busy = ref(false), online = ref(false), error = ref('')
+  let revision = 0, listRequest = 0
   // room id -> section ids the signed-in student picked
   const myVotes = ref({})
 
@@ -34,6 +38,8 @@ export const useRoomsStore = defineStore('rooms', () => {
   const accepted = ref({})
   const user = useUserStore()
   watch(() => user.uid, () => {
+    revision++; listRequest++
+    people.value = {}; loading.value = false; busy.value = false; online.value = false; error.value = ''
     rooms.value = []
     myVotes.value = {}
     accepted.value = {}
@@ -93,8 +99,8 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   function person(id) {
-    if (id === ME) return { id: ME, name: 'You', short: 'You', initials: 'VS', you: true }
-    return classmates.find((c) => c.id === id)
+    if (id === ME) return { id: ME, name: 'You', short: 'You', initials: user.profile.initials || 'You', you: true }
+    return people.value[id] ?? { id, name: 'Member', short: 'Member', initials: '?', you: false }
   }
 
   function searchClassmates(query, exclude = []) {
@@ -113,34 +119,72 @@ export const useRoomsStore = defineStore('rooms', () => {
     return c.completed.includes(req.code) ? null : req
   }
 
-  // A unique 6-digit code, which is also the room's id
-  function newRoomCode() {
-    let code
-    do code = String(Math.floor(100000 + Math.random() * 900000))
-    while (rooms.value.some((r) => r.id === code))
-    return code
-  }
-
-  // TODO(Backend 2): POST /api/rooms
-  function createRoom({ name, description, module, maxMembers, members }) {
-    const id = newRoomCode()
-    rooms.value.unshift({
-      id,
-      name,
-      description,
-      module,
-      maxMembers,
-      ownerId: ME,
-      admins: [],
-      members: [ME, ...members],
-      votes: { [`${module}-G1`]: [], [`${module}-G2`]: [], [`${module}-G3`]: [] },
-      suggestedBids: {},
+  function normalize(party) {
+    const myId = String(user.profile._id ?? '')
+    const memberId = member => {
+      const id = String(member?._id ?? member)
+      return id === myId || (member?.email && member.email === user.profile.email) ? ME : id
+    }
+    const members = (party.members ?? []).map(member => {
+      const id = memberId(member)
+      if (typeof member === 'object') {
+        const name = member.name || 'Member'
+        people.value[id] = { id, name, short: name, email: member.email, initials: name.split(/\s+/).slice(0,2).map(word => word[0]).join('').toUpperCase(), you: id === ME }
+      }
+      return id
     })
-    return id
+    const votes = {}
+    myVotes.value[String(party._id)] = []
+    for (const ballot of party.votes ?? []) {
+      const id = memberId(ballot.user)
+      if (id === ME) myVotes.value[String(party._id)] = ballot.sectionIds
+      else for (const sid of ballot.sectionIds) (votes[sid] ??= []).push(id)
+    }
+    return { id: String(party._id), name: party.name, description: party.description, module: party.module,
+      inviteCode: party.inviteCode, maxMembers: party.maxMembers, ownerId: memberId(party.owner),
+      admins: [], members, votes, suggestedBids: {}, updatedAt: party.updatedAt }
   }
-
-  function leaveRoom(id) {
-    rooms.value = rooms.value.filter((r) => r.id !== id)
+  function upsert(party) {
+    const room = normalize(party)
+    rooms.value = [room, ...rooms.value.filter(existing => existing.id !== room.id)]
+    return room.id
+  }
+  async function load() {
+    const version = revision, request = ++listRequest
+    if (!user.isSignedIn) return
+    loading.value = true; error.value = ''
+    try {
+      const data = await api.rooms()
+      if (version !== revision || request !== listRequest) return
+      rooms.value = data.map(normalize)
+      online.value = true
+    } catch (failure) { if (version === revision && request === listRequest) error.value = failure.message }
+    finally { if (version === revision && request === listRequest) loading.value = false }
+  }
+  async function mutate(action) {
+    if (busy.value) throw new Error('A room request is already in progress.')
+    const version = revision
+    busy.value = true; error.value = ''; listRequest++; loading.value = false
+    try {
+      const party = await action()
+      if (version !== revision) throw new Error('Your account changed. Please try again.')
+      return upsert(party)
+    } catch (failure) { if (version === revision) error.value = failure.message; throw failure }
+    finally { if (version === revision) busy.value = false }
+  }
+  async function createRoom({ name, module }) {
+    return mutate(async () => (await api.createRoom({ name, module })).party)
+  }
+  async function joinRoom(code) {
+    return mutate(() => api.joinRoom(code.trim().toUpperCase()))
+  }
+  async function leaveRoom(id) {
+    const version = revision
+    await api.leaveRoom(id)
+    if (version !== revision) throw new Error('Your account changed.')
+    listRequest++
+    rooms.value = rooms.value.filter(room => room.id !== id)
+    delete myVotes.value[id]; delete accepted.value[id]
   }
 
   function setMyVotes(roomId, sectionIds) {
@@ -183,7 +227,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   return {
-    rooms,
+    rooms, loading, busy, online, error, load, joinRoom,
     myVotes,
     decided,
     roomState,
