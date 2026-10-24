@@ -1,14 +1,14 @@
-// Replaces the planning catalogue (schools, majors, tracks, requirements, modules) and the past bid
-// results (bidhistories) with data/*.json.
+// Replaces the planning catalogue (schools, majors, tracks, requirements, modules), the past bid
+// results (bidhistories) and the class sections (sections) with data/*.json.
 // Student data — users, plans, parties, quiz results and bid carts — is never touched.
-// Rebuild data/ with `pnpm build-catalogue` / `pnpm build-bid-history` first if needed.
+// Rebuild data/ with `pnpm build-catalogue` / `pnpm build-bid-history` / `pnpm build-sections` first if needed.
 // Usage: pnpm seed              (local MongoDB only)
 //        pnpm seed --remote     (any MONGODB_URI, e.g. the shared Atlas cluster)
 import { readFileSync } from 'node:fs'
 import mongoose from 'mongoose'
 import { connectDB } from '../config/db.js'
 
-const COLLECTIONS = ['schools', 'majors', 'tracks', 'requirements', 'modules', 'bidhistories']
+const COLLECTIONS = ['schools', 'majors', 'tracks', 'requirements', 'modules', 'bidhistories', 'sections']
 
 // Safety check: only overwrite a remote database (like Atlas) when --remote is passed
 const uri = process.env.MONGODB_URI ?? ''
@@ -24,6 +24,22 @@ const data = {}
 for (const name of COLLECTIONS) {
   const text = readFileSync(new URL(`../data/${name}.json`, import.meta.url))
   data[name] = JSON.parse(text)
+}
+
+// Every section must belong to a module in the catalogue. insertMany skips the Section model's own
+// check (models/Section.js), so check here before touching the database.
+const moduleCodes = new Set()
+for (const module of data.modules) {
+  moduleCodes.add(module._id)
+}
+const orphans = new Set()
+for (const section of data.sections) {
+  if (!moduleCodes.has(section.module)) orphans.add(section.module)
+}
+if (orphans.size > 0) {
+  console.error(`sections.json has modules missing from modules.json: ${[...orphans].join(', ')}`)
+  console.error('Re-run `pnpm build-sections` after `pnpm build-catalogue`.')
+  process.exit(1)
 }
 
 await connectDB(uri)

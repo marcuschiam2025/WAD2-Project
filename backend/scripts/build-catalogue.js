@@ -3,8 +3,10 @@
 //   - the team's seed folder: schools, majors, tracks and graduation requirements (copied as is),
 //     plus modules.json for courses the CSV doesn't list and tags the CSV doesn't carry
 //   - bidResults.json in the seed folder: which terms each course actually ran in
+//   - data/bidhistories.json and data/sections.json (if built): the latest term each course ran in
 // Usage: pnpm build-catalogue <courses-report.csv> <seed folder>
-import { readFileSync, writeFileSync } from 'node:fs'
+// New term's sections? Run build-catalogue, then build-sections, then build-catalogue again so lastOffered sees them.
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseRequisite, splitCodes } from '../features/planning/utils/requisites.js'
 import { parseCsv } from './utils/parseCsv.js'
@@ -38,10 +40,10 @@ const NOTE_ATTRIBUTE = /^RQ(SR|CU|GP|PL|CL|CS) - /
 // Requirements the planner leaves out: community service isn't planned in semesters
 const EXCLUDED_TAGS = ['CORE:COMMUNITY_SERVICE']
 
-// SMU has no single internship course, so the planner gets its own entry that students can
-// place in a semester or an LOA term. It fills the "Internship" requirement.
+// SMU records the internship as COR1001, which the courses report leaves out, so the planner adds
+// it here. Students can place it in a semester or an LOA term. It fills the "Internship" requirement.
 const INTERNSHIP_MODULE = {
-  _id: 'INTERNSHIP',
+  _id: 'COR1001',
   title: 'Internship',
   cu: 1,
   schoolId: null,
@@ -93,6 +95,34 @@ function attributeValue(attributes, prefix) {
   return undefined
 }
 
+// Every attribute with this prefix. A course can list several, e.g. IS212 has
+// "RQCP - IS112/IS105" and "RQCP - IS113": each one is a separate requirement, all of which apply.
+function attributeValues(attributes, prefix) {
+  const values = []
+  for (const attribute of attributes) {
+    if (attribute.startsWith(`${prefix} - `)) {
+      values.push(attribute.slice(prefix.length + 3))
+    }
+  }
+  return values
+}
+
+// All of a course's requisite lines of one kind as AND-of-OR groups, e.g. [["IS112","IS105"],["IS113"]]
+function requisiteGroups(attributes, prefix, subject) {
+  const groups = []
+  const seen = new Set()
+  for (const text of attributeValues(attributes, prefix)) {
+    for (const group of parseRequisite(text, subject)) {
+      const key = [...group].sort().join('|')
+      if (!seen.has(key)) {
+        seen.add(key)
+        groups.push(group)
+      }
+    }
+  }
+  return groups
+}
+
 // ---------------------------------------------------------------------------------------------
 // Load the inputs
 // ---------------------------------------------------------------------------------------------
@@ -134,6 +164,34 @@ for (const bid of bids) {
   recentTerms[bid.moduleCode].add(term)
 }
 
+// The latest term each course ran in, e.g. IS460 -> "AY26/27 T2", from every source of offerings:
+// the seed's bid results, the BOSS bid history (data/bidhistories.json) and next term's sections (data/sections.json)
+const lastOffered = {}
+function recordOffered(code, term) {
+  // "AY25/26 T2" < "AY26/27 T1" as strings, so the larger string is the later term
+  if (!lastOffered[code] || term > lastOffered[code]) {
+    lastOffered[code] = term
+  }
+}
+for (const bid of bids) {
+  const [year, term] = bid.termKey.split('_') // "2025-26", "T1"
+  recordOffered(bid.moduleCode, `AY${year.slice(2, 4)}/${year.slice(5)} ${term}`)
+}
+for (const fileName of ['bidhistories.json', 'sections.json']) {
+  const file = new URL(fileName, OUTPUT_FOLDER)
+  if (!existsSync(file)) {
+    continue
+  }
+  for (const row of JSON.parse(readFileSync(file, 'utf8'))) {
+    recordOffered(row.module, row.term)
+  }
+}
+
+// A course counts as offered recently when it ran in one of the 4 latest terms we have data for (about 2 years)
+const RECENT_TERM_COUNT = 4
+const knownTerms = [...new Set(Object.values(lastOffered))].sort()
+const oldestRecentTerm = knownTerms[Math.max(0, knownTerms.length - RECENT_TERM_COUNT)]
+
 // Modules named in a track's requirement lists count as track courses even without a TRCK attribute
 const trackListed = new Set()
 for (const requirement of requirements) {
@@ -153,7 +211,8 @@ const modules = {} // code -> module
 for (const row of csvRows) {
   const level = row[0]
   const subject = row[1].trim()
-  const catalogNumber = row[2].trim()
+  // The report writes some catalogue numbers with a leading dot (".446" for IS446), so drop it
+  const catalogNumber = row[2].trim().replace(/^\./, '')
   const department = row[3]
   const title = row[4]
   const description = row[5]
@@ -202,11 +261,11 @@ for (const row of csvRows) {
   }
 
   // Requisites: from the CSV, else the seed
-  let prerequisites = parseRequisite(attributeValue(attributes, 'RQCP'), subject)
+  let prerequisites = requisiteGroups(attributes, 'RQCP', subject)
   if (prerequisites.length === 0) {
     prerequisites = seed?.prerequisites ?? []
   }
-  let corequisites = parseRequisite(attributeValue(attributes, 'RQCC'), subject)
+  let corequisites = requisiteGroups(attributes, 'RQCC', subject)
   if (corequisites.length === 0) {
     corequisites = seed?.corequisites ?? []
   }
@@ -229,7 +288,7 @@ for (const row of csvRows) {
     fulfils: [...fulfils],
     prerequisites: prerequisites,
     corequisites: corequisites,
-    mutuallyExclusive: splitCodes(attributeValue(attributes, 'RQCX'), subject),
+    mutuallyExclusive: [...new Set(attributeValues(attributes, 'RQCX').flatMap((text) => splitCodes(text, subject)))],
   }
   if (seed?.prerequisiteRules) {
     mod.prerequisiteRules = seed.prerequisiteRules
@@ -252,6 +311,17 @@ for (const mod of Object.values(seedModules)) {
 }
 
 modules[INTERNSHIP_MODULE._id] = INTERNSHIP_MODULE
+
+// Mark courses that haven't run lately (e.g. COR-IS1702, replaced by COR-IS1704). They stay in the
+// catalogue for students who already took them, but module search hides them by default.
+let notRecent = 0
+for (const mod of Object.values(modules)) {
+  mod.lastOffered = lastOffered[mod._id] ?? null
+  mod.offeredRecently = mod._id === INTERNSHIP_MODULE._id || (mod.lastOffered !== null && mod.lastOffered >= oldestRecentTerm)
+  if (!mod.offeredRecently) {
+    notRecent++
+  }
+}
 
 // Warn if a requirement names a course we don't have
 const missing = new Set()
@@ -281,3 +351,4 @@ console.log(
   `Wrote ${sortedModules.length} modules (${carriedOver} carried over from the seed), ` +
     `${schools.length} schools, ${majors.length} majors, ${tracks.length} tracks, ${requirements.length} requirements`,
 )
+console.log(`${notRecent} modules not offered since ${oldestRecentTerm} (offeredRecently: false)`)

@@ -19,6 +19,8 @@ const moduleSchema = new mongoose.Schema(
     prerequisiteRules: [{ _id: false, countFrom: String, n: Number }], // e.g. 2 track courses done first
     requisiteNotes: [String], // free-text requisites (min grade, instructor's permission, …)
     termsOffered: [String], // e.g. ['T1', 'T2']; empty = unknown
+    lastOffered: { type: String, default: null }, // latest term it ran in, e.g. AY26/27 T2; null = not in our data
+    offeredRecently: { type: Boolean, default: true }, // ran in about the last 2 years; false = probably retired
   },
   { versionKey: false },
 )

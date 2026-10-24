@@ -18,6 +18,7 @@ const catalogue = Object.fromEntries(
     mod('COR-COMM1304', { fulfils: ['CORE:MANAGING'] }),
     mod('ART101'),
     mod('ART102'),
+    mod('COR-IS1702', { offeredRecently: false, lastOffered: null }),
   ].map((m) => [m._id, m]),
 )
 
@@ -118,6 +119,13 @@ test('warnings: prereq groups, coreqs, exclusions and course-count rules', () =>
   assert.equal(check(plan([['IS111'], ['IS113']])).onTrack, true)
 })
 
+test('a course not offered lately is flagged only in current and future semesters', () => {
+  const result = check(plan([['COR-IS1702'], ['COR-IS1702']], 'Y1S2'))
+  assert.deepEqual(result.warnings, [
+    { module: 'COR-IS1702', semester: 'Y1S2', prereqs: [], coreqs: [], exclusions: [], rules: [], notOffered: { lastOffered: null } },
+  ])
+})
+
 test('exchange mappings count as the SMU course; unknown codes are reported', () => {
   const result = check(plan([['CS412 → IS460', 'XYZ999']]))
   assert.deepEqual(find(result, 'BA_ELECTIVES').modules.map((m) => m.code), ['IS460'])
@@ -131,23 +139,23 @@ test('courses beyond every requirement are unallocated', () => {
 })
 
 test('an internship in an LOA term counts towards the internship requirement', () => {
-  const internship = mod('INTERNSHIP', { fulfils: ['CORE:INTERNSHIP'] })
+  const internship = mod('COR1001', { fulfils: ['CORE:INTERNSHIP'] })
   const internshipReq = req('CORE_INTERNSHIP', { level: 'core', rule: 'basket', tag: 'CORE:INTERNSHIP', cuRequired: 1 })
   const loaPlan = {
     currentSem: 'Y1S1',
     semesters: [
       { id: 'Y1S1', loa: false, modules: ['IS111'] },
-      { id: 'Y1S2', loa: true, modules: ['INTERNSHIP'] },
+      { id: 'Y1S2', loa: true, modules: ['COR1001'] },
     ],
   }
   const result = checkPlan(loaPlan, {
     major,
     requirements: [internshipReq],
-    catalogue: { ...catalogue, INTERNSHIP: internship },
+    catalogue: { ...catalogue, COR1001: internship },
   })
   const internshipResult = result.requirements[0]
   assert.equal(internshipResult.status, 'planned')
-  assert.deepEqual(internshipResult.modules, [{ code: 'INTERNSHIP', title: 'INTERNSHIP', status: 'planned', semester: 'Y1S2' }])
+  assert.deepEqual(internshipResult.modules, [{ code: 'COR1001', title: 'COR1001', status: 'planned', semester: 'Y1S2' }])
   assert.equal(result.requiredCu, 1)
 })
 
