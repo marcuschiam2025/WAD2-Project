@@ -1,5 +1,6 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useBiddingStore } from '@core/stores/bidding'
 import { usePlannerStore } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
@@ -20,6 +21,14 @@ import { popEnter, popLeave } from '@/motion'
 const bidding = useBiddingStore()
 const planner = usePlannerStore()
 const rooms = useRoomsStore()
+const route = useRoute()
+const router = useRouter()
+watch(() => route.query.plan, id => {
+  if (id && planner.plans.some(plan => plan.id === id)) bidding.planId = id
+}, { immediate: true })
+watch(() => bidding.planId, id => {
+  if (id && route.query.plan !== id) router.replace({ query: { ...route.query, plan: id } })
+})
 const dragging = ref(null)
 
 // Modules whose section was accepted in a collab room are locked, and show the room's friends
@@ -36,6 +45,7 @@ const emptyReason = computed(() => {
   const t = bidding.targetSem
   if (bidding.bookedSections.length) return ''
   if (!t) return `${bidding.plan.name} has no semester after ${bidding.plan.currentSem}, so there is nothing to bid for.`
+  if (bidding.notOffered.length && !bidding.bookedSections.length) return 'Your planned modules are saved. A bidding timetable will be available when section data is loaded for this term.'
   if (t.exchange) return `${t.label} is an exchange semester in ${bidding.plan.name}, so there is nothing to bid for.`
   return `${bidding.plan.name} has no biddable modules in ${t.label} (or they were all dropped from the cart). Drag modules into that semester in the What-If Planner.`
 })
@@ -120,6 +130,9 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
         </div>
       </div>
 
+      <p v-if="bidding.notOffered.length" role="status" class="text-sm text-muted-foreground">
+        Section data is not available for {{ bidding.notOffered.join(', ') }} in {{ bidding.round.term }}. Your modules remain in the degree plan.
+      </p>
       <div v-if="emptyReason" v-enter class="card flex flex-col items-start gap-3 p-6"> <!-- motion: fade + slide up on mount -->
         <p class="text-[14px] leading-normal">{{ emptyReason }}</p>
         <BaseButton variant="outline" to="/planner">Open the What-If Planner</BaseButton>

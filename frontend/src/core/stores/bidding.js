@@ -39,13 +39,13 @@ export const useBiddingStore = defineStore('bidding', () => {
     return [...new Set(t.modules.map(effectiveCode))]
   })
   // Modules decided in collab rooms are bid for whichever plan is picked
-  const roomCodes = computed(() => rooms.decided.map((d) => d.module).filter((c) => sections.some((s) => s.module === c)))
+  const roomCodes = computed(() => rooms.decided.map((d) => d.module).filter((c) => sections.some((s) => s.module === c && liveSections.has(s.id))))
   const planCodes = computed(() => [
-    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c)), ...roomCodes.value]),
+    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c && liveSections.has(s.id))), ...roomCodes.value]),
   ])
   // Modules in the timetable only because a collab room decided on them (not in the plan's next semester)
   const fromRooms = computed(() => rooms.decided.filter((d) => roomCodes.value.includes(d.module)))
-  const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c)))
+  const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c && liveSections.has(s.id))))
 
   // Per plan: modules taken out of the cart, the section picked per module, and the e$ typed per module.
   // The dropped list is kept in this browser: the saved cart can't tell a dropped module from a new one.
@@ -87,8 +87,8 @@ export const useBiddingStore = defineStore('bidding', () => {
     Object.fromEntries(
       inCart.value.map((code) => {
         const pick = chosen.value[plan.value.id]?.[code]
-        const valid = sections.some((s) => s.id === pick && s.module === code)
-        return [code, decidedSection(code) ?? (valid ? pick : sections.find((s) => s.module === code).id)]
+        const valid = sections.some((s) => s.id === pick && s.module === code && liveSections.has(s.id))
+        return [code, decidedSection(code) ?? (valid ? pick : sections.find((s) => s.module === code && liveSections.has(s.id)).id)]
       }),
     ),
   )
@@ -112,7 +112,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   const allocated = computed(() => Object.values(bids.value).reduce((a, b) => a + (Number(b) || 0), 0))
 
   function sectionsFor(code) {
-    return sections.filter((s) => s.module === code)
+    return sections.filter((s) => s.module === code && liveSections.has(s.id))
   }
 
   // Booked sections that share a day + slot with another booked section
@@ -165,6 +165,10 @@ export const useBiddingStore = defineStore('bidding', () => {
     todo.forEach((c) => fetched.add(c))
     const found = await api.sections(todo, round.value.term).catch(() => [])
     if (version !== session) return
+    // Empty live results must remove sample sections too.
+    for (let i = sections.length - 1; i >= 0; i--) {
+      if (todo.includes(sections[i].module)) { liveSections.delete(sections[i].id); sections.splice(i, 1) }
+    }
     const byModule = {}
     found.forEach((s) => (byModule[s.module] ??= []).push(s))
     Object.entries(byModule).forEach(([code, list]) => {

@@ -21,6 +21,21 @@ import iconAlert from '@/assets/figma/alert-12.svg'
 import iconGrip from '@/assets/figma/icon-grip.svg'
 import iconPlus from '@/assets/figma/plus-14.svg'
 
+const importingToBidding = ref(false)
+const handoffError = ref('')
+async function importToBidding() {
+  importingToBidding.value = true
+  handoffError.value = ''
+  try {
+    await planner.savePlans()
+    await planner.saveBasket()
+    await router.push({ path: '/bidding', query: { plan: planner.activePlanId } })
+  } catch (error) { handoffError.value = error.message }
+  finally { importingToBidding.value = false }
+}
+async function retryPlans() {
+  try { await planner.savePlans() } catch { /* The save error remains visible. */ }
+}
 async function retryBasket() {
   try { await planner.saveBasket() } catch { /* The basket error remains visible for retry. */ }
 }
@@ -95,6 +110,14 @@ function place(code, semId) {
   }
   planner.placeModule(code, semId)
   return true
+}
+
+// Keyboard/touch alternative to dragging a basket module.
+function placeFromSelect(code, event) {
+  const semId = event.target.value
+  event.target.value = ''
+  if (!semId || !place(code, semId)) return
+  if (planner.hasWarning(plan.value, code, semId)) warning.value = { code, semId }
 }
 
 function onDragStart(e, code) {
@@ -246,13 +269,15 @@ const onTrack = computed(() => !planner.hasAnyWarning && (planner.activeCheck?.o
     </PageHeader>
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
+      <p v-if="planner.plansSaving" role="status" class="text-sm text-muted-foreground">Saving semester changes…</p>
+      <p v-if="handoffError" role="alert" class="text-sm text-destructive">{{ handoffError }}</p>
       <!-- The backend refused a save (or the plans could not be loaded) -->
       <div
         v-if="planner.syncError"
         class="flex items-center justify-between gap-4 rounded-lg border border-destructive bg-destructive-tint px-4 py-3 text-[13px]"
       >
         <span><span class="font-semibold">Not saved:</span> {{ planner.syncError }}</span>
-        <BaseButton variant="outline" size="sm" @click="planner.reload()">Reload saved plans</BaseButton>
+        <BaseButton variant="outline" size="sm" :disabled="planner.plansSaving" @click="retryPlans">Retry saving plans</BaseButton>
       </div>
       <section v-enter class="card flex items-stretch overflow-hidden"> <!-- motion: fade + slide up on mount -->
         <!-- Module basket -->
@@ -302,6 +327,10 @@ const onTrack = computed(() => !planner.hasAnyWarning && (planner.activeCheck?.o
               <div class="flex min-w-0 flex-1 flex-col leading-normal">
                 <span class="font-mono text-[13px] font-bold">{{ m.code }}</span>
                 <span class="truncate text-[12px] text-muted-foreground">{{ m.name }}</span>
+                <select :aria-label="`Place ${m.code} in semester`" class="mt-2 w-full rounded border border-border bg-card p-1 text-xs" @change="placeFromSelect(m.code, $event)" @mousedown.stop draggable="false">
+                  <option value="">Place in semester…</option>
+                  <option v-for="semester in plan.semesters.filter(canDrop)" :key="semester.id" :value="semester.id" :disabled="isFull(semester)">{{ semester.label }}{{ isFull(semester) ? ' (full)' : '' }}</option>
+                </select>
               </div>
               <button
                 v-if="!roomDecision(m.code)"
@@ -363,7 +392,7 @@ const onTrack = computed(() => !planner.hasAnyWarning && (planner.activeCheck?.o
             </div>
             <div class="flex gap-2 pb-2">
               <BaseButton variant="outline" size="sm" @click="showSettings = true">Plan settings</BaseButton>
-              <BaseButton variant="secondary" size="sm" to="/bidding">Import to Bidding Planner</BaseButton>
+              <BaseButton variant="secondary" size="sm" :disabled="importingToBidding" @click="importToBidding">{{ importingToBidding ? 'Saving plan…' : 'Import to Bidding Planner' }}</BaseButton>
             </div>
           </div>
 

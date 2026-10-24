@@ -210,32 +210,52 @@ export const usePlannerStore = defineStore('planner', () => {
 
   // Save edited plans, half a second after the last change
   let saveTimer
-  async function flush() {
+  const plansSaving = ref(false)
+  let planRequest = null
+  function savePlans() {
+    clearTimeout(saveTimer)
+    if (planRequest) return planRequest
+    if (!online.value || !user.isSignedIn) return Promise.reject(new Error('Connect to the server before saving your plans.'))
     const version = session
-    if (!online.value) return
-    for (const plan of plans.value) {
-      if (version !== session) return
-      const body = JSON.stringify(toApi(plan))
-      if (lastSaved.get(plan.id) === body) continue
-      lastSaved.set(plan.id, body)
+    plansSaving.value = true
+    syncError.value = ''
+    const request = Promise.resolve().then(async () => {
       try {
-        await api.updatePlan(plan.id, toApi(plan))
+        while (version === session && online.value) {
+          const dirty = plans.value.map(plan => ({ id: plan.id, body: JSON.stringify(toApi(plan)) }))
+            .filter(plan => lastSaved.get(plan.id) !== plan.body)
+          if (!dirty.length) break
+          for (const plan of dirty) {
+            if (version !== session) return
+            try {
+              await api.updatePlan(plan.id, JSON.parse(plan.body))
+              if (version !== session) return
+              lastSaved.set(plan.id, plan.body)
+              refreshCheck(plan.id)
+            } catch (error) {
+              if (version !== session) return
+              lastSaved.delete(plan.id)
+              throw error
+            }
+          }
+        }
+      } catch (error) {
         if (version !== session) return
-        syncError.value = ''
-        refreshCheck(plan.id)
-      } catch (e) {
-        if (version !== session) return
-        lastSaved.delete(plan.id)
-        syncError.value = e.message
+        syncError.value = error.message
+        throw error
+      } finally {
+        if (planRequest === request) { planRequest = null; plansSaving.value = false }
       }
-    }
+    })
+    planRequest = request
+    return request
   }
   watch(
     plans,
     () => {
       if (!online.value) return
       clearTimeout(saveTimer)
-      saveTimer = setTimeout(flush, 500)
+      saveTimer = setTimeout(() => savePlans().catch(() => {}), 500)
     },
     { deep: true },
   )
@@ -385,6 +405,8 @@ export const usePlannerStore = defineStore('planner', () => {
     session++
     clearTimeout(saveTimer)
     online.value = false
+    planRequest = null
+    plansSaving.value = false
     loading = null
     lastSaved.clear()
     checks.value = {}
@@ -511,6 +533,8 @@ export const usePlannerStore = defineStore('planner', () => {
     activePlan,
     online,
     syncError,
+    plansSaving,
+    savePlans,
     activeCheck,
     checklist,
     checklistCatalogue,

@@ -35,7 +35,8 @@ Clients cannot edit role or Firebase identity. API requests obtain a current ID 
 
 Quiz results and plans use the authenticated backend. Recommended modules can be added to the
 student's shared planner basket; basket additions, removals and placement changes are saved to MongoDB
-with visible save/retry states. Plans and private bidding caches clear on account changes;
+with visible save/retry states. Semester edits save in order; the import action waits
+for saves and passes the selected plan ID to bidding. Only API-provided sections become bidding choices. Plans and private bidding caches clear on account changes;
 late responses from the previous account are discarded. Rooms still require backend integration, and bidding still
 contains sample catalogue/round fallbacks: those flows are not yet complete.
 
