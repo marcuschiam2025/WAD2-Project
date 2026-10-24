@@ -52,3 +52,6 @@ Validation errors should contain a stable error code and affected question/secti
 The existing module recommendation controller expects `attempt.results[].track` and uses its order for the top two. Preserve those fields/order or update the adapter in the same integration change. It must accept provisional ranking and shared ranks; a top-two layout must acknowledge a tie extending past the second position. Shared catalogue FT records need verification before module recommendations are claimed to support FT. Do not rewrite the module recommender in this chunk.
 
 Old attempts contain numeric option positions and `pct`; preserve a legacy rendering path or explicitly version their adapter. Do not reinterpret old numeric answers as the new stable IDs.
+
+
+24 October: v2 module exploration now uses the shared MongoDB catalogue. Response adds `catalogueSource`, `catalogueStatus`; per-course `prerequisiteStatus` distinguishes recorded-prerequisites-met from manual-review. See module-sources.md for scope and deployment requirements.

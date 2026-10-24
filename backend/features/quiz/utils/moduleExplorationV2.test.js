@@ -52,7 +52,7 @@ const response = () => ({ statusCode: 200, status(code) { this.statusCode = code
 test('recommendation endpoint scopes lookup to the signed-in user and rejects legacy/missing results', async () => {
   const id = '507f1f77bcf86cd799439011'
   let filter
-  const handler = createModuleExplorationV2(async (query) => { filter = query; return attempt })
+  const handler = createModuleExplorationV2(async (query) => { filter = query; return attempt }, async () => catalogue)
   const res = response()
   await handler({ params: { id }, user: { _id: 'current-user', intakeYear: 2025 } }, res)
   assert.deepEqual(filter, { _id: id, user: 'current-user' })

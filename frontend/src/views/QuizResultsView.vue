@@ -73,22 +73,22 @@ onMounted(async () => { await quiz.initialize(); loading.value = false })
               <ul class="flex flex-col gap-4">
                 <li v-for="module in modulesFor(result.track)" :key="module.code">
                   <a :href="module.sourceUrl" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-primary hover:underline">{{ module.code }} · {{ module.name }} ↗</a>
-                  <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ module.summary }}</p>
+                  <p class="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{{ module.summary }}</p>
                 </li>
               </ul>
               <details class="mt-3 text-xs">
                 <summary class="cursor-pointer text-muted-foreground">Why these modules?</summary>
-                <ul class="mt-2 flex flex-col gap-2"><li v-for="module in modulesFor(result.track)" :key="module.code"><span class="font-medium">{{ module.code }}:</span> {{ module.reason }}</li></ul>
+                <ul class="mt-2 flex flex-col gap-2"><li v-for="module in modulesFor(result.track)" :key="module.code"><span class="font-medium">{{ module.code }}:</span> {{ module.reason }} <span v-if="module.prerequisiteStatus === 'manual-review'">Additional course rules need checking.</span></li></ul>
               </details>
             </div>
-            <p v-else-if="moduleSuggestions && moduleSuggestions.intakeStatus !== 'unsupported'" class="text-xs text-muted-foreground">No remaining courses in this shortlist for this track.</p>
+            <p v-else-if="moduleSuggestions && moduleSuggestions.intakeStatus !== 'unsupported'" class="text-xs text-muted-foreground">{{ moduleSuggestions.catalogueStatus === 'unavailable' ? 'The shared course catalogue is incomplete or has not been loaded.' : 'No courses match your recorded completion and prerequisite information for this track.' }}</p>
           </section>
         </div>
 
         <p v-if="moduleLoading" role="status" class="text-xs text-muted-foreground">Finding modules to explore…</p>
         <div v-if="moduleError" class="flex flex-wrap items-center gap-3 text-sm" role="status"><p>{{ moduleError }}</p><BaseButton variant="link" @click="loadModules">Retry modules</BaseButton></div>
         <p v-if="moduleSuggestions" class="text-xs text-muted-foreground">
-          {{ moduleSuggestions.intakeStatus === 'unsupported' ? 'This module guide covers AY2025 onwards. Check the curriculum for your intake.' : 'AY2025 onwards · Prerequisites and current offerings need checking in OASIS/BOSS.' }}
+          {{ moduleSuggestions.intakeStatus === 'unsupported' ? 'This module guide covers AY2025 onwards. Check the curriculum for your intake.' : 'Shared IS AY2025 catalogue · Recorded prerequisites checked; other course rules and current offerings need checking in OASIS/BOSS.' }}
           <a :href="moduleSuggestions.sourceUrl" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Official SMU curriculum ↗</a>
         </p>
 

@@ -4,7 +4,7 @@ const themeNames = {
 }
 const trackNames = { BA: 'Business Analytics', PD: 'Product Development', FT: 'Financial Technology', SMT: 'Smart-City Management & Technology' }
 
-// A curated exploration shortlist, not an enrolment or prerequisite checker.
+// Exploration ranking; catalogue adapters supply membership and requisite status.
 // Theme tags are editorial and explainable; no LLM or external inference call.
 export function recommendExplorationModules(attempt, catalogue, { completedModules = [], intakeYear } = {}) {
   const base = {
@@ -12,7 +12,9 @@ export function recommendExplorationModules(attempt, catalogue, { completedModul
     retrievedAt: catalogue.retrievedAt,
     intakeFrom: catalogue.intakeFrom,
     intakeStatus: Number.isInteger(intakeYear) ? intakeYear < catalogue.intakeFrom ? 'unsupported' : 'within-guide' : 'unconfirmed',
-    eligibilityStatus: 'unverified',
+    eligibilityStatus: catalogue.eligibilityStatus ?? 'unverified',
+    catalogueSource: catalogue.catalogueSource ?? 'curated',
+    catalogueStatus: catalogue.catalogueStatus ?? 'available',
     sourceUrl: catalogue.sourceUrl,
   }
   if (base.intakeStatus === 'unsupported') return { ...base, groups: [] }
@@ -37,7 +39,7 @@ export function recommendExplorationModules(attempt, catalogue, { completedModul
       modules: ranked.slice(0, 3).map(({ module, reason }) => ({
         code: module.code, name: module.name, summary: module.summary, tracks: module.tracks,
         sourceUrl: module.sourceUrl, reason,
-        prerequisiteStatus: 'unverified', offeringStatus: 'unverified',
+        prerequisiteStatus: module.prerequisiteStatus ?? 'unverified', offeringStatus: module.offeringStatus ?? 'unverified',
       })),
     }
   })

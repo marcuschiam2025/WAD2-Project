@@ -1,3 +1,22 @@
+# Shared catalogue integration — 24 October 2026
+
+The v2 recommendation endpoint now reads the same MongoDB `tracks`, `requirements` and `modules` collections used by planning. The historical 12-course file below supplies optional editorial theme tags only. Course titles, descriptions, membership and prerequisites come from MongoDB; there is no fallback course list if the database is empty or a query fails.
+
+- Curriculum is explicitly `BSC-IS_AY2025`; an earlier known intake receives no recommendations. Unknown intake is labelled unconfirmed in the API, not inferred from year of study.
+- Quiz `SMT` maps to catalogue `SMCT` for lookup and back to `SMT` in the response. Quiz scoring and saved results are unchanged.
+- Only the top two saved tracks are queried; completed courses, unmet recorded prerequisite groups and mutually exclusive completed courses are excluded.
+- Corequisites, course-count prerequisites and free-text rules are marked for manual review. Current offerings and full enrolment eligibility remain unverified.
+- Complete prerequisite information comes from the backend user record, not the frontend's mock profile. Until real profile persistence is connected, recommendations reflect only that backend record.
+- Up to three courses per track are ranked by known editorial theme tags, with shared requirement order as a stable fallback for untagged courses. Tags do not change quiz scores.
+
+Verification: 48 backend tests passed (one opt-in persistence suite skipped), frontend session test and production build passed. The real Mongoose loaders were also checked with all three seeded collections in a disposable local MongoDB database, covering BA/SMT and PD/FT. No Atlas credentials or shared data were used. A live browser submission has not been rerun because the preview API is stopped.
+
+The destination environment must have its shared catalogue seeded using the team's normal setup. This change does not seed or overwrite a shared database.
+
+---
+
+## Historical curated-source notes
+
 # Module exploration: source and behaviour
 
 Retrieved 20 October 2026 from the official [SMU IS curriculum](https://computing.smu.edu.sg/bsc-information-systems/curriculum), explicitly labelled **For Intake AY2025 onwards**. The interactive track lists and individual course-description popups were read; the initial static page contains only sample courses.
