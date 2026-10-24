@@ -58,7 +58,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
           reqs: [...t.requirements]
             // the compulsory course first, then the list to pick from
             .sort((a, b) => /compulsory/i.test(b.label) - /compulsory/i.test(a.label) || (a.order ?? 0) - (b.order ?? 0))
-            .map((r) => ({ id: r._id, label: r.label, codes: r.modules ?? [], count: r.cuRequired ?? r.n ?? 1 })),
+            .map((r) => ({ id: r._id, label: r.label, codes: r.modules ?? [], count: r.rule === 'all' ? (r.modules ?? []).length : (r.n ?? r.cuRequired ?? 1) })),
         }
       })
       trackModules.value = lists

@@ -3,12 +3,14 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@core/stores/user'
 import { api } from '@core/services/api'
+import CurriculumEditor from '@/components/admin/CurriculumEditor.vue'
 import SectionEditor from '@/components/admin/SectionEditor.vue'
 import ModuleEditor from '@/components/admin/ModuleEditor.vue'
 import BrandLogo from '@/components/layout/BrandLogo.vue'
 
 const user = useUserStore()
 const router = useRouter()
+const activeEditor = ref('modules')
 const entries = ref([]), next = ref(null), busy = ref(false), error = ref(''), verified = ref(false)
 let generation = 0
 async function load(more = false) {
@@ -31,7 +33,6 @@ async function load(more = false) {
 async function signOut() { generation++; await user.signOut(); await router.push('/signin') }
 onMounted(() => load())
 const sections = [
-  ['Tracks & curricula', 'Track modules and requirements by intake.'],
   ['Bidding rounds', 'Terms, rounds and submission deadlines.'],
 ]
 </script>
@@ -52,8 +53,12 @@ const sections = [
     <button v-if="error" class="mt-3 rounded-md border border-border px-4 py-2" :disabled="busy" @click="load()">Try again</button>
     <p v-if="busy && !verified" class="mt-6" role="status">Checking staff access…</p>
     <template v-if="verified">
-      <ModuleEditor @saved="load()" />
-      <SectionEditor @saved="load()" />
+      <nav class="mt-8 flex flex-wrap gap-2" aria-label="Catalogue editors">
+        <button v-for="[key, label] in [['modules', 'Modules'], ['sections', 'Sections & schedules'], ['curricula', 'Tracks & curricula']]" :key="key" type="button" :aria-pressed="activeEditor === key" class="rounded-md border border-border px-4 py-2 text-sm" :class="activeEditor === key ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'" @click="activeEditor = key">{{ label }}</button>
+      </nav>
+      <ModuleEditor v-show="activeEditor === 'modules'" @saved="load()" />
+      <SectionEditor v-show="activeEditor === 'sections'" @saved="load()" />
+      <CurriculumEditor v-show="activeEditor === 'curricula'" @saved="load()" />
       <section aria-label="Catalogue management" class="mt-8 grid gap-4 sm:grid-cols-2">
         <article v-for="[title, description] in sections" :key="title" class="rounded-lg border border-border bg-card p-5">
           <h2 class="font-semibold">{{ title }}</h2>

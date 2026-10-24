@@ -185,3 +185,11 @@ skipped; all 13 frontend tests passed and the production build passed. The dedic
 - Automated tests cover role/revision guards, restoration eligibility, retained
   section IDs, backend bid rejection, historical visibility and frontend swap/save
   behaviour. No live timetable records were archived or restored during testing.
+
+## Existing track and curriculum editor (local review)
+
+The Tracks & Curricula tab loads records for one existing major/intake. Staff can edit track names, descriptions and source metadata, and existing track `all`/`chooseN` requirements (module membership, course count and credit target). Backend writes validate ownership, known module references and revision, and share the audit transaction. Newly adding archived modules is blocked.
+
+Core/major requirements and unsupported track rule types are read-only, enforced in the API as well as the form. The planner's core checklist still uses a fixed template; connect it to curriculum records before enabling core/major editing. Track course slots now derive from the rule's module count or choose-N value rather than its credit target.
+
+This chunk does not create/delete tracks or rules, copy new intakes, change quiz scoring taxonomy, or configure bidding rounds. Existing plan placements are retained; students reload to receive updated requirements. Quiz track labels remain part of the fixed quiz rubric. Browser save/reload review remains pending; automated verification passed (92 backend tests, one skipped; 14 frontend tests; production build).

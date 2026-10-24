@@ -59,6 +59,10 @@ export const api = {
   updateAdminSection: (data) => request('PUT', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}`, data),
   archiveAdminSection: (data) => request('POST', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/archive`, { revision: data.revision }),
   restoreAdminSection: (data) => request('POST', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/restore`, { revision: data.revision }),
+  adminCurricula: () => request('GET', '/admin/curricula'),
+  adminCurriculum: (id) => request('GET', `/admin/curricula/${encodeURIComponent(id)}`),
+  updateAdminTrack: (major, id, data) => request('PUT', `/admin/curricula/${encodeURIComponent(major)}/tracks/${encodeURIComponent(id)}`, data),
+  updateAdminRequirement: (major, id, data) => request('PUT', `/admin/curricula/${encodeURIComponent(major)}/requirements/${encodeURIComponent(id)}`, data),
   adminOverview: () => request('GET', '/admin'),
   adminAudit: (before) => request('GET', `/admin/audit${query({ before })}`),
   // Users / profile

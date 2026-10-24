@@ -10,6 +10,7 @@ export const REQUIREMENT_RULES = ['all', 'chooseN', 'basket', 'anyFromCategory',
 //   flag            — non-credit: some course carrying `tag` (or `autoFulfilled`)
 const requirementSchema = new mongoose.Schema(
   {
+    revision: { type: Number, default: 0 },
     _id: { type: String, required: true }, // e.g. BSC-IS_AY2025_TECH_SOL
     level: { type: String, enum: ['core', 'major', 'track'], required: true },
     ownerId: { type: String, required: true, index: true }, // a major _id, or a track _id for level track
@@ -25,7 +26,7 @@ const requirementSchema = new mongoose.Schema(
     categories: [String],
     autoFulfilled: Boolean,
   },
-  { versionKey: false }, // seeded, read-only data
+  { versionKey: false }, // seeded initially; staff edits are audited
 )
 
 export default mongoose.model('Requirement', requirementSchema, 'requirements')
