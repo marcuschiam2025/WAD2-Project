@@ -1,13 +1,14 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useRoomsStore, roleOf } from '@core/stores/rooms'
+import { useRoomsStore } from '@core/stores/rooms'
 import { moduleName } from '@core/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
-import UserAvatar from '@/components/ui/UserAvatar.vue'
 import RoomVotingPanel from '@/components/rooms/RoomVotingPanel.vue'
+import RoomMembers from '@/components/rooms/RoomMembers.vue'
+import RoomBidHistory from '@/components/rooms/RoomBidHistory.vue'
 const rooms = useRoomsStore(), route = useRoute(), router = useRouter()
 const room = computed(() => rooms.getRoom(route.params.id))
 const copied = ref(false), error = ref(''), leaving = ref(false), confirmLeave = ref(false)
@@ -32,10 +33,10 @@ async function leave() {
         <section class="card flex flex-col gap-4 p-5">
           <h2 class="text-lg font-semibold">{{ room.module }} · {{ moduleName(room.module) }}</h2><p v-if="room.description" class="text-sm text-muted-foreground">{{ room.description }}</p>
           <div class="flex flex-wrap items-center gap-3"><span class="text-sm">Invite code</span><strong class="select-all rounded-md bg-muted px-4 py-2 font-mono text-lg tracking-widest">{{ room.inviteCode }}</strong><BaseButton variant="outline" @click="copy">{{ copied ? 'Copied' : 'Copy code' }}</BaseButton></div>
-          <p class="text-xs text-muted-foreground">Share this code with friends who want to join. Room capacity and prerequisite checks are applied by the server.</p>
+          <p class="text-xs text-muted-foreground">Share this code so friends can join.</p>
         </section>
-        <section class="card flex flex-col gap-4 p-5"><h2 class="font-semibold">Members · {{ room.members.length }} / {{ room.maxMembers }}</h2><ul class="flex flex-col gap-3"><li v-for="id in room.members" :key="id" class="flex items-center gap-3"><UserAvatar :initials="rooms.person(id).initials" :you="id === 'me'" /><span>{{ rooms.person(id).name }}</span><span v-if="roleOf(room,id) === 'owner'" class="text-xs text-primary">Party admin</span></li></ul><BaseButton variant="outline" :disabled="rooms.loading" @click="rooms.load">Refresh members</BaseButton></section>
         <RoomVotingPanel :room-id="room.id" />
+        <div class="grid items-start gap-5 lg:grid-cols-2"><RoomMembers :room-id="room.id" /><RoomBidHistory :module="room.module" /></div>
         <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>
         <p v-if="rooms.error" role="alert" class="text-sm text-destructive">{{ rooms.error }}</p>
         <BaseButton variant="outline" :disabled="leaving" @click="confirmLeave = true">{{ leaving ? 'Leaving…' : 'Leave room' }}</BaseButton>
@@ -43,9 +44,9 @@ async function leave() {
     </main>
     <BaseModal v-if="confirmLeave && room" width="w-[440px]" @close="!leaving && (confirmLeave = false)">
       <h2 class="text-lg font-semibold">Leave {{ room.name }}?</h2>
-      <p class="text-sm">{{ room.members.length === 1 ? 'You are the last member. Leaving will delete this room and its votes.' : 'You can rejoin later using the invite code, subject to room capacity and prerequisites.' }}</p>
+      <p class="text-sm">{{ room.members.length === 1 ? 'You are the last member. Leaving will delete this room and its votes.' : room.ownerId === 'me' ? 'Transfer party admin to another member in the Members section before leaving.' : 'Your votes will be removed and the room decision will reopen. You can rejoin using the invite code.' }}</p>
       <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>
-      <div class="flex justify-end gap-2"><BaseButton variant="ghost" :disabled="leaving" @click="confirmLeave = false">Cancel</BaseButton><BaseButton :disabled="leaving" @click="leave">{{ leaving ? 'Leaving…' : 'Leave room' }}</BaseButton></div>
+      <div class="flex justify-end gap-2"><BaseButton variant="ghost" :disabled="leaving" @click="confirmLeave = false">Cancel</BaseButton><BaseButton :disabled="leaving || (room.ownerId === 'me' && room.members.length > 1)" @click="leave">{{ leaving ? 'Leaving…' : 'Leave room' }}</BaseButton></div>
     </BaseModal>
   </div>
 </template>

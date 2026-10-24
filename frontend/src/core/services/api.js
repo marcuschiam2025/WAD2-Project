@@ -85,6 +85,10 @@ export const api = {
   joinRoom: (inviteCode) => request('POST', '/parties/join', { inviteCode }),
   leaveRoom: (id) => request('DELETE', `/parties/${id}/members/me`),
   vote: (id, sectionIds, term) => request('PUT', `/parties/${id}/votes`, { sectionIds, term }),
+  confirmRoom: (id, sectionId, revision) => request('POST', `/parties/${id}/finalise`, { sectionId, revision }),
+  removeRoomMember: (id, memberId, revision) => request('DELETE', `/parties/${id}/members/${memberId}`, { revision }),
+  transferRoom: (id, userId, revision) => request('POST', `/parties/${id}/owner`, { userId, revision }),
+  roomHandoff: (id, data) => request('POST', `/parties/${id}/handoff`, data),
   roomVotes: (id) => request('GET', `/parties/${id}/votes`),
   roomUpdates: (id, since) => request('GET', `/parties/${id}/updates?since=${since}`),
 

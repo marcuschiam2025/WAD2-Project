@@ -52,3 +52,43 @@ Connect admin acceptance and the bidding handoff, then member-management control
   use the existing backend integration.
 - Verified: all 11 frontend tests and production build pass. Live signed-in
   browser review is pending; the current browser is on the sign-in page.
+
+## Restored room workflow
+
+- Weekly calendar remains the primary voting interface. A compact results panel
+  ranks sections, displays voting progress and names members who still need to vote.
+- After everyone submits at least one valid section, only the party admin can
+  confirm a leader (including any tied leader), switch the choice or reopen it.
+  Confirmations persist in MongoDB and survive refresh.
+- Room revisions protect decisions and member actions from concurrent votes or
+  membership changes. Existing rows start at revision zero without migration.
+- Members is expandable: voting status, remove-with-confirmation, and transfer
+  party admin. There is one party admin. Removal clears votes and confirmation;
+  it is not a permanent ban. The owner must transfer before leaving unless last.
+- Joining, leaving, removal and ballot edits reopen a confirmed decision. Removed
+  members' vote-board access is denied and their stale UI is discarded.
+- Room cards show real progress, status and the chosen section. They do not invent
+  round deadlines.
+- Past bid results is expandable and fetches the real module-level history.
+  It does not claim section-level statistics; missing data has an explicit empty
+  state. Suggested bid sharing remains deferred.
+- A member explicitly adds the confirmed section to one personal bidding cart.
+  Backend checks membership, confirmation, plan ownership, term, prerequisites,
+  corequisites, exclusions and saved-cart clashes; frontend also checks current
+  unsaved choices and budget. The member reviews the amount and saves in bidding.
+  Shared confirmations never auto-edit every degree plan or everyone else's cart.
+- Saved cart modules outside the degree plan now reload into bidding correctly.
+  Handoff waits for an in-flight saved-cart read before applying the new choice.
+- Automated checks cover decision ties/eligibility, stale writes, role limits,
+  member controls, handoff scope and validation, persistence through cart reload,
+  and session isolation. Real-browser read checks used the existing signed-in
+  room without changing its votes, membership or confirmation.
+
+## Latest verification — 24 October 2026
+
+- Backend: 82 passed, zero failures; one disposable database integration test skipped.
+- Frontend: all 13 tests passed; production build passed; diff whitespace check clean.
+- Remaining interactive check: two members save ballots, the party admin confirms
+  a leading section, each member adds it to an owned bidding cart and saves, then
+  refreshes to verify persistence. Test removal and ownership transfer in a separate
+  disposable room. Automated tests do not replace this two-account check.

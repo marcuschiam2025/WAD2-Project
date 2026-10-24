@@ -60,33 +60,14 @@ export const useRoomsStore = defineStore('rooms', () => {
   // Where a room stands. Once everyone has voted, the section(s) with the most votes can be accepted.
   // Several sections on the same top count is a tie: the student accepts exactly one of them.
   function roomState(room) {
-    const waiting = room.members.filter((id) => !hasVoted(room, id))
-    const mine = myVotes.value[room.id] ?? []
-    const voted = [...new Set([...mine, ...Object.keys(room.votes)])].filter((sid) => sections.some((s) => s.id === sid))
-    const top = Math.max(0, ...voted.map((sid) => votersOf(room, sid).length))
-    const leaders = top ? voted.filter((sid) => votersOf(room, sid).length === top).sort() : []
-    const allVoted = waiting.length === 0
-    const pick = accepted.value[room.id]
-    return {
-      voted: room.members.length - waiting.length,
-      total: room.members.length,
-      waiting,
-      allVoted,
-      top,
-      leaders,
-      tie: leaders.length > 1,
-      acceptedId: allVoted && leaders.includes(pick) ? pick : null,
-    }
+    const board = voteBoards.value[room?.id] ?? room?.summary ?? {}
+    return { ...board, voted: board.votedCount ?? 0, total: board.memberCount ?? room?.members.length ?? 0,
+      waiting: board.waitingIds ?? [], leaders: board.leaders ?? [], acceptedId: board.finalisedSection ?? null }
   }
 
-  // Accepted sections. They also land in the What-If Planner basket and on the Bidding Planner timetable.
-  // TODO(backend): PUT /api/rooms/:id/accept
-  const decided = computed(() =>
-    rooms.value.flatMap((room) => {
-      const st = roomState(room)
-      return st.acceptedId ? [{ roomId: room.id, roomName: room.name, module: room.module, sectionId: st.acceptedId }] : []
-    }),
-  )
+  // Shared decisions do not automatically edit any member's personal plans.
+  // Each member explicitly imports the confirmed section into one bidding cart.
+  const decided = computed(() => [])
 
   function acceptSection(roomId, sectionId) {
     const st = roomState(getRoom(roomId))
@@ -145,7 +126,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     }
     return { id: String(party._id), name: party.name, description: party.description, module: party.module,
       inviteCode: party.inviteCode, maxMembers: party.maxMembers, ownerId: memberId(party.owner),
-      admins: [], members, votes, suggestedBids: {}, updatedAt: party.updatedAt }
+      admins: [], members, votes, suggestedBids: {}, term: party.term, summary: party.summary, revision: party.revision ?? 0, updatedAt: party.updatedAt }
   }
   function upsert(party) {
     const room = normalize(party)
@@ -200,9 +181,27 @@ export const useRoomsStore = defineStore('rooms', () => {
       if (version !== revision || request !== voteRequests.get(roomId)) return
       voteBoards.value[roomId] = board
       myVotes.value[roomId] = board.mySectionIds
+      const room = getRoom(roomId)
+      if (room) {
+        room.summary = board
+        room.revision = board.revision ?? room.revision
+        room.term = board.term
+        if (board.ownerId) room.ownerId = board.ownerId === String(user.profile._id) ? ME : board.ownerId
+        if (board.members) room.members = board.members.map(member => {
+          const id = member._id === String(user.profile._id) ? ME : member._id
+          people.value[id] = { id, name: member.name, short: member.name, initials: member.name.split(/\s+/).slice(0,2).map(word => word[0]).join('').toUpperCase(), you: id === ME }
+          return id
+        })
+      }
       return board
     } catch (failure) {
-      if (version === revision && request === voteRequests.get(roomId)) voteErrors.value[roomId] = failure.message
+      if (version === revision && request === voteRequests.get(roomId)) {
+        voteErrors.value[roomId] = failure.message
+        if (failure.status === 403 || failure.status === 404) {
+          delete voteBoards.value[roomId]; delete myVotes.value[roomId]
+          rooms.value = rooms.value.filter(room => room.id !== roomId)
+        }
+      }
     } finally { if (version === revision && request === voteRequests.get(roomId)) voteLoading.value[roomId] = false }
   }
   async function saveRoomVotes(roomId, ids) {
@@ -223,6 +222,30 @@ export const useRoomsStore = defineStore('rooms', () => {
     } catch (failure) { if (version === revision) voteErrors.value[roomId] = failure.message; return false }
     finally { if (version === revision) voteSaving.value[roomId] = false }
   }
+
+  async function roomAction(roomId, action) {
+    if (busy.value || voteSaving.value[roomId] || !voteBoards.value[roomId]) return false
+    const version = revision
+    busy.value = true; voteSaving.value[roomId] = true; voteErrors.value[roomId] = ''
+    listRequest++
+    voteRequests.set(roomId, (voteRequests.get(roomId) ?? 0) + 1)
+    voteLoading.value[roomId] = false
+    try {
+      await action(voteBoards.value[roomId].revision)
+      if (version !== revision) return false
+      await loadVotes(roomId)
+      return version === revision
+    } catch (failure) {
+      if (version === revision) {
+        if (failure.status === 409 || failure.status === 403) await loadVotes(roomId, { quiet: true })
+        voteErrors.value[roomId] = failure.message
+      }
+      return false
+    } finally { if (version === revision) { busy.value = false; voteSaving.value[roomId] = false } }
+  }
+  const confirmSection = (roomId, sectionId) => roomAction(roomId, revision => api.confirmRoom(roomId, sectionId, revision))
+  const removeMember = (roomId, memberId) => roomAction(roomId, revision => api.removeRoomMember(roomId, memberId, revision))
+  const transferOwner = (roomId, memberId) => roomAction(roomId, revision => api.transferRoom(roomId, memberId, revision))
 
   function setMyVotes(roomId, sectionIds) {
     myVotes.value[roomId] = sectionIds
@@ -266,7 +289,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   return {
     rooms, loading, busy, online, error, load, joinRoom,
     voteBoards, voteLoading, voteSaving, voteErrors, loadVotes, saveRoomVotes,
-    myVotes,
+    myVotes, confirmSection, removeMember, transferOwner,
     decided,
     roomState,
     votersOf,
