@@ -1,18 +1,12 @@
 // Thin client for the Express backend (see backend/routes). In dev, Vite proxies /api to :4000.
-// The stores call these and fall back to the sample data in core/data when the backend can't be reached.
+// Each request obtains the current Firebase ID token from the auth store.
 
 const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
-// Until Firebase sign-in is wired up, the backend's dev bypass (AUTH_DEV_BYPASS=true) identifies the
-// student by this header instead of a token. Set VITE_DEV_UID in frontend/.env to act as another student.
-const DEV_UID = import.meta.env.VITE_DEV_UID ?? 'dev-user'
-
 let idToken = null
-// Call after Firebase sign-in: setToken(await user.getIdToken())
-// TODO(Backend 2): set this from the Firebase sign-in in the user store
-export function setToken(token) {
-  idToken = token
-}
+let tokenProvider = null
+export function setToken(token) { idToken = token }
+export function setTokenProvider(provider) { tokenProvider = provider }
 
 // Thrown for every failed call. status is 0 when the backend could not be reached at all.
 export class ApiError extends Error {
@@ -23,13 +17,14 @@ export class ApiError extends Error {
 }
 
 async function request(method, path, body) {
+  const token = tokenProvider ? await tokenProvider() : idToken
   let res
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...(idToken ? { Authorization: `Bearer ${idToken}` } : { 'x-dev-uid': DEV_UID }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
     })
@@ -81,14 +76,15 @@ export const api = {
   checkPlan: (id) => request('GET', `/plans/${id}/check`),
 
   // Collab rooms
-  // TODO(Backend 2): the backend has /api/parties; the rooms store still runs on sample data
-  rooms: () => request('GET', '/rooms'),
-  room: (id) => request('GET', `/rooms/${id}`),
-  createRoom: (room) => request('POST', '/rooms', room),
-  joinRoom: (code) => request('POST', '/rooms/join', { code }),
-  leaveRoom: (id) => request('DELETE', `/rooms/${id}/members/me`),
-  vote: (id, sectionIds) => request('PUT', `/rooms/${id}/votes`, { sectionIds }),
-  roomUpdates: (id, since) => request('GET', `/rooms/${id}/updates?since=${since}`),
+  // Frontend rooms map to the backend's parties resource.
+  rooms: () => request('GET', '/parties'),
+  room: (id) => request('GET', `/parties/${id}`),
+  createRoom: (room) => request('POST', '/parties', room),
+  joinRoom: (inviteCode) => request('POST', '/parties/join', { inviteCode }),
+  leaveRoom: (id) => request('DELETE', `/parties/${id}/members/me`),
+  vote: (id, sectionIds, term) => request('PUT', `/parties/${id}/votes`, { sectionIds, term }),
+  roomVotes: (id) => request('GET', `/parties/${id}/votes`),
+  roomUpdates: (id, since) => request('GET', `/parties/${id}/updates?since=${since}`),
 
   // BOSS bidding
   round: () => request('GET', '/bidding/round'),
@@ -97,6 +93,7 @@ export const api = {
   referenceBid: (moduleCode, amount, round) =>
     request('GET', `/bidding/reference/${moduleCode}${query({ amount, round })}`),
   weightage: (moduleCode) => request('GET', `/bidding/weightage/${moduleCode}`),
+  savedBidPlans: (term) => request('GET', `/bidding/plans${query({ term })}`),
   cart: (planId, term) => request('GET', `/bidding/cart${query({ planId, term })}`),
   // { planId, term, items: [{ module, sectionId, amount }] }
   saveCart: (cart) => request('PUT', '/bidding/cart', cart),
@@ -105,5 +102,5 @@ export const api = {
   validateCart: (sectionIds) => request('POST', '/bidding/validate-cart', { sectionIds }),
 
   // Google Calendar
-  exportCalendar: (accessToken, sectionIds) => request('POST', '/calendar/export', { accessToken, sectionIds }),
+  exportCalendar: (accessToken, sectionIds, termStart, weeks = 13) => request('POST', '/calendar/export', { accessToken, sectionIds, termStart, weeks }),
 }

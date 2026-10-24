@@ -13,7 +13,6 @@ router.post('/:id/ban', parties.banMember)
 router.put('/:id/votes', parties.saveVotes)
 router.get('/:id/votes', parties.getVotes)
 router.post('/:id/finalise', parties.finaliseSection)
-router.put('/:id/plans', parties.sharePlans)
 router.post('/:id/comments', parties.addComment)
 
 export default router

@@ -1,11 +1,17 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuizStore, sectionLabels } from '@core/stores/quiz'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 const quiz = useQuizStore()
 const router = useRouter()
+const questionHeading = ref(null)
+watch(() => quiz.current, async () => {
+  await nextTick()
+  questionHeading.value?.focus()
+})
+function choose(optionId) { quiz.chooseAnswer(optionId) }
 const question = computed(() => quiz.questions[quiz.current])
 const options = computed(() => question.value ? quiz.optionsFor(question.value) : [])
 const selected = computed(() => question.value ? quiz.answers[question.value.id] : null)
@@ -25,7 +31,7 @@ function onKey(event) {
   if (!question.value || quiz.submitting || event.ctrlKey || event.metaKey || event.altKey || event.repeat) return
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return
   const index = Number(event.key) - 1
-  if (Number.isInteger(index) && index >= 0 && index < options.value.length) { event.preventDefault(); quiz.answer(options.value[index].id) }
+  if (Number.isInteger(index) && index >= 0 && index < options.value.length) { event.preventDefault(); choose(options.value[index].id) }
   else if (event.key === 'Enter' && !['BUTTON', 'A'].includes(event.target?.tagName)) { event.preventDefault(); next() }
 }
 onMounted(async () => { await quiz.initialize(); if (quiz.questions.length && !quiz.hasDraft) quiz.start(); window.addEventListener('keydown', onKey) })
@@ -41,11 +47,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <div class="flex items-center justify-between gap-2 text-xs text-muted-foreground"><span>Section {{ sectionNumber }} of 4 · {{ sectionLabels[question.section] }}</span><span>{{ quiz.answeredCount }} / 20 answered</span></div>
         <progress :value="quiz.current + 1" :max="quiz.questions.length" class="h-2 w-full accent-primary" aria-label="Question position" />
         <p class="text-sm text-muted-foreground">{{ intros[question.section] }}</p>
-        <fieldset :disabled="quiz.submitting" class="flex min-w-0 flex-col gap-4"><legend class="mb-4 w-full text-xl font-semibold leading-7"><span class="mb-2 block text-xs font-normal text-muted-foreground">Question {{ quiz.current + 1 }} of {{ quiz.questions.length }} · {{ question.type === 'rating' ? 'Rate individually from 1 to 5' : 'Choose one scenario' }}</span>{{ question.prompt }}</legend>
-          <label v-for="(option, index) in options" :key="`${question.id}:${option.id}`" class="flex cursor-pointer items-start gap-3 rounded-md border p-3.5 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary" :class="selected === option.id ? 'border-primary bg-primary/8' : 'border-border hover:bg-muted'"><input type="radio" :name="question.id" :value="option.id" :checked="selected === option.id" class="mt-0.5 accent-primary" @change="quiz.answer(option.id)" /><span class="min-w-0 flex-1">{{ option.label }}</span><span class="font-mono text-xs text-muted-foreground">{{ question.type === 'rating' ? option.id : String.fromCharCode(65 + index) }}</span></label>
+        <fieldset :key="question.id" :disabled="quiz.submitting" class="flex min-w-0 flex-col gap-4"><legend ref="questionHeading" tabindex="-1" class="mb-4 w-full text-xl font-semibold leading-7"><span class="mb-2 block text-xs font-normal text-muted-foreground">Question {{ quiz.current + 1 }} of {{ quiz.questions.length }} · {{ question.type === 'rating' ? 'Rate individually from 1 to 5' : 'Choose one scenario' }}</span>{{ question.prompt }}</legend>
+          <label v-for="(option, index) in options" :key="`${question.id}:${option.id}`" class="flex cursor-pointer items-start gap-3 rounded-md border p-3.5 text-sm transition-colors focus-within:ring-2 focus-within:ring-primary" :class="selected === option.id ? 'border-primary bg-primary/8' : 'border-border hover:bg-muted'"><input type="radio" :name="question.id" :value="option.id" :checked="selected === option.id" class="mt-0.5 accent-primary" @click="choose(option.id)" /><span class="min-w-0 flex-1">{{ option.label }}</span><span class="font-mono text-xs text-muted-foreground">{{ question.type === 'rating' ? option.id : String.fromCharCode(65 + index) }}</span></label>
         </fieldset>
-        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><BaseButton variant="ghost" :disabled="quiz.submitting" @click="back">Back</BaseButton><div class="flex gap-2"><BaseButton variant="ghost" :disabled="quiz.submitting" @click="skip">Skip</BaseButton><BaseButton :disabled="quiz.submitting" @click="next">{{ quiz.submitting ? 'Saving…' : last ? 'See my results' : 'Next' }}</BaseButton></div></div>
-        <p class="text-xs text-muted-foreground">{{ question.type === 'rating' ? '3 means Unsure: it counts as answered but adds no scoring evidence.' : 'None or Not sure adds no evidence and does not count as answered.' }} Your draft stays in this browser tab after a reload.</p>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><BaseButton variant="ghost" :disabled="quiz.submitting" @click="back">Back</BaseButton><div class="flex gap-2"><BaseButton variant="ghost" :disabled="quiz.submitting" @click="skip">Skip</BaseButton><BaseButton v-if="last" :disabled="quiz.submitting" @click="next">{{ quiz.submitting ? 'Saving…' : last ? 'See my results' : 'Next' }}</BaseButton></div></div>
+        <p class="text-xs text-muted-foreground">Selecting an answer moves to the next question. Use Back to change it. {{ question.type === 'rating' ? '3 means Unsure: it counts as answered but adds no scoring evidence.' : 'None or Not sure adds no evidence and does not count as answered.' }} Your draft stays in this browser tab after a reload.</p>
       </section>
       <div v-if="question" class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4" aria-label="Section completion"><button v-for="section in quiz.sectionCoverage" :key="section.section" class="rounded-md border p-3 text-left hover:border-primary" :class="quiz.issues.some((issue) => issue.section === section.section) ? 'border-destructive' : 'border-border'" :disabled="quiz.submitting" @click="jump(section.section)"><span class="block font-medium">{{ section.label }}</span><span class="text-muted-foreground">{{ section.answered }}/5 answered · {{ section.scenarios ? 'scenario ✓' : 'needs scenario' }}</span></button></div>
     </main>

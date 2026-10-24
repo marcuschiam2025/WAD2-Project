@@ -136,9 +136,17 @@ const missing = computed(() => {
   return left.length ? `Still to do: ${left.join(', ')}.` : ''
 })
 
-function submit() {
+const saving = ref(false)
+const saveError = ref('')
+const intakeYear = ref(user.profile.intakeYear ?? 2025)
+
+async function submit() {
   if (missing.value) return
-  user.completeOnboarding({
+  saving.value = true
+  saveError.value = ''
+  try {
+  await user.completeOnboarding({
+    intakeYear: Number(intakeYear.value),
     major: major.value,
     tracks: selectedTracks.value,
     currentSem: currentSem.value,
@@ -148,6 +156,8 @@ function submit() {
     balance: eValue.value,
   })
   emit('saved', { undecided: undecided.value })
+  } catch (error) { saveError.value = error.message }
+  finally { saving.value = false }
 }
 
 // Section number badge: turns into a green tick once that section is complete
@@ -159,6 +169,10 @@ const badge = (n) => [
 
 <template>
   <form class="flex w-full flex-col gap-6" @submit.prevent="submit">
+    <label class="text-sm font-medium">Intake year
+      <input v-model="intakeYear" type="number" min="2000" max="2100" required class="ml-3 rounded border border-border bg-card p-2" />
+    </label>
+    <p v-if="saveError" role="alert" class="text-sm text-destructive">{{ saveError }}</p>
     <div v-stagger class="card flex flex-col divide-y divide-border"> <!-- motion: the form sections stagger in -->
       <!-- 1. Course -->
       <section class="flex flex-col gap-3 p-6">
@@ -412,10 +426,10 @@ const badge = (n) => [
       <BaseButton v-if="editing" variant="ghost" @click="emit('cancel')">Cancel</BaseButton>
       <button
         type="submit"
-        :disabled="!!missing"
+        :disabled="!!missing || saving"
         class="inline-flex items-center rounded-md bg-primary px-5 py-[11px] text-[15px] leading-normal font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
-        {{ editing ? 'Save changes' : undecided ? 'Finish and take the quiz' : 'Finish setup' }}
+        {{ saving ? 'Saving…' : editing ? 'Save changes' : undecided ? 'Finish and take the quiz' : 'Finish setup' }}
       </button>
     </div>
   </form>

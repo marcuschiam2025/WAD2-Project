@@ -8,15 +8,15 @@ defineProps({
 </script>
 
 <template>
-  <section class="flex flex-col gap-2 border-b border-border bg-card px-16 py-6">
+  <section class="flex flex-col gap-2 border-b border-border bg-card px-5 py-6 lg:px-16">
     <p v-if="overline" class="text-overline text-muted-foreground">{{ overline }}</p>
-    <div class="flex items-center justify-between gap-4">
-      <div class="flex min-w-0 items-center gap-3">
+    <div class="flex flex-col items-start justify-between gap-4 xl:flex-row xl:items-center">
+      <div class="flex min-w-0 flex-wrap items-center gap-3">
         <slot name="leading" />
         <h1 class="text-page-title leading-normal">{{ title }}</h1>
         <slot name="badge" />
       </div>
-      <div v-if="$slots.actions" class="flex items-center gap-2">
+      <div v-if="$slots.actions" class="flex max-w-full flex-wrap items-center gap-2">
         <slot name="actions" />
       </div>
     </div>

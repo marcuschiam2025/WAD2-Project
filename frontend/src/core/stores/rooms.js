@@ -1,6 +1,8 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import { classmates, rooms as sampleRooms, roomPrereqs } from '../data/rooms'
+import { computed, ref, watch } from 'vue'
+import { api } from '../services/api'
+import { classmates, roomPrereqs } from '../data/rooms'
+import { useUserStore } from './user'
 import { sections } from '../data/bidding'
 
 export const MAX_ROOM_SIZE = 8
@@ -25,12 +27,26 @@ export function canSetAdmin(room, actorId, targetId) {
 }
 
 export const useRoomsStore = defineStore('rooms', () => {
-  const rooms = ref(structuredClone(sampleRooms))
+  const rooms = ref([])
+  const people = ref({})
+  const voteBoards = ref({}), voteLoading = ref({}), voteSaving = ref({}), voteErrors = ref({})
+  const voteRequests = new Map()
+  const loading = ref(false), busy = ref(false), online = ref(false), error = ref('')
+  let revision = 0, listRequest = 0
   // room id -> section ids the signed-in student picked
-  const myVotes = ref({ 482913: ['IS442-G1', 'IS442-G2'] })
+  const myVotes = ref({})
 
   // room id -> the section the signed-in student accepted
   const accepted = ref({})
+  const user = useUserStore()
+  watch(() => user.uid, () => {
+    revision++; listRequest++
+    voteBoards.value = {}; voteLoading.value = {}; voteSaving.value = {}; voteErrors.value = {}; voteRequests.clear()
+    people.value = {}; loading.value = false; busy.value = false; online.value = false; error.value = ''
+    rooms.value = []
+    myVotes.value = {}
+    accepted.value = {}
+  }, { flush: 'sync' })
 
   const hasVoted = (room, id) =>
     id === ME ? (myVotes.value[room.id] ?? []).length > 0 : Object.values(room.votes).some((v) => v.includes(id))
@@ -86,8 +102,8 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   function person(id) {
-    if (id === ME) return { id: ME, name: 'You', short: 'You', initials: 'VS', you: true }
-    return classmates.find((c) => c.id === id)
+    if (id === ME) return { id: ME, name: 'You', short: 'You', initials: user.profile.initials || 'You', you: true }
+    return people.value[id] ?? { id, name: 'Member', short: 'Member', initials: '?', you: false }
   }
 
   function searchClassmates(query, exclude = []) {
@@ -106,34 +122,106 @@ export const useRoomsStore = defineStore('rooms', () => {
     return c.completed.includes(req.code) ? null : req
   }
 
-  // A unique 6-digit code, which is also the room's id
-  function newRoomCode() {
-    let code
-    do code = String(Math.floor(100000 + Math.random() * 900000))
-    while (rooms.value.some((r) => r.id === code))
-    return code
-  }
-
-  // TODO(Backend 2): POST /api/rooms
-  function createRoom({ name, description, module, maxMembers, members }) {
-    const id = newRoomCode()
-    rooms.value.unshift({
-      id,
-      name,
-      description,
-      module,
-      maxMembers,
-      ownerId: ME,
-      admins: [],
-      members: [ME, ...members],
-      votes: { [`${module}-G1`]: [], [`${module}-G2`]: [], [`${module}-G3`]: [] },
-      suggestedBids: {},
+  function normalize(party) {
+    const myId = String(user.profile._id ?? '')
+    const memberId = member => {
+      const id = String(member?._id ?? member)
+      return id === myId || (member?.email && member.email === user.profile.email) ? ME : id
+    }
+    const members = (party.members ?? []).map(member => {
+      const id = memberId(member)
+      if (typeof member === 'object') {
+        const name = member.name || 'Member'
+        people.value[id] = { id, name, short: name, email: member.email, initials: name.split(/\s+/).slice(0,2).map(word => word[0]).join('').toUpperCase(), you: id === ME }
+      }
+      return id
     })
-    return id
+    const votes = {}
+    myVotes.value[String(party._id)] = []
+    for (const ballot of party.votes ?? []) {
+      const id = memberId(ballot.user)
+      if (id === ME) myVotes.value[String(party._id)] = ballot.sectionIds
+      else for (const sid of ballot.sectionIds) (votes[sid] ??= []).push(id)
+    }
+    return { id: String(party._id), name: party.name, description: party.description, module: party.module,
+      inviteCode: party.inviteCode, maxMembers: party.maxMembers, ownerId: memberId(party.owner),
+      admins: [], members, votes, suggestedBids: {}, updatedAt: party.updatedAt }
+  }
+  function upsert(party) {
+    const room = normalize(party)
+    rooms.value = [room, ...rooms.value.filter(existing => existing.id !== room.id)]
+    return room.id
+  }
+  async function load() {
+    const version = revision, request = ++listRequest
+    if (!user.isSignedIn) return
+    loading.value = true; error.value = ''
+    try {
+      const data = await api.rooms()
+      if (version !== revision || request !== listRequest) return
+      rooms.value = data.map(normalize)
+      online.value = true
+    } catch (failure) { if (version === revision && request === listRequest) error.value = failure.message }
+    finally { if (version === revision && request === listRequest) loading.value = false }
+  }
+  async function mutate(action) {
+    if (busy.value) throw new Error('A room request is already in progress.')
+    const version = revision
+    busy.value = true; error.value = ''; listRequest++; loading.value = false
+    try {
+      const party = await action()
+      if (version !== revision) throw new Error('Your account changed. Please try again.')
+      return upsert(party)
+    } catch (failure) { if (version === revision) error.value = failure.message; throw failure }
+    finally { if (version === revision) busy.value = false }
+  }
+  async function createRoom({ name, module }) {
+    return mutate(async () => (await api.createRoom({ name, module })).party)
+  }
+  async function joinRoom(code) {
+    return mutate(() => api.joinRoom(code.trim().toUpperCase()))
+  }
+  async function leaveRoom(id) {
+    const version = revision
+    await api.leaveRoom(id)
+    if (version !== revision) throw new Error('Your account changed.')
+    listRequest++
+    rooms.value = rooms.value.filter(room => room.id !== id)
+    delete myVotes.value[id]; delete accepted.value[id]
   }
 
-  function leaveRoom(id) {
-    rooms.value = rooms.value.filter((r) => r.id !== id)
+  async function loadVotes(roomId, { quiet = false } = {}) {
+    const version = revision, request = (voteRequests.get(roomId) ?? 0) + 1
+    voteRequests.set(roomId, request)
+    voteLoading.value[roomId] = true
+    if (!quiet) voteErrors.value[roomId] = ''
+    try {
+      const board = await api.roomVotes(roomId)
+      if (version !== revision || request !== voteRequests.get(roomId)) return
+      voteBoards.value[roomId] = board
+      myVotes.value[roomId] = board.mySectionIds
+      return board
+    } catch (failure) {
+      if (version === revision && request === voteRequests.get(roomId)) voteErrors.value[roomId] = failure.message
+    } finally { if (version === revision && request === voteRequests.get(roomId)) voteLoading.value[roomId] = false }
+  }
+  async function saveRoomVotes(roomId, ids) {
+    if (voteSaving.value[roomId] || !voteBoards.value[roomId]) return false
+    const version = revision
+    const term = voteBoards.value[roomId].term
+    voteRequests.set(roomId, (voteRequests.get(roomId) ?? 0) + 1)
+    voteLoading.value[roomId] = false
+    voteSaving.value[roomId] = true; voteErrors.value[roomId] = ''
+    try {
+      const saved = await api.vote(roomId, [...ids], term)
+      if (version !== revision) return false
+      voteBoards.value[roomId] = { ...voteBoards.value[roomId], mySectionIds: saved.sectionIds }
+      myVotes.value[roomId] = saved.sectionIds
+      delete accepted.value[roomId]
+      await loadVotes(roomId)
+      return version === revision
+    } catch (failure) { if (version === revision) voteErrors.value[roomId] = failure.message; return false }
+    finally { if (version === revision) voteSaving.value[roomId] = false }
   }
 
   function setMyVotes(roomId, sectionIds) {
@@ -176,7 +264,8 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   return {
-    rooms,
+    rooms, loading, busy, online, error, load, joinRoom,
+    voteBoards, voteLoading, voteSaving, voteErrors, loadVotes, saveRoomVotes,
     myVotes,
     decided,
     roomState,

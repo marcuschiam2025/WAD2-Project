@@ -1,144 +1,53 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoomsStore } from '@core/stores/rooms'
-import { useUserStore } from '@core/stores/user'
 import { moduleName } from '@core/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
-import StatusPill from '@/components/ui/StatusPill.vue'
-import ProgressBar from '@/components/ui/ProgressBar.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
-
 const router = useRouter()
 const rooms = useRoomsStore()
-const user = useUserStore()
-
-const joining = ref(false)
-const joinInput = ref('')
-const joinError = ref('')
-
-// A room is joined with its 6-digit code. The box only takes digits.
-function onJoinInput(e) {
+const joining = ref(false), joinInput = ref(''), joinError = ref('')
+onMounted(() => rooms.load())
+async function join() {
+  if (!/^[A-Z0-9]{4,8}$/.test(joinInput.value.trim().toUpperCase()) || rooms.busy) return
   joinError.value = ''
-  joinInput.value = e.target.value.replace(/\D/g, '').slice(0, 6)
-}
-
-function join() {
-  if (joinInput.value.length !== 6) return
-  if (rooms.getRoom(joinInput.value)) {
+  try {
+    const id = await rooms.joinRoom(joinInput.value)
     joining.value = false
-    router.push(`/rooms/${joinInput.value}`)
-  } else {
-    joinError.value = 'No room found for that code.'
-  }
+    router.push(`/rooms/${id}`)
+  } catch (failure) { joinError.value = failure.message }
 }
-
-// TODO(backend): votes / status / round come from GET /api/rooms (the sample derives them from room.votes)
-function summary(room) {
-  const st = rooms.roomState(room)
-  const status = st.acceptedId ? 'accepted' : st.allVoted ? 'ready' : st.voted === 0 ? 'not-started' : 'voting'
-  return { count: st.voted, total: st.total, status }
-}
-const statusTone = { voting: 'warning', ready: 'info', accepted: 'success', 'not-started': 'neutral' }
-const statusLabel = { voting: 'Voting', ready: 'Ready to accept', accepted: 'Accepted', 'not-started': 'Not started' }
-const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2h 15m', urgent: i === 0 })
 </script>
-
 <template>
   <div>
-    <PageHeader overline="Collaborative plan rooms · AY24/25 Sem 2" title="Collab Rooms">
-      <template #actions>
-        <BaseButton variant="outline" @click="joining = true">Join with code</BaseButton>
-        <BaseButton to="/rooms/new">Create room</BaseButton>
-      </template>
+    <PageHeader overline="Collaborative plan rooms" title="Collab Rooms">
+      <template #actions><BaseButton variant="outline" @click="joining = true">Join with code</BaseButton><BaseButton to="/rooms/new">Create room</BaseButton></template>
     </PageHeader>
-
-    <main class="flex flex-col gap-4 px-16 pt-8 pb-12">
-      <div class="flex flex-col gap-0.5">
-        <h2 class="text-h3">Welcome back, {{ user.profile.firstName }}. Here are your rooms.</h2>
-        <p class="text-[14px] text-muted-foreground">
-          Plan the incoming semester with friends and line up bids together!
-        </p>
-      </div>
-
-      <section v-enter class="card overflow-hidden"> <!-- motion: fade + slide up on mount -->
-        <div class="grid grid-cols-[minmax(0,2.6fr)_minmax(0,1.3fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.1fr)_40px] bg-muted text-overline text-muted-foreground">
-          <span class="px-5 py-3">Room</span>
-          <span class="px-2 py-3">Members</span>
-          <span class="px-2 py-3">Votes</span>
-          <span class="px-2 py-3">Status</span>
-          <span class="px-2 py-3">Round closes</span>
-          <span />
-        </div>
-        <ul v-stagger="0.08"> <!-- motion: room rows stagger in 80ms apart -->
-          <li v-for="(room, i) in rooms.rooms" :key="room.id" class="border-t border-border">
-            <RouterLink
-              :to="`/rooms/${room.id}`"
-              class="grid grid-cols-[minmax(0,2.6fr)_minmax(0,1.3fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.1fr)_40px] items-center transition-colors hover:bg-muted/60"
-            >
-              <div class="flex flex-col gap-1.5 px-5 py-4 leading-normal">
-                <span class="text-[15px] font-semibold">{{ room.name }}</span>
-                <span class="flex items-center gap-2 text-[13px] text-muted-foreground">
-                  <span class="rounded-sm bg-secondary px-1.5 py-px font-mono text-[11px] font-bold text-foreground">{{ room.module }}</span>
-                  {{ moduleName(room.module) }}
-                </span>
-              </div>
-              <div class="flex px-2 py-4">
-                <UserAvatar
-                  v-for="(id, mi) in room.members.slice(0, 4)"
-                  :key="id"
-                  :initials="rooms.person(id).initials"
-                  :you="rooms.person(id).you"
-                  :class="mi > 0 && '-ml-1 ring-2 ring-card'"
-                />
-              </div>
-              <div class="flex flex-col gap-1.5 px-2 py-4">
-                <span class="text-[13px] text-muted-foreground">{{ summary(room).count }} of {{ summary(room).total }} voted</span>
-                <ProgressBar
-                  :value="summary(room).count / summary(room).total"
-                  color="bg-primary"
-                  track="h-1.5 w-[180px]"
-                />
-              </div>
-              <div class="px-2 py-4">
-                <StatusPill :tone="statusTone[summary(room).status]">{{ statusLabel[summary(room).status] }}</StatusPill>
-              </div>
-              <span
-                class="px-2 py-4 font-mono text-[12.5px] font-medium"
-                :class="roundCloses(i).urgent ? 'text-destructive' : 'text-muted-foreground'"
-              >{{ roundCloses(i).text }}</span>
-              <span class="px-2 py-4 text-center text-muted-foreground">···</span>
-            </RouterLink>
-          </li>
-        </ul>
-        <p v-if="!rooms.rooms.length" class="border-t border-border px-5 py-6 text-[13px] text-muted-foreground">
-          You're not in any rooms yet. Create one or join with a room code.
-        </p>
+    <main class="flex flex-col gap-4 px-5 py-8 lg:px-16">
+      <p class="text-sm text-muted-foreground">Plan a module with friends. Create a room and share its invite code.</p>
+      <p v-if="rooms.loading" role="status">Loading your rooms…</p>
+      <div v-if="rooms.error && !joining" role="alert" class="card p-4"><p>{{ rooms.error }}</p><BaseButton class="mt-2" variant="outline" @click="rooms.load">Retry</BaseButton></div>
+      <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Your rooms">
+        <RouterLink v-for="room in rooms.rooms" :key="room.id" :to="`/rooms/${room.id}`" class="card flex flex-col gap-3 p-5 hover:border-primary">
+          <h2 class="text-lg font-semibold">{{ room.name }}</h2>
+          <p class="text-sm"><span class="font-mono font-semibold">{{ room.module }}</span> · {{ moduleName(room.module) }}</p>
+          <p v-if="room.description" class="text-sm text-muted-foreground">{{ room.description }}</p>
+          <div class="flex items-center gap-2"><UserAvatar v-for="id in room.members.slice(0,4)" :key="id" :initials="rooms.person(id).initials" :you="id === 'me'" /><span class="text-xs text-muted-foreground">{{ room.members.length }} / {{ room.maxMembers }} members</span></div>
+          <p class="text-xs text-muted-foreground">Invite code <span class="font-mono font-semibold">{{ room.inviteCode }}</span></p>
+        </RouterLink>
       </section>
+      <p v-if="!rooms.loading && !rooms.error && !rooms.rooms.length" class="card p-6 text-sm text-muted-foreground">You're not in any rooms yet. Create one or join with a room code.</p>
     </main>
-
-    <BaseModal v-if="joining" width="w-[440px]" @close="joining = false">
-      <h2 class="text-h4">Join a room</h2>
-      <label class="flex flex-col gap-1.5">
-        <span class="text-[13px] font-medium">6-digit room code</span>
-        <input
-          v-model="joinInput"
-          placeholder="123456"
-          inputmode="numeric"
-          maxlength="6"
-          autocomplete="off"
-          class="rounded-md border border-border px-3 py-[9px] text-[14px] outline-none focus:border-ring"
-          @input="onJoinInput"
-          @keyup.enter="join"
-        />
-        <span v-if="joinError" class="text-[12px] text-destructive">{{ joinError }}</span>
-      </label>
-      <div class="flex justify-end gap-2">
-        <BaseButton variant="ghost" @click="joining = false">Cancel</BaseButton>
-        <BaseButton :disabled="joinInput.length !== 6" @click="join">Join</BaseButton>
-      </div>
+    <BaseModal v-if="joining" width="w-[440px]" @close="!rooms.busy && (joining = false)">
+      <h2 class="text-lg font-semibold">Join a room</h2>
+      <form class="flex flex-col gap-4" @submit.prevent="join">
+        <label class="flex flex-col gap-2 text-sm">Room invite code<input v-model="joinInput" maxlength="8" placeholder="K7Q2MX" autocomplete="off" :disabled="rooms.busy" class="rounded-md border border-border p-3 uppercase" /></label>
+        <p v-if="joinError" role="alert" class="text-sm text-destructive">{{ joinError }}</p>
+        <div class="flex justify-end gap-2"><BaseButton variant="ghost" :disabled="rooms.busy" @click="joining = false">Cancel</BaseButton><button type="submit" :disabled="rooms.busy || !/^[A-Z0-9]{4,8}$/i.test(joinInput.trim())" class="rounded-md bg-primary px-4 py-2 text-primary-foreground disabled:opacity-50">{{ rooms.busy ? 'Joining…' : 'Join' }}</button></div>
+      </form>
     </BaseModal>
   </div>
 </template>

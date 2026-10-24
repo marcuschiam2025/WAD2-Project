@@ -24,13 +24,13 @@ const tab = ref('Simulate')
 
 // Sections, bid history and weightage: the backend's for each module, the sample data where it has none
 const section = computed(() => props.code && sections.find((s) => s.id === bidding.booked[props.code]))
-const details = computed(() => [
+const details = computed(() => section.value ? [
   ['Professor', section.value.prof],
   ['Section', section.value.section],
-  ['Class', `${days[section.value.day].slice(0, 3)} · ${slots[section.value.slot].start} – ${slots[section.value.slot].end}`],
+  ['Class', bidding.slotLabel(section.value)],
   ['Location', section.value.venue],
   ['Exam', section.value.exam],
-])
+] : [])
 
 const bid = computed({
   get: () => bidding.bids[props.code] ?? '',
@@ -80,10 +80,10 @@ watch(
 </script>
 
 <template>
-  <aside class="flex w-[360px] shrink-0 flex-col self-stretch rounded-lg border border-border bg-card shadow-sm">
+  <aside class="flex w-full xl:w-[360px] shrink-0 flex-col self-stretch rounded-lg border border-border bg-card shadow-sm">
     <div ref="body" class="flex flex-1 flex-col">
       <!-- Empty state -->
-      <div v-if="!code" class="flex flex-1 flex-col items-center justify-center gap-2 px-10 text-center">
+      <div v-if="!code || !section" class="flex flex-1 flex-col items-center justify-center gap-2 px-10 text-center">
         <span class="mb-2 flex size-10 items-center justify-center rounded-full bg-muted">
           <img :src="iconPointer" alt="" class="size-5" />
         </span>
@@ -208,7 +208,7 @@ watch(
         <span class="font-mono text-[15px] font-bold">e$ {{ bidding.allocated }}</span>
         <span class="text-[12px] text-muted-foreground">of e$ {{ user.balance.toLocaleString() }} allocated</span>
       </p>
-      <BaseButton size="sm" @click="bidding.save()">Save plan</BaseButton>
+      <BaseButton size="sm" :disabled="bidding.saving || !bidding.online" @click="bidding.save()">{{ bidding.saving ? 'Saving…' : 'Save plan' }}</BaseButton>
     </div>
     <!-- Save result: the backend's error, or modules whose sections are only sample data so they can't be saved yet -->
     <p v-if="bidding.saveError" class="-mt-1.5 px-5 pb-3 text-[12px] text-destructive">{{ bidding.saveError }}</p>

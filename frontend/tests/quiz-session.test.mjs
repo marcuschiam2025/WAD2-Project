@@ -15,10 +15,13 @@ test('session changes clear private quiz state and discard late history/submissi
   try {
     const { useQuizStore } = await server.ssrLoadModule('/src/core/stores/quiz.js')
     const { useUserStore } = await server.ssrLoadModule('/src/core/stores/user.js')
+    const { authClient } = await server.ssrLoadModule('/src/core/services/firebase.js')
+    authClient.signOut = async () => {}
     const { api } = await server.ssrLoadModule('/src/core/services/api.js')
     setActivePinia(createPinia())
     const user = useUserStore()
-    user.signIn()
+    user.isSignedIn = true
+    user.profile.email = 'student@smu.edu.sg'
     const quiz = useQuizStore()
     quiz.attempts = [{ id: 'private-result' }]
     quiz.answers = { I1: '5' }
@@ -34,7 +37,8 @@ test('session changes clear private quiz state and discard late history/submissi
     resolveHistory([{ id: 'late-private-result' }])
     await loading
     assert.deepEqual(quiz.attempts, [])
-    user.signIn()
+    user.isSignedIn = true
+    user.profile.email = 'student@smu.edu.sg'
     let resolveSubmission
     api.submitQuizV2 = () => new Promise((resolve) => { resolveSubmission = resolve })
     const submitting = quiz.submit()

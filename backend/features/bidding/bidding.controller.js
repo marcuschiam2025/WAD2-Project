@@ -1,20 +1,30 @@
-import Section from './models/Section.js'
+import Plan from '../planning/models/Plan.js'
+import { loadSections, roundSettings } from './section.repository.js'
+import { canonicalTerm, termLabel } from './utils/sectionData.js'
+import { validateCartItems } from './utils/cartValidation.js'
 import BidHistory from './models/BidHistory.js'
 import BidCart from './models/BidCart.js'
 import Party from '../parties/models/Party.js'
 import { referenceBid } from './utils/referenceBid.js'
-import { findClashes } from './utils/clash.js'
+import { findClashes, findExamClashes } from './utils/clash.js'
 import { toSectionView } from './utils/sectionView.js'
 import { WEIGHTAGE } from './utils/weightage.js'
 import { httpError } from '../../middleware/errorHandler.js'
 
-const CURRENT_TERM = 'AY24/25 T2'
-const CURRENT_ROUND = '1A'
 const HISTORY_TERMS = 3
-// Used until the User model stores a balance (the Bidding screen shows e$ 210)
 const DEFAULT_BALANCE = 210
-// TODO: store the round in the database. BIDDING_ROUND_CLOSES_AT overrides the closing time.
-const ROUND_CLOSES_AT = process.env.BIDDING_ROUND_CLOSES_AT ?? '2025-01-20T12:00:00+08:00'
+async function selectedTerm(value) {
+  const term = value ?? (await roundSettings()).term
+  if (!term) throw httpError(409, 'No bidding catalogue term is available')
+  try { return canonicalTerm(term) } catch { throw httpError(400, 'Invalid bidding term') }
+}
+async function requireOwnPlan(req, value) {
+  const planId = requirePlanId(value)
+  if (typeof planId !== 'string' || !/^[a-f0-9]{24}$/i.test(planId)) throw httpError(400, 'Invalid planId')
+  if (!await Plan.exists({ _id: planId, user: req.user._id })) throw httpError(404, 'Plan not found')
+  return planId
+}
+const termAliases = term => [term, termLabel(term)]
 
 function getBalance(user) {
   if (user.balance !== undefined) return user.balance
@@ -39,7 +49,7 @@ function requirePlanId(planId) {
 
 // The saved bids for one plan in one term. An empty cart when the student has not saved one yet.
 async function getCartFor(user, planId, term) {
-  const cart = await BidCart.findOne({ user: user._id, plan: planId, term: term })
+  const cart = await BidCart.findOne({ user: user._id, plan: planId, term: { $in: termAliases(term) } })
   const items = cart ? cart.items : []
   return {
     planId,
@@ -61,34 +71,14 @@ function findSection(sections, sectionId) {
 // GET /api/bidding/sections?modules=IS212,IS213&term=AY24/25 T2 — the screen's sections
 // ?module=IS212 still works for one module
 export async function listSections(req, res) {
-  const filter = { term: req.query.term ?? CURRENT_TERM }
-
-  // "IS212, is213" becomes ["IS212", "IS213"]
-  const modules = []
-  const requested = String(req.query.modules ?? '').split(',')
-  for (const code of requested) {
-    const cleaned = code.trim().toUpperCase()
-    if (cleaned) modules.push(cleaned)
-  }
-
-  if (modules.length > 0) {
-    filter.module = { $in: modules }
-  } else if (req.query.module) {
-    filter.module = req.query.module
-  }
-
-  const sections = await Section.find(filter).sort({ module: 1, day: 1, slot: 1 }).lean()
-
-  const result = []
-  for (const section of sections) {
-    result.push(toSectionView(section))
-  }
-  res.json(result)
+  const term = await selectedTerm(req.query.term)
+  const modules = String(req.query.modules ?? req.query.module ?? '').split(',').map(code => code.trim().toUpperCase()).filter(Boolean)
+  res.json((await loadSections({ term, modules })).map(toSectionView))
 }
 
-// GET /api/bidding/round — the BOSS round the planner is bidding in
-export function getRound(_req, res) {
-  res.json({ term: CURRENT_TERM, round: CURRENT_ROUND, closesAt: ROUND_CLOSES_AT })
+// Catalogue fallback is labelled explicitly; no closing time or active round is invented.
+export async function getRound(_req, res) {
+  res.json(await roundSettings())
 }
 
 // GET /api/bidding/history/:module?round=1A
@@ -114,8 +104,8 @@ export function getWeightage(req, res) {
 
 // GET /api/bidding/cart?planId=…&term=… — the saved bids for one What-If plan
 export async function getCart(req, res) {
-  const planId = requirePlanId(req.query.planId)
-  const term = req.query.term ?? CURRENT_TERM
+  const planId = await requireOwnPlan(req, req.query.planId)
+  const term = await selectedTerm(req.query.term)
   res.json(await getCartFor(req.user, planId, term))
 }
 
@@ -123,57 +113,53 @@ export async function getCart(req, res) {
 // Replaces the plan's cart. Rejects a section from another module, a module listed twice, and bids
 // above the balance. Returns any clashes in the booked sections.
 export async function saveCart(req, res) {
-  const planId = requirePlanId(req.body.planId)
-  const term = req.body.term ?? CURRENT_TERM
+  const planId = await requireOwnPlan(req, req.body.planId)
+  const term = await selectedTerm(req.body.term)
   const items = req.body.items ?? []
-
-  // A module can only be in the cart once
-  const seenModules = new Set()
-  for (const item of items) {
-    if (seenModules.has(item.module)) {
-      throw httpError(400, 'Each module can only be in the cart once')
-    }
-    seenModules.add(item.module)
-  }
-
-  // Load every section the cart names
-  const sectionIds = []
-  for (const item of items) {
-    sectionIds.push(item.sectionId)
-  }
-  const sections = await Section.find({ sectionId: { $in: sectionIds } })
-  if (sections.length !== items.length) {
-    throw httpError(400, 'Unknown section in cart')
-  }
-
-  // Each section must belong to the module it is listed under, in this term
+  const balance = getBalance(req.user)
+  const total = validateCartItems(items, balance)
+  const sections = await loadSections({ term, ids: items.map(item => item.sectionId) })
+  if (sections.length !== items.length) throw httpError(400, 'Unknown section in cart for this term')
   for (const item of items) {
     const section = findSection(sections, item.sectionId)
-    if (!section || section.module !== item.module || section.term !== term) {
-      throw httpError(400, `${item.sectionId} is not a section of ${item.module} in ${term}`)
-    }
+    if (!section || section.module !== item.module) throw httpError(400, `${item.sectionId} is not a section of ${item.module} in ${term}`)
   }
-
-  const total = getTotal(items)
-  const balance = getBalance(req.user)
-  if (total > balance) {
-    throw httpError(400, `e$ ${total} is more than your balance of e$ ${balance}`)
-  }
-
+  const clashes = findClashes(sections)
+  const examClashes = findExamClashes(sections)
+  if (clashes.length || examClashes.length) throw httpError(400, 'Resolve class or final-exam clashes before saving your bids')
   const cart = await BidCart.findOneAndUpdate(
-    { user: req.user._id, plan: planId, term: term },
-    { items: items },
+    { user: req.user._id, plan: planId, term: { $in: termAliases(term) } },
+    { items, term },
     { upsert: true, new: true, runValidators: true },
   )
-  res.json({ cart, clashes: findClashes(sections), allocated: total, balance })
+  res.json({ cart, clashes, allocated: total, balance })
+}
+
+// Saved carts are snapshots of choices, not confirmation of BOSS allocation.
+export async function listSavedPlans(req, res) {
+  const term = await selectedTerm(req.query.term)
+  const carts = await BidCart.find({ user: req.user._id, term: { $in: termAliases(term) } })
+    .sort({ updatedAt: -1 }).populate('plan', 'name user').lean()
+  const owned = carts.filter(cart => cart.plan && String(cart.plan.user) === String(req.user._id))
+  const ids = [...new Set(owned.flatMap(cart => cart.items.map(item => item.sectionId)))]
+  const sections = ids.length ? await loadSections({ term, ids }) : []
+  res.json(owned.map(cart => {
+    const items = cart.items.map(item => {
+      const section = sections.find(s => s.sectionId === item.sectionId && s.module === item.module)
+      return { module: item.module, sectionId: item.sectionId, amount: item.amount, section: section ? toSectionView(section) : null }
+    })
+    return { id: String(cart._id), planId: String(cart.plan._id), name: cart.plan.name, term,
+      updatedAt: cart.updatedAt, allocated: getTotal(items), items,
+      missingModules: items.filter(item => !item.section).map(item => item.module) }
+  }))
 }
 
 // DELETE /api/bidding/cart/:code?planId=…&term=… — takes one module out of the plan's cart
 export async function dropCartItem(req, res) {
-  const planId = requirePlanId(req.query.planId)
-  const term = req.query.term ?? CURRENT_TERM
+  const planId = await requireOwnPlan(req, req.query.planId)
+  const term = await selectedTerm(req.query.term)
   await BidCart.updateOne(
-    { user: req.user._id, plan: planId, term: term },
+    { user: req.user._id, plan: planId, term: { $in: termAliases(term) } },
     { $pull: { items: { module: req.params.code } } },
   )
   res.status(204).end()
@@ -184,18 +170,14 @@ function summary(section) {
   return { sectionId: section.sectionId, section: section.section, module: section.module }
 }
 
-// exam is a display string such as "28 Apr 2025 · 13:00 – 16:00", so only identical slots are caught
-function hasExam(section) {
-  return section.exam && section.exam !== 'No final exam'
-}
-
 // POST /api/bidding/validate-cart { sectionIds } — duplicate module, class time and final exam clashes
 export async function validateCart(req, res) {
   const { sectionIds } = req.body
   if (!Array.isArray(sectionIds)) throw httpError(400, 'sectionIds must be an array')
 
   const uniqueIds = [...new Set(sectionIds)] // Remove duplicates
-  const sections = await Section.find({ sectionId: { $in: uniqueIds } })
+  if (uniqueIds.some(id => typeof id !== 'string')) throw httpError(400, 'Invalid section ID')
+  const sections = await loadSections({ ids: uniqueIds })
   if (sections.length !== uniqueIds.length) throw httpError(400, 'Some sections not found')
 
   // Sections from different terms can't be in the same cart
@@ -208,6 +190,8 @@ export async function validateCart(req, res) {
   }
 
   const clashes = []
+  const timePairs = new Set(findClashes(sections).map(pair => pair.join('|')))
+  const examPairs = new Set(findExamClashes(sections).map(pair => pair.join('|')))
   for (let i = 0; i < sections.length; i++) {
     for (let j = i + 1; j < sections.length; j++) {
       const a = sections[i]
@@ -216,10 +200,10 @@ export async function validateCart(req, res) {
       if (a.module === b.module) {
         clashes.push({ type: 'duplicate-module', a: summary(a), b: summary(b) })
       }
-      if (a.day === b.day && a.slot === b.slot) {
+      if (timePairs.has([a.sectionId,b.sectionId].join('|'))) {
         clashes.push({ type: 'time', a: summary(a), b: summary(b), day: a.day, slot: a.slot })
       }
-      if (hasExam(a) && a.exam === b.exam) {
+      if (examPairs.has([a.sectionId,b.sectionId].join('|'))) {
         clashes.push({ type: 'final-exam-clash', a: summary(a), b: summary(b), finalExam: a.exam })
       }
     }
@@ -253,7 +237,7 @@ export async function getCoBids(req, res) {
   for (const member of party.members) {
     memberIds.push(member._id)
   }
-  const carts = await BidCart.find({ user: { $in: memberIds }, term: CURRENT_TERM })
+  const carts = await BidCart.find({ user: { $in: memberIds }, term: { $in: termAliases(await selectedTerm(req.query.term)) } })
 
   // sectionId -> the party members bidding for it. A member with carts for two plans is listed once.
   const bySection = {}
