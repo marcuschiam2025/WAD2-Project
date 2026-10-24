@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { requireAuth } from '../features/auth/auth.middleware.js'
 import usersRouter from '../features/auth/users.routes.js'
 import modulesRouter from '../features/planning/modules.routes.js'
 import tracksRouter from '../features/planning/tracks.routes.js'
@@ -9,6 +8,7 @@ import quizRouter from '../features/quiz/quiz.routes.js'
 import biddingRouter from '../features/bidding/bidding.routes.js'
 import partiesRouter from '../features/parties/parties.routes.js'
 import calendarRouter from '../features/calendar/calendar.routes.js'
+import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -19,7 +19,7 @@ router.use('/modules', modulesRouter)
 router.use('/tracks', tracksRouter)
 router.use('/majors', majorsRouter)
 
-// Everything below needs a signed-in student
+// Everything below needs a signed-in student (requireAuth sets req.user)
 router.use(requireAuth)
 router.use('/users', usersRouter)
 router.use('/plans', plansRouter)
