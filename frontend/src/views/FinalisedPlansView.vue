@@ -18,12 +18,16 @@ const TERM_START = new Date(2025, 0, 6) // Monday, week 1 of AY24/25 Term 2
 
 // TODO(backend): replace with GET /api/bidding/plans — one finalised copy per plan (max 3).
 // `swap` is [module, sectionId] for the one section that differs from Plan 1; Plan 1 has none.
-const variants = [
-  { name: 'Plan 1', swap: null },
-  { name: 'Plan 2', swap: ['IS212', 'IS212-G1'] },
-  { name: 'Plan 3', swap: ['IS213', 'IS213-G4'] },
-]
+// The sample copies swap a section of whichever modules are in the chosen What-If plan's timetable.
+function sampleSwap(base, n) {
+  const swappable = Object.keys(base).filter((code) => bidding.sectionsFor(code).length > 1)
+  const code = swappable[n % swappable.length]
+  if (!code) return null
+  const others = bidding.sectionsFor(code).filter((sec) => sec.id !== base[code])
+  return [code, others[Math.floor(n / swappable.length) % others.length].id]
+}
 
+const semText = computed(() => bidding.targetSem?.label.replace('S', 'Sem ') ?? '')
 const when = (s) => `${days[s.day].slice(0, 3)} ${slots[s.slot].start}`
 
 // "moves to Thursday" when the day changes, otherwise "moves to section G4"
@@ -34,6 +38,11 @@ function moveText(s, base) {
 
 const copies = computed(() => {
   const base = { ...bidding.booked }
+  const variants = [
+    { name: 'Plan 1', swap: null },
+    { name: 'Plan 2', swap: sampleSwap(base, 0) },
+    { name: 'Plan 3', swap: sampleSwap(base, 1) },
+  ]
   return variants.map((v) => {
     const booked = v.swap ? { ...base, [v.swap[0]]: v.swap[1] } : base
     const schedule = Object.values(booked)
@@ -85,7 +94,7 @@ function exportCopy(copy) {
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
       <!-- TODO(backend): remove once plans are real, this only labels the sample data -->
-      <div v-enter class="flex items-start gap-3 rounded-lg border border-primary bg-primary/10 px-3.5 py-3"> <!-- motion: info banner fades in on mount -->
+      <div v-enter class="flex items-start gap-3 rounded-lg border border-primary bg-primary-tint px-3.5 py-3"> <!-- motion: info banner fades in on mount -->
         <img :src="iconInfo" alt="" class="mt-0.5 size-4" />
         <div class="flex flex-col gap-0.5 text-[13px] leading-normal">
           <p class="font-semibold text-primary">Example finalised state · sample copies</p>
@@ -117,7 +126,7 @@ function exportCopy(copy) {
       <section v-enter="0.15" class="card overflow-hidden"> <!-- motion: comparison table fades in, 150ms delay -->
         <div class="flex items-center justify-between px-5 py-4">
           <h2 class="text-h4">Module and session comparison</h2>
-          <span class="text-[12px] text-muted-foreground">Y2 · Sem 2 · only cells that differ from Plan 1 are tinted</span>
+          <span class="text-[12px] text-muted-foreground">{{ semText }} · only cells that differ from Plan 1 are tinted</span>
         </div>
         <div class="grid grid-cols-[minmax(0,1.1fr)_repeat(3,minmax(0,1fr))] bg-muted text-overline text-muted-foreground">
           <span class="px-5 py-2.5">Module</span>
@@ -136,7 +145,7 @@ function exportCopy(copy) {
             v-for="(cell, i) in r.cells"
             :key="i"
             class="flex items-center gap-2 px-4 py-3"
-            :class="cell.changed && 'border-l-[3px] border-primary bg-primary/10'"
+            :class="cell.changed && 'border-l-[3px] border-primary bg-primary-tint'"
           >
             <span v-if="cell.same" class="text-muted-foreground">Same as Plan 1</span>
             <template v-else>

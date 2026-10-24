@@ -30,7 +30,7 @@ const emit = defineEmits(['close', 'ban'])
     </NoticeRow>
     <div class="flex flex-col items-start gap-2">
       <p class="text-overline text-muted-foreground">Affected module</p>
-      <span class="flex items-center gap-2 rounded-sm border border-warning bg-warning/14 px-2.5 py-1.5 text-[13px] text-warning">
+      <span class="flex items-center gap-2 rounded-sm border border-destructive bg-destructive-tint px-2.5 py-1.5 text-[13px] text-destructive">
         <img :src="iconAlert" alt="" class="size-3" />
         <span><span class="font-mono font-bold">{{ module }}</span> {{ moduleName(module) }}</span>
       </span>

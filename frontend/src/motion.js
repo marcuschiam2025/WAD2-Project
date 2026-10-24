@@ -45,6 +45,17 @@ export function overlayLeave(el, done) {
   animate(el, { opacity: 0 }, { duration: 0.14 }).then(done)
 }
 
+// Side panels that open next to a list (slide out from the list's edge)
+export function slideEnter(el, done) {
+  if (reduceMotion()) return done()
+  animate(el, { opacity: [0, 1], x: [-16, 0] }, { duration: 0.22, ease }).then(done)
+}
+
+export function slideLeave(el, done) {
+  if (reduceMotion()) return done()
+  animate(el, { opacity: 0, x: -8 }, { duration: 0.12 }).then(done)
+}
+
 // Small dropdown menus / listboxes
 export function popEnter(el, done) {
   if (reduceMotion()) return done()

@@ -1,75 +1,44 @@
 <script setup>
+// Profile: who the student is and their degree details from onboarding, edited right here (DegreeForm).
 import { computed, ref } from 'vue'
 import { useUserStore } from '@core/stores/user'
+import { moduleName, trackName } from '@core/data/catalogue'
+import { SEM_IDS, MARK_DONE } from '@core/data/degree'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import StatusPill from '@/components/ui/StatusPill.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
-import iconCan from '@/assets/v2/check-success-14.svg'
-import iconCant from '@/assets/v2/x-muted-14.svg'
+import DegreeForm from '@/components/DegreeForm.vue'
 
 const user = useUserStore()
 
-// The user store only tracks gmail / outlook consents, so Google Calendar is local state for now.
-// TODO(backend): move this into user.consents once the store exposes a calendar consent.
-const calendar = ref(user.consents.gmail)
-
-// TODO(backend): replace with GET /api/users/me/connections. `key` matches user.consents.
-const apps = computed(() => [
-  {
-    key: 'gmail',
-    mark: 'M',
-    name: 'Gmail',
-    connectedNote: 'Connected 12 Aug 2025',
-    offNote: 'For reading deadlines from your SMU inbox',
-    can: 'Read emails from SMU and BOSS to find deadlines',
-    cant: 'Send, delete or change any email',
-    scope: 'gmail.readonly',
-    status: 'Last synced 4 min ago',
-    connected: user.consents.gmail,
-  },
-  {
-    key: 'calendar',
-    mark: '31',
-    name: 'Google Calendar',
-    connectedNote: 'Connected 12 Aug 2025',
-    offNote: 'For adding deadlines to your calendar',
-    can: 'Add deadlines and class times to your primary calendar',
-    cant: "See or edit events it didn't create",
-    scope: 'calendar.events',
-    status: '23 events added',
-    connected: calendar.value,
-  },
-  {
-    key: 'outlook',
-    mark: 'O',
-    name: 'Outlook',
-    connectedNote: 'Connected',
-    offNote: 'For university Outlook inboxes',
-    blurb: 'Connect to read deadlines from an Outlook inbox instead of Gmail.',
-    can: 'Read emails from SMU and BOSS to find deadlines',
-    cant: 'Send, delete or change any email',
-    scope: 'Mail.Read',
-    status: 'Syncing',
-    connected: user.consents.outlook,
-  },
-])
-
-// TODO(backend): call the OAuth connect / revoke endpoints before flipping local state
-function setConnected(key, on) {
-  if (key === 'calendar') calendar.value = on
-  else user.consents[key] = on
+// Editing opens the degree form inside the card. Saving updates the profile and every What-If plan.
+const editingDegree = ref(false)
+const savedNote = ref(false)
+let noteTimer
+function degreeSaved() {
+  editingDegree.value = false
+  savedNote.value = true
+  clearTimeout(noteTimer)
+  noteTimer = setTimeout(() => (savedNote.value = false), 5000)
 }
 
-function revokeAll() {
-  user.revokeAccess()
-  calendar.value = false
-}
+// What the student told us in onboarding
+const degree = computed(() => {
+  const p = user.profile
+  return {
+    sem: p.currentSem ?? `Y${p.year}S1`,
+    tracks: p.tracks?.length ? p.tracks.map((c) => trackName(c === 'SMT' ? 'SMCT' : c)).join(' + ') : 'Undecided',
+    taken: SEM_IDS.filter((id) => p.takenBySem?.[id]?.length).map((id) => ({ id, codes: p.takenBySem[id] })),
+    exempted: p.exempted ?? [],
+    freeExempt: p.freeExemptions ?? 0,
+    markedDone: (p.markedDone ?? []).filter((id) => id in MARK_DONE),
+  }
+})
 </script>
 
 <template>
   <div>
-    <PageHeader overline="Account · Privacy · Connected apps" title="Profile & Settings" />
+    <PageHeader overline="Account" title="Profile" />
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
       <section v-enter class="card flex items-center gap-4 p-6"> <!-- motion: profile header fades in on mount -->
@@ -82,57 +51,61 @@ function revokeAll() {
         </div>
       </section>
 
-      <div class="flex flex-col gap-1">
-        <h2 class="text-h3">Connected apps</h2>
-        <p class="text-[14px] text-muted-foreground">BidMaxxer only reads what it needs. Disconnect any app at any time.</p>
-      </div>
-
-      <div v-stagger="0.05" class="flex items-start gap-4"> <!-- motion: app cards stagger in 50ms apart -->
-        <section v-for="app in apps" :key="app.key" class="card flex min-w-0 flex-1 flex-col gap-3 p-5">
-          <div class="flex items-center gap-3">
-            <span class="flex w-9 shrink-0 justify-center rounded-md bg-muted py-2 text-[13px] leading-normal font-bold">
-              {{ app.mark }}
-            </span>
-            <div class="flex min-w-0 flex-1 flex-col gap-0.5 leading-normal">
-              <p class="text-[15px] font-semibold">{{ app.name }}</p>
-              <p class="text-[12px] text-muted-foreground">{{ app.connected ? app.connectedNote : app.offNote }}</p>
-            </div>
-            <StatusPill :tone="app.connected ? 'success' : 'neutral'">{{ app.connected ? 'On' : 'Off' }}</StatusPill>
-          </div>
-
-          <template v-if="app.connected">
-            <p class="text-overline text-muted-foreground">BidMaxxer can</p>
-            <p class="flex items-start gap-2 text-[13px]">
-              <img :src="iconCan" alt="" class="mt-px size-3.5" />{{ app.can }}
+      <!-- Degree details from onboarding: current semester, tracks, modules taken, exemptions -->
+      <section v-enter="0.05" class="card flex flex-col gap-4 p-6"> <!-- motion: degree card fades in, 50ms delay -->
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex flex-col gap-0.5 leading-normal">
+            <h2 class="text-h3">Degree details</h2>
+            <p class="text-[14px] text-muted-foreground">
+              Your semester, tracks and modules taken. Changes update every What-If plan.
             </p>
-            <p class="text-overline text-muted-foreground">BidMaxxer can't</p>
-            <p class="flex items-start gap-2 text-[13px] text-muted-foreground">
-              <img :src="iconCant" alt="" class="mt-px size-3.5" />{{ app.cant }}
-            </p>
-            <p class="font-mono text-[11px] font-medium text-muted-foreground">{{ app.scope }}</p>
-          </template>
-          <p v-else class="text-[13px] text-muted-foreground">
-            {{ app.blurb ?? `Connect ${app.name} so BidMaxxer can use it again.` }}
-          </p>
-
-          <div class="flex items-center justify-between border-t border-border pt-3">
-            <p class="text-[12px] text-muted-foreground">{{ app.connected ? app.status : 'Not connected' }}</p>
-            <BaseButton v-if="app.connected" size="sm" variant="destructive-outline" @click="setConnected(app.key, false)">
-              Disconnect
-            </BaseButton>
-            <BaseButton v-else size="sm" variant="outline" @click="setConnected(app.key, true)">Connect</BaseButton>
           </div>
-        </section>
-      </div>
-
-      <section v-enter="0.15" class="card flex items-center justify-between gap-4 border-destructive! p-5"> <!-- motion: danger zone fades in, 150ms delay -->
-        <div class="flex flex-col gap-0.5 leading-normal">
-          <p class="text-[15px] font-semibold">Revoke all access</p>
-          <p class="text-[13px] text-muted-foreground">
-            Removes BidMaxxer's access to Gmail and Google Calendar immediately.
-          </p>
+          <span v-if="savedNote" class="rounded-md bg-success-tint px-2.5 py-1 text-[13px] font-medium">Saved. Your What-If plans are updated.</span>
+          <BaseButton v-else-if="!editingDegree" variant="outline" @click="editingDegree = true">Edit</BaseButton>
         </div>
-        <BaseButton variant="destructive-outline" @click="revokeAll">Revoke all access</BaseButton>
+        <DegreeForm v-if="editingDegree" mode="edit" @saved="degreeSaved" @cancel="editingDegree = false" />
+        <dl v-else class="grid grid-cols-[160px_1fr] gap-x-6 gap-y-3 text-[14px] leading-normal">
+          <dt class="text-muted-foreground">Current semester</dt>
+          <dd class="font-mono font-bold">{{ degree.sem }}</dd>
+          <dt class="text-muted-foreground">Tracks</dt>
+          <dd class="font-medium">{{ degree.tracks }}</dd>
+          <dt class="text-muted-foreground">Modules taken</dt>
+          <dd class="flex flex-col gap-1.5">
+            <p v-for="t in degree.taken" :key="t.id" class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span class="w-12 shrink-0 font-mono text-[12px] font-bold text-muted-foreground">{{ t.id }}</span>
+              <span v-if="t.id === degree.sem" class="rounded-sm bg-warning-tint px-1.5 py-px text-[11px] font-medium text-warning">In progress</span>
+              <span v-for="code in t.codes" :key="code" class="rounded-sm bg-secondary px-1.5 py-px text-[12.5px]" :title="moduleName(code)">
+                <span class="font-mono font-bold">{{ code }}</span> {{ moduleName(code) }}
+              </span>
+            </p>
+            <span v-if="!degree.taken.length" class="text-muted-foreground">None yet</span>
+          </dd>
+          <dt class="text-muted-foreground">Exemptions</dt>
+          <dd class="flex flex-wrap gap-1.5">
+            <span v-for="code in degree.exempted" :key="code" class="rounded-sm bg-secondary px-1.5 py-px text-[12.5px]">
+              <span class="font-mono font-bold">{{ code }}</span> {{ moduleName(code) }}
+            </span>
+            <span v-if="degree.freeExempt" class="rounded-sm bg-secondary px-1.5 py-px text-[12.5px]">
+              {{ degree.freeExempt }} free elective{{ degree.freeExempt === 1 ? '' : 's' }}
+            </span>
+            <span v-if="!degree.exempted.length && !degree.freeExempt" class="text-muted-foreground">None</span>
+          </dd>
+          <dt class="text-muted-foreground">Marked as done</dt>
+          <dd class="flex flex-wrap gap-1.5">
+            <span v-for="id in degree.markedDone" :key="id" class="flex items-center gap-1.5 rounded-sm bg-success-tint px-1.5 py-px text-[12.5px]">
+              {{ MARK_DONE[id] }}
+              <button
+                type="button"
+                :aria-label="`Undo: ${MARK_DONE[id]} is not done`"
+                class="text-muted-foreground hover:text-foreground"
+                @click="user.unmarkDone(id)"
+              >✕</button>
+            </span>
+            <span v-if="!degree.markedDone.length" class="text-muted-foreground">
+              None. Mark Internship, Community Service or Global Exposure as done from Outstanding Modules in the What-If Planner.
+            </span>
+          </dd>
+        </dl>
       </section>
     </main>
   </div>

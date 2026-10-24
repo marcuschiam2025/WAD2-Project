@@ -1,0 +1,395 @@
+[
+  {
+    "_id": "BSC-IS_AY2025_CORE_CAP_FIXED",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Capabilities courses",
+    "order": 1,
+    "cuRequired": 4,
+    "rule": "all",
+    "modules": [
+      "COR-STAT1202",
+      "COR-IS1704",
+      "COR1305",
+      "COR1100"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_CORE_MANAGING",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Managing",
+    "order": 2,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:MANAGING"
+  },
+  {
+    "_id": "BSC-IS_AY2025_CORE_INTERNSHIP",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Internship",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:INTERNSHIP"
+  },
+  {
+    "_id": "BSC-IS_AY2025_CORE_ECON_SOCIETY",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Economics & Society",
+    "order": 4,
+    "cuRequired": 1,
+    "rule": "all",
+    "modules": [
+      "COR2100"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_CORE_TSS",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Technology, Science & Society",
+    "order": 5,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:TECH_SCIENCE_SOCIETY"
+  },
+  {
+    "_id": "BSC-IS_AY2025_CORE_CULTURES",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Cultures of the Modern World",
+    "order": 6,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:CULTURES_MODERN_WORLD"
+  },
+  {
+    "_id": "BSC-IS_AY2025_CORE_CIVILISATIONS",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Civilisations",
+    "label": "Ethics & Social Responsibility, Big Questions",
+    "order": 8,
+    "cuRequired": 2,
+    "rule": "all",
+    "modules": [
+      "COR3301",
+      "COR3001"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_CORE_GLOBAL_EXPOSURE",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "NONE",
+    "heading": "Civilisations",
+    "label": "Global Exposure (non-credit)",
+    "order": 9,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "CORE:GLOBAL_EXPOSURE",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-IS_AY2025_GRAD_DIGITAL_TECH",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Digital Technology / Data Analytics",
+    "order": 10,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:DIGITAL_TECH",
+    "autoFulfilled": true
+  },
+  {
+    "_id": "BSC-IS_AY2025_GRAD_SUSTAINABILITY",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Sustainability",
+    "order": 11,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SUSTAINABILITY",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-IS_AY2025_GRAD_SG_ASIA",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Singapore and Asia Studies",
+    "order": 12,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SG_ASIA_STUDIES",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-IS_AY2025_TECH_SOL",
+    "level": "major",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "Technology Solutioning",
+    "label": "Technology Solutioning",
+    "order": 1,
+    "cuRequired": 5,
+    "rule": "all",
+    "modules": [
+      "IS114",
+      "IS210",
+      "IS214",
+      "IS212",
+      "IS215"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_SW_DESIGN_DEV",
+    "level": "major",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "Software Design and Development",
+    "label": "Software Design and Development",
+    "order": 2,
+    "cuRequired": 6,
+    "rule": "all",
+    "modules": [
+      "IS115",
+      "IS112",
+      "IS211",
+      "IS113",
+      "IS216",
+      "IS213"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_PROJECT_EXP",
+    "level": "major",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "IS Project Experience",
+    "label": "Any 1 IS Project Experience",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "chooseN",
+    "n": 1,
+    "modules": [
+      "IS483",
+      "IS484",
+      "IS485"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_ELECTIVES_ANY",
+    "level": "major",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "IS Major Electives",
+    "label": "Any IS Course / IS Related Course",
+    "order": 4,
+    "cuRequired": 2,
+    "rule": "anyFromCategory",
+    "categories": [
+      "IS_TRACK",
+      "IS",
+      "IS_RELATED"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_FREE_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "FREE_ELECTIVES",
+    "heading": "Free Electives",
+    "label": "Any SMU course",
+    "order": 5,
+    "cuRequired": 6,
+    "rule": "anyFromCategory",
+    "categories": [
+      "ANY"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_BA_COMPULSORY",
+    "level": "track",
+    "ownerId": "BSC-IS_AY2025_BA",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "Track Electives",
+    "label": "1 Compulsory Track Course",
+    "order": 1,
+    "cuRequired": 1,
+    "rule": "all",
+    "modules": [
+      "IS217"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_BA_ELECTIVES",
+    "level": "track",
+    "ownerId": "BSC-IS_AY2025_BA",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "Track Electives",
+    "label": "Any 3 Track Courses",
+    "order": 2,
+    "cuRequired": 3,
+    "rule": "chooseN",
+    "n": 3,
+    "modules": [
+      "IS461",
+      "SE201",
+      "IS491",
+      "IS454",
+      "CS420",
+      "IS459",
+      "IS424",
+      "IS466",
+      "CS448",
+      "IS453",
+      "IS469",
+      "IS415",
+      "IS460",
+      "IS446",
+      "IS455",
+      "CS421",
+      "IS4001",
+      "SMT481",
+      "IS434",
+      "IS450",
+      "IS428"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_PD_COMPULSORY",
+    "level": "track",
+    "ownerId": "BSC-IS_AY2025_PD",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "Track Electives",
+    "label": "Any 1 Compulsory Track Course",
+    "order": 1,
+    "cuRequired": 1,
+    "rule": "chooseN",
+    "n": 1,
+    "modules": [
+      "IS442",
+      "CS102"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_PD_ELECTIVES",
+    "level": "track",
+    "ownerId": "BSC-IS_AY2025_PD",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "Track Electives",
+    "label": "Any 3 Track Courses",
+    "order": 2,
+    "cuRequired": 3,
+    "rule": "chooseN",
+    "n": 3,
+    "modules": [
+      "SE201",
+      "CS465",
+      "SE301",
+      "IS458",
+      "IS492",
+      "IS412",
+      "CS440",
+      "CS464",
+      "IS469",
+      "CS447",
+      "CS460",
+      "IS467",
+      "IS446",
+      "CS461",
+      "CS446",
+      "CS467",
+      "CS449",
+      "CS443",
+      "CS206",
+      "CS301"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_FT_COMPULSORY",
+    "level": "track",
+    "ownerId": "BSC-IS_AY2025_FT",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "Track Electives",
+    "label": "1 Compulsory Track Course",
+    "order": 1,
+    "cuRequired": 1,
+    "rule": "all",
+    "modules": [
+      "IS444"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_FT_ELECTIVES",
+    "level": "track",
+    "ownerId": "BSC-IS_AY2025_FT",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "Track Electives",
+    "label": "Any 3 Track Courses",
+    "order": 2,
+    "cuRequired": 3,
+    "rule": "chooseN",
+    "n": 3,
+    "modules": [
+      "IS4000",
+      "IS452",
+      "IS445",
+      "IS430",
+      "IS453",
+      "IS423",
+      "IS4002",
+      "IS467",
+      "IS465",
+      "IS419"
+    ]
+  },
+  {
+    "_id": "BSC-IS_AY2025_SMCT_ELECTIVES",
+    "level": "track",
+    "ownerId": "BSC-IS_AY2025_SMCT",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "Track Electives",
+    "label": "Any 4 Track Courses",
+    "order": 1,
+    "cuRequired": 4,
+    "rule": "chooseN",
+    "n": 4,
+    "modules": [
+      "IS217",
+      "IS466",
+      "IS463",
+      "SMT201",
+      "CS447",
+      "CS460",
+      "POSC101",
+      "CS461",
+      "IS4001",
+      "IS447",
+      "SMT481",
+      "IS468"
+    ]
+  }
+]

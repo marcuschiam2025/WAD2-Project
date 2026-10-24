@@ -10,10 +10,10 @@ defineProps({
 })
 
 const tints = {
-  success: 'bg-success/14 text-success',
-  warning: 'bg-warning/14 text-warning',
-  destructive: 'bg-destructive/14 text-destructive',
-  info: 'bg-info/14 text-info',
+  success: 'bg-success-tint text-success',
+  warning: 'bg-warning-tint text-foreground',
+  destructive: 'bg-destructive-tint text-destructive',
+  info: 'bg-info-tint text-info',
   neutral: 'bg-secondary text-secondary-foreground',
 }
 const dots = { success: dotSuccess, warning: dotWarning, destructive: dotDestructive, info: dotInfo }

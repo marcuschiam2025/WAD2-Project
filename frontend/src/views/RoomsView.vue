@@ -19,27 +19,30 @@ const joining = ref(false)
 const joinInput = ref('')
 const joinError = ref('')
 
-// Accepts a full invite link (…/room/A1F3-yappers) or just the room code
+// A room is joined with its 6-digit code. The box only takes digits.
+function onJoinInput(e) {
+  joinError.value = ''
+  joinInput.value = e.target.value.replace(/\D/g, '').slice(0, 6)
+}
+
 function join() {
-  const code = joinInput.value.trim().split('/').pop().split('-')[0].replace('#', '').toUpperCase()
-  if (rooms.getRoom(code)) {
+  if (joinInput.value.length !== 6) return
+  if (rooms.getRoom(joinInput.value)) {
     joining.value = false
-    router.push(`/rooms/${code}`)
+    router.push(`/rooms/${joinInput.value}`)
   } else {
-    joinError.value = 'No room found for that link or code.'
+    joinError.value = 'No room found for that code.'
   }
 }
 
 // TODO(backend): votes / status / round come from GET /api/rooms (the sample derives them from room.votes)
 function summary(room) {
-  const voted = new Set(Object.values(room.votes).flat())
-  const count = room.finalised ? room.members.length : voted.size + (rooms.myVotes[room.id]?.length ? 1 : 0)
-  const total = room.members.length
-  const status = room.finalised ? 'finalised' : count === 0 ? 'not-started' : 'voting'
-  return { count, total, status }
+  const st = rooms.roomState(room)
+  const status = st.acceptedId ? 'accepted' : st.allVoted ? 'ready' : st.voted === 0 ? 'not-started' : 'voting'
+  return { count: st.voted, total: st.total, status }
 }
-const statusTone = { voting: 'warning', finalised: 'success', 'not-started': 'neutral' }
-const statusLabel = { voting: 'Voting', finalised: 'Finalised', 'not-started': 'Not started' }
+const statusTone = { voting: 'warning', ready: 'info', accepted: 'success', 'not-started': 'neutral' }
+const statusLabel = { voting: 'Voting', ready: 'Ready to accept', accepted: 'Accepted', 'not-started': 'Not started' }
 const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2h 15m', urgent: i === 0 })
 </script>
 
@@ -47,7 +50,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
   <div>
     <PageHeader overline="Collaborative plan rooms · AY24/25 Sem 2" title="Collab Rooms">
       <template #actions>
-        <BaseButton variant="outline" @click="joining = true">Join with link</BaseButton>
+        <BaseButton variant="outline" @click="joining = true">Join with code</BaseButton>
         <BaseButton to="/rooms/new">Create room</BaseButton>
       </template>
     </PageHeader>
@@ -56,8 +59,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
       <div class="flex flex-col gap-0.5">
         <h2 class="text-h3">Welcome back, {{ user.profile.firstName }}. Here are your rooms.</h2>
         <p class="text-[14px] text-muted-foreground">
-          Plan the incoming semester with friends: import your What-If plans, see who is taking the same modules, and line
-          up bids together.
+          Plan the incoming semester with friends and line up bids together!
         </p>
       </div>
 
@@ -96,7 +98,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
                 <span class="text-[13px] text-muted-foreground">{{ summary(room).count }} of {{ summary(room).total }} voted</span>
                 <ProgressBar
                   :value="summary(room).count / summary(room).total"
-                  :color="summary(room).status === 'finalised' ? 'bg-success' : 'bg-primary'"
+                  color="bg-primary"
                   track="h-1.5 w-[180px]"
                 />
               </div>
@@ -112,7 +114,7 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
           </li>
         </ul>
         <p v-if="!rooms.rooms.length" class="border-t border-border px-5 py-6 text-[13px] text-muted-foreground">
-          You're not in any rooms yet. Create one or join with an invite link.
+          You're not in any rooms yet. Create one or join with a room code.
         </p>
       </section>
     </main>
@@ -120,19 +122,22 @@ const roundCloses = (i) => (i === 2 ? { text: '2 · 6 days' } : { text: '1A · 2
     <BaseModal v-if="joining" width="w-[440px]" @close="joining = false">
       <h2 class="text-h4">Join a room</h2>
       <label class="flex flex-col gap-1.5">
-        <span class="text-[13px] font-medium">Invite link or room code</span>
+        <span class="text-[13px] font-medium">6-digit room code</span>
         <input
           v-model="joinInput"
-          placeholder="https://bidmaxxer.app/room/A1F3-yappers"
+          placeholder="123456"
+          inputmode="numeric"
+          maxlength="6"
+          autocomplete="off"
           class="rounded-md border border-border px-3 py-[9px] text-[14px] outline-none focus:border-ring"
-          @input="joinError = ''"
+          @input="onJoinInput"
           @keyup.enter="join"
         />
         <span v-if="joinError" class="text-[12px] text-destructive">{{ joinError }}</span>
       </label>
       <div class="flex justify-end gap-2">
         <BaseButton variant="ghost" @click="joining = false">Cancel</BaseButton>
-        <BaseButton :disabled="!joinInput.trim()" @click="join">Join</BaseButton>
+        <BaseButton :disabled="joinInput.length !== 6" @click="join">Join</BaseButton>
       </div>
     </BaseModal>
   </div>

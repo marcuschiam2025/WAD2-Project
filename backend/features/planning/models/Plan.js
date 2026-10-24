@@ -2,6 +2,12 @@ import mongoose from 'mongoose'
 
 export const MAX_PLANS = 3
 
+// A plan may have up to 2 leave-of-absence terms, used only for an internship
+export const MAX_LOA_TERMS = 2
+
+// Planner-only catalogue entry for an internship (see scripts/build-catalogue.js)
+export const INTERNSHIP_CODE = 'INTERNSHIP'
+
 const semesterSchema = new mongoose.Schema(
   {
     id: { type: String, required: true }, // e.g. Y2S1
@@ -18,11 +24,12 @@ const planSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     name: { type: String, required: true },
-    tracks: { type: [String], validate: (v) => v.length <= 2 },
+    majorId: { type: String, ref: 'Major' }, // whose requirements the plan is checked against
+    tracks: { type: [String], validate: (v) => v.length <= 2 }, // track codes, e.g. ['BA', 'SMCT']
     currentSem: String,
     semesters: [semesterSchema],
   },
   { timestamps: true },
 )
 
-export default mongoose.model('Plan', planSchema)
+export default mongoose.model('Plan', planSchema, 'degreePlans')

@@ -22,7 +22,7 @@ const user = useUserStore()
 const tabs = ['Details', 'Simulate', 'History']
 const tab = ref('Simulate')
 
-// TODO(backend): sections / bid history / weightage come from @core/data/bidding — swap for /api/bidding/…
+// Sections, bid history and weightage: the backend's for each module, the sample data where it has none
 const section = computed(() => props.code && sections.find((s) => s.id === bidding.booked[props.code]))
 const details = computed(() => [
   ['Professor', section.value.prof],
@@ -161,9 +161,9 @@ watch(
 
             <div class="flex flex-col gap-2">
               <div class="relative flex gap-1">
-                <span class="h-1.5 flex-1 rounded-full bg-destructive/55" />
-                <span class="h-1.5 flex-1 rounded-full bg-warning/55" />
-                <span class="h-1.5 flex-1 rounded-full bg-success/55" />
+                <span class="h-1.5 flex-1 rounded-full bg-destructive" />
+                <span class="h-1.5 flex-1 rounded-full bg-warning" />
+                <span class="h-1.5 flex-1 rounded-full bg-success" />
                 <span
                   v-if="markerPct !== null"
                   class="absolute -top-0.5 h-2.5 w-[3px] rounded-[2px] bg-foreground transition-[left] duration-300"
@@ -210,5 +210,13 @@ watch(
       </p>
       <BaseButton size="sm" @click="bidding.save()">Save plan</BaseButton>
     </div>
+    <!-- Save result: the backend's error, or modules whose sections are only sample data so they can't be saved yet -->
+    <p v-if="bidding.saveError" class="-mt-1.5 px-5 pb-3 text-[12px] text-destructive">{{ bidding.saveError }}</p>
+    <p v-else-if="bidding.online && bidding.unsaved.length" class="-mt-1.5 px-5 pb-3 text-[12px] text-muted-foreground">
+      No BOSS sections on the server for {{ bidding.unsaved.join(', ') }} yet, so {{ bidding.unsaved.length === 1 ? 'it is' : 'they are' }} not saved.
+    </p>
+    <p v-else-if="bidding.savedAt" class="-mt-1.5 px-5 pb-3 text-[12px] text-muted-foreground">
+      Saved at {{ bidding.savedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) }}
+    </p>
   </aside>
 </template>

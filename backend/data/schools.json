@@ -1,0 +1,32 @@
+[
+  {
+    "_id": "SOA",
+    "name": "School of Accountancy",
+    "bossCode": "SOA"
+  },
+  {
+    "_id": "LKCSB",
+    "name": "Lee Kong Chian School of Business",
+    "bossCode": "LKCSOB"
+  },
+  {
+    "_id": "SOE",
+    "name": "School of Economics",
+    "bossCode": "SOE"
+  },
+  {
+    "_id": "SCIS",
+    "name": "School of Computing and Information Systems",
+    "bossCode": "SIS"
+  },
+  {
+    "_id": "YPHSL",
+    "name": "Yong Pung How School of Law",
+    "bossCode": "SOL"
+  },
+  {
+    "_id": "SOSS",
+    "name": "School of Social Sciences",
+    "bossCode": "SOSS"
+  }
+]
