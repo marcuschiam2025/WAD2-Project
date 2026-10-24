@@ -30,5 +30,6 @@ test('curriculum edits enforce degree/intake ownership, revision and module refe
   assert.equal(event.entity, 'curriculum'); assert.equal(event.before.label, 'Compulsory'); assert.equal(event.after.label, 'Updated')
   await assert.rejects(service.save(actor, 'IS_2025', 'requirement', 'RULE', input), { status: 409 })
   row = { ...row, ownerId: 'IS_2025', level: 'major' }
-  await assert.rejects(service.save(actor, 'IS_2025', 'requirement', 'RULE', { ...input, revision: 1 }), /read-only/)
+  const core = await service.save(actor, 'IS_2025', 'requirement', 'RULE', { ...input, revision: 1 })
+  assert.equal(core.ownerId, 'IS_2025'); assert.equal(core.revision, 2)
 })

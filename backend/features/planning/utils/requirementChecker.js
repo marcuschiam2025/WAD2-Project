@@ -68,6 +68,14 @@ function sumCu(placements, catalogue) {
   return total
 }
 
+// Both course coverage and CU matter when staff edit curriculum targets.
+function covered(requirement, taken, catalogue) {
+  const codes = new Set(taken.map(p => p.code))
+  if (requirement.rule === 'all' && !requirement.modules?.every(code => codes.has(code))) return false
+  if (requirement.rule === 'chooseN' && codes.size < requirement.n) return false
+  return sumCu(taken, catalogue) >= requirement.cuRequired
+}
+
 // Sort requirements: core, then major, then track; within a level by their `order`
 function sortRequirements(requirements) {
   const sorted = [...requirements]
@@ -90,7 +98,8 @@ function outstandingFor(requirement, cuLeft, placed, catalogue) {
   if (isFlag && cuLeft === 0) {
     return null
   }
-  if (!isFlag && cuLeft <= 0) {
+  const missingCoverage = requirement.rule === 'all' ? requirement.modules?.some(code => !placed.has(code)) : requirement.rule === 'chooseN' && (requirement.modules ?? []).filter(code => placed.has(code)).length < requirement.n
+  if (!isFlag && cuLeft <= 0 && !missingCoverage) {
     return null
   }
 
@@ -226,9 +235,9 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue })
   const extraTracks = tracks.slice(1)
 
   // Requirements that use courses up: the major's (except non-credit flags) and the main track's
-  const counted = requirements.filter((requirement) => requirement.rule !== 'flag')
+  const counted = sortRequirements(requirements.filter((requirement) => requirement.rule !== 'flag'))
   if (mainTrack) {
-    counted.push(...mainTrack.requirements)
+    counted.push(...sortRequirements(mainTrack.requirements))
   }
 
   const allocated = {} // requirement id -> placements counted towards it
@@ -247,7 +256,7 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue })
       const mod = catalogue[placement.code]
       // The first requirement in this pass that the course matches and that still has room
       const target = passRequirements.find(
-        (requirement) => matches(requirement, mod) && sumCu(allocated[requirement._id], catalogue) < requirement.cuRequired,
+        (requirement) => matches(requirement, mod) && !covered(requirement, allocated[requirement._id], catalogue),
       )
       if (target) {
         allocated[target._id].push(placement)
@@ -283,14 +292,14 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue })
       }
       cuLeft = met ? 0 : 1
     } else {
-      if (cuDone >= requirement.cuRequired) {
+      if (covered(requirement, taken.filter(p => p.status === 'done'), catalogue)) {
         status = 'done'
-      } else if (cuPlanned >= requirement.cuRequired) {
+      } else if (covered(requirement, taken, catalogue)) {
         status = 'planned'
       } else {
         status = 'outstanding'
       }
-      cuLeft = requirement.cuRequired - cuPlanned
+      cuLeft = Math.max(0, requirement.cuRequired - cuPlanned)
     }
 
     const modules = []

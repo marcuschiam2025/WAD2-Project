@@ -9,7 +9,7 @@ const busy = ref(false), error = ref(''), message = ref(''), review = ref(false)
 let generation = 0
 const copy = value => JSON.parse(JSON.stringify(value))
 const dirty = computed(() => form.value && JSON.stringify(form.value) !== JSON.stringify(original.value))
-const readOnly = computed(() => form.value?.kind === 'requirement' && (form.value.level !== 'track' || !['all', 'chooseN'].includes(form.value.rule)))
+const readOnly = computed(() => form.value?.kind === 'requirement' && !['all', 'chooseN', 'basket', 'anyFromCategory', 'flag'].includes(form.value.rule))
 const ruleNames = { all: 'All listed courses', chooseN: 'Choose a number of courses', basket: 'Credit units from a requirement tag', anyFromCategory: 'Credit units from categories', flag: 'Non-credit requirement' }
 const creditCategories = { UNI_CORE: 'University core', MAJOR_CORE: 'Major core', MAJOR_ELECTIVES: 'Major electives', FREE_ELECTIVES: 'Free electives', NONE: 'No credit category' }
 const records = computed(() => bundle.value ? [
@@ -103,7 +103,7 @@ onBeforeUnmount(() => { generation++; window.removeEventListener('beforeunload',
         <form v-if="form" class="space-y-4" @submit.prevent="review = true">
           <h3 class="font-semibold">{{ form.kind === 'track' ? `Track ${form.trackCode}` : ruleNames[form.rule] }}</h3>
           <p class="break-all text-xs text-muted-foreground">{{ form._id }}</p>
-          <p v-if="readOnly" class="rounded-md bg-muted p-3 text-sm">Read-only: editing will be enabled when this requirement is connected to the planner checklist.</p>
+          <p v-if="readOnly" class="rounded-md bg-muted p-3 text-sm">Read-only: this rule type is not supported by the planner checklist.</p>
           <fieldset :disabled="busy || review || readOnly" class="space-y-4 disabled:opacity-70">
             <template v-if="form.kind === 'track'">
               <label class="block text-sm">Track name<input v-model="form.name" required maxlength="300" class="mt-1 block w-full rounded-md border border-border bg-background p-2"/></label>

@@ -197,3 +197,15 @@ This chunk does not create/delete tracks or rules, copy new intakes, change quiz
 ### Curriculum isolation prerequisite
 
 The planner now selects track lists and module classifications using the active plan's persisted `majorId`. Loading a second curriculum no longer overwrites a first curriculum's same-named track. Complete requirement bundles are cached by curriculum for the upcoming core/major checklist integration. Unknown/unloaded curricula return no track rules rather than another intake's rules. The remaining static core checklist is unchanged. Verified with a two-intake regression, all 15 frontend tests and a production build.
+
+## Live core/major checklist integration (current local review)
+
+This supersedes the read-only limitation above. Plans with a loaded curriculum now build requirement rows from that curriculum's MongoDB definitions, including all/choose-N lists, tagged baskets, category electives and non-credit flags. The checklist reports requirements rather than pretending every credit target is a fixed number of courses. Course options use the same stored membership, tags and categories. Unknown/unloaded live curricula show an unavailable message instead of a completion claim. The static checklist remains only for plans without a live curriculum/offline sample mode.
+
+Core/major edits are now enabled alongside track edits, with existing backend ownership, reference validation, revision and audit protection. The backend checker now requires listed-course coverage/choose-N counts in addition to CU. Students must reload after staff changes. Exemptions, manual internship/exposure completion, exchange exposure, and internship placements during LOA are retained in the local checklist. The server CU summary still has its existing separate handling of profile exemptions/manual completion; this change does not consolidate those engines or replace static course-progression advice shown elsewhere.
+
+Verified: 93 backend tests passed, one integration test skipped; 18 frontend tests passed and production build passed. Read-only browser review confirmed MongoDB core records load into enabled fields; no curriculum data was changed during this chunk. Student planner browser review remains pending.
+
+### Checklist presentation review
+
+The live checklist heading is Degree Requirements. Incomplete requirements use neutral Partial/Incomplete badges instead of semester recommendations. The summary says still incomplete, and does not describe partially filled requirements as absent from the plan. Browser inspection confirmed the new heading, progress labels and removed recommendation legend. All 19 frontend tests and production build passed. The user requested pushing this chunk before the additional manual course-placement test.

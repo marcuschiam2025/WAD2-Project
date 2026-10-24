@@ -77,7 +77,7 @@ export function createCurriculumEditor({ change, major, track, requirement, modu
         const owner = await track(before.ownerId, session)
         if (before.level !== 'track' || owner?.majorId !== majorId) throw httpError(404, 'Requirement does not belong to this curriculum')
       }
-      if (kind === 'requirement' && (before.level !== 'track' || !['all', 'chooseN'].includes(before.rule))) throw httpError(400, 'This requirement is read-only until its planner checklist is connected.')
+      if (kind === 'requirement' && !Object.hasOwn(ruleFields, before.rule)) throw httpError(400, 'Unsupported requirement rule; this record is read-only.')
       if ((before.revision ?? 0) !== input.revision) throw httpError(409, 'Curriculum record changed. Reload before saving.')
       const data = kind === 'track' ? validateTrackEdit(input) : validateRequirementEdit(before.rule, input)
       if (data.modules) {

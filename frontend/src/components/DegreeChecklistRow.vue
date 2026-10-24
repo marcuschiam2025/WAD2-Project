@@ -26,7 +26,8 @@ defineEmits(['select'])
         </p>
         <p class="line-clamp-2 text-[11.5px] text-muted-foreground">{{ item.detail }}</p>
       </div>
-      <SemesterChip :item="item" class="mt-0.5 shrink-0" />
+      <span v-if="item.rule === 'curriculum'" class="mt-0.5 shrink-0 rounded-md border px-1.5 py-0.5 text-[11px]" :class="item.status === 'inProgress' ? 'border-warning bg-warning-tint text-warning' : item.status === 'planned' ? 'border-primary bg-primary-tint text-primary' : 'border-border bg-muted text-muted-foreground'">{{ item.chip.text }}</span>
+      <SemesterChip v-else :item="item" class="mt-0.5 shrink-0" />
       <img :src="chevronRight" alt="" class="size-4 shrink-0" />
     </button>
   </li>

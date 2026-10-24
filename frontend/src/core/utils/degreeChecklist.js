@@ -6,6 +6,7 @@
 import { degreeGroups, gradRequirements, globalExposure, BASKETS, HOW, SEM_IDS, ANY_TERM } from '../data/degree'
 import { effectiveCode } from './requirementChecker'
 import { tracks as trackInfo } from '../data/catalogue'
+import { curriculumCandidates } from './curriculumChecklist'
 
 // "Y2S1" -> 3, so semesters compare as numbers
 const semNum = (id) => {
@@ -277,7 +278,8 @@ export function candidatesFor(item, plan, catalogue, exempted = []) {
   const all = Object.values(catalogue)
 
   let list = []
-  if (item.rule === 'trackList') list = all.filter((m) => item.codes.includes(m.code))
+  if (item.rule === 'curriculum') list = curriculumCandidates(item, catalogue)
+  else if (item.rule === 'trackList') list = all.filter((m) => item.codes.includes(m.code))
   else if (item.rule === 'codes') {
     list = all.filter((m) => item.codes.includes(m.code) || hasTag(item, m))
     if (!list.length) list = [{ code: item.code ?? '', name: item.title ?? item.label, stub: true }]
