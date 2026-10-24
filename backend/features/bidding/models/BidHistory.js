@@ -7,8 +7,8 @@ const bidHistorySchema = new mongoose.Schema({
   round: { type: String, required: true }, // e.g. 1A
   median: { type: Number, required: true },
   min: { type: Number, required: true },
-  vacancies: Number,
-  demand: Number, // number of bids placed
+  vacancies: Number, // seats on offer when the round opened
+  demand: Number, // seats filled across the round's windows (BOSS doesn't publish bid counts)
 })
 
 bidHistorySchema.index({ module: 1, term: 1, round: 1 }, { unique: true })

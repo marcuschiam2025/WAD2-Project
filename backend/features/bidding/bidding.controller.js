@@ -68,7 +68,7 @@ function findSection(sections, sectionId) {
   return null
 }
 
-// GET /api/bidding/sections?modules=IS212,IS213&term=AY24/25 T2 — the screen's sections
+// GET /api/bidding/sections?modules=IS212,IS213&term=AY26/27 T2 — the screen's sections
 // ?module=IS212 still works for one module
 export async function listSections(req, res) {
   const term = await selectedTerm(req.query.term)
@@ -83,17 +83,31 @@ export async function getRound(_req, res) {
 
 // GET /api/bidding/history/:module?round=1A
 export async function getHistory(req, res) {
-  const filter = { module: req.params.module }
+  const filter = { module: req.params.module.toUpperCase() }
   if (req.query.round) filter.round = req.query.round
   res.json(await BidHistory.find(filter).sort({ term: -1 }))
 }
 
-// GET /api/bidding/reference/:module?amount=42&round=1A — Safe / Competitive / At risk
+// GET /api/bidding/reference/:module?amount=42&round=1A&term=AY26/27 T2 — Safe / Competitive / At risk
+// round is required: medians from different rounds can't be averaged together.
+// With term, only the terms before it count. BidHistory stores "AY25/26 T2" labels, which sort by
+// term as strings, so either term format is turned into a label first.
 export async function getReferenceBid(req, res) {
-  const filter = { module: req.params.module }
-  if (req.query.round) filter.round = req.query.round
+  if (!req.query.round) throw httpError(400, 'round is required')
+
+  let amount
+  if (req.query.amount !== undefined) {
+    amount = Number(req.query.amount)
+    if (req.query.amount === '' || Number.isNaN(amount)) throw httpError(400, 'amount must be a number')
+  }
+
+  const filter = { module: req.params.module.toUpperCase(), round: req.query.round }
+  if (req.query.term) {
+    let label
+    try { label = termLabel(req.query.term) } catch { throw httpError(400, 'Invalid bidding term') }
+    filter.term = { $lt: label }
+  }
   const history = await BidHistory.find(filter).sort({ term: -1 }).limit(HISTORY_TERMS)
-  const amount = req.query.amount !== undefined ? Number(req.query.amount) : undefined
   res.json({ ...referenceBid(history, amount), history })
 }
 
@@ -229,7 +243,7 @@ function isListed(list, memberId) {
   return false
 }
 
-// GET /api/bidding/co-bids/:partyId — which party members are bidding for which section of the party's module
+// GET /api/bidding/co-bids/:partyId?term=2026-27_T2 — which party members are bidding for which section of the party's module
 export async function getCoBids(req, res) {
   const party = await Party.findById(req.params.partyId).populate('members', 'name email')
   if (!party) throw httpError(404, 'Party not found')
