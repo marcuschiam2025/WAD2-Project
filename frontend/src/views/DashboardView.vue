@@ -5,6 +5,7 @@ import { useBiddingStore } from '@core/stores/bidding'
 import { usePlannerStore, effectiveCode } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { moduleName } from '@core/data/catalogue'
+import { sectionMeetings } from '@core/utils/clash'
 import { slots, bidHistory, rateBid } from '@core/data/bidding'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -25,8 +26,8 @@ const todayIdx = (today.getDay() + 6) % 7 // Monday = 0, same as the bidding tim
 const hhmm = (d) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 const dayName = (offset) => new Date(Date.now() + offset * 86_400_000).toLocaleDateString('en-GB', { weekday: 'short' })
 const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-const closesOffset = computed(() => Math.round((midnight(round.value.closesAt) - midnight(today)) / 86_400_000)) // days until the round closes
-const closesLabel = computed(() => `${round.value.closesAt.toLocaleDateString('en-GB', { weekday: 'short' })} ${hhmm(round.value.closesAt)}`)
+const closesOffset = computed(() => round.value.closesAt ? Math.round((midnight(round.value.closesAt) - midnight(today)) / 86_400_000) : null) // days until the round closes
+const closesLabel = computed(() => round.value.closesAt ? `${round.value.closesAt.toLocaleDateString('en-GB', { weekday: 'short' })} ${hhmm(round.value.closesAt)}` : 'Deadline not configured')
 
 // Live countdown to the round closing
 const now = ref(Date.now())
@@ -34,6 +35,8 @@ let timer
 onMounted(() => (timer = setInterval(() => (now.value = Date.now()), 30_000)))
 onBeforeUnmount(() => clearInterval(timer))
 const countdown = computed(() => {
+  if (!round.value.closesAt) return 'Not configured'
+  if (round.value.closesAt <= now.value) return 'Closed'
   const mins = Math.max(0, Math.floor((round.value.closesAt - now.value) / 60_000))
   if (mins >= 24 * 60) return `${Math.floor(mins / 1440)}d ${Math.floor((mins % 1440) / 60)}h`
   return `${Math.floor(mins / 60)}h ${mins % 60}m`
@@ -67,22 +70,18 @@ const stats = computed(() => [
 // --- Schedule -----------------------------------------------------------------------------
 // TODO(backend): replace with GET /api/users/me/feed — assignment deadlines and quizzes.
 // offset = days from today. Classes below come from the booked sections in the bidding store.
-const deadlines = computed(() => [
+const deadlines = computed(() => round.value.closesAt ? [
   { id: 'bid', kind: 'Bid', title: 'Submit bid cart', meta: `${round.value.name} closes`, offset: closesOffset.value, time: hhmm(round.value.closesAt) },
-  { id: 'quiz', kind: 'Due', title: 'IS111 Quiz 3', meta: 'Mon, Week 8', offset: 5 },
-  { id: 'asg', kind: 'Due', title: 'IS216 Assignment 2', meta: 'Wed, Week 9', offset: 12 },
-])
+] : [])
 
-const classes = computed(() =>
-  bidding.bookedSections.map((s) => ({
-    id: `class-${s.id}`,
-    kind: 'Class',
-    title: `${s.module} ${moduleName(s.module)}`,
-    meta: `${s.section} · ${s.venueShort}, to ${slots[s.slot].end}`,
-    offset: (s.day - todayIdx + 7) % 7, // next time this class happens
-    time: slots[s.slot].start,
-  })),
-)
+const classes = computed(() => bidding.bookedSections.flatMap(s => sectionMeetings(s).map(m => ({
+  id: `class-${s.id}-${m.day}-${m.start}`,
+  kind: 'Class',
+  title: `${s.module} ${moduleName(s.module)}`,
+  meta: `${s.section} · ${m.venue || s.venueShort}, to ${m.end}`,
+  offset: (m.day - todayIdx + 7) % 7,
+  time: m.start,
+}))))
 
 const minutes = (t) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) : 24 * 60)
 const ordered = (list) => [...list].sort((a, b) => (a.offset ?? 99) - (b.offset ?? 99) || minutes(a.time) - minutes(b.time))
@@ -152,11 +151,9 @@ const alerts = computed(() => {
 // BOSS bidding windows: the open round first, then the ones still to come.
 // TODO(backend): replace with GET /api/bidding/rounds (every round with its open and close time)
 const biddingWindows = computed(() => [
-  { id: 'r1a', name: round.value.name, open: true, when: `Open, closes ${closesLabel.value}` },
-  { id: 'r1b', name: 'Round 1B', when: 'Opens in 3 days' },
-  { id: 'r1c', name: 'Round 1C', when: 'Opens in 5 days' },
-  { id: 'r2a', name: 'Round 2A', when: 'Opens in 9 days' },
+  { id: 'current', name: round.value.name, open: !!round.value.closesAt && round.value.closesAt > now.value, when: round.value.closesAt ? `Closes ${closesLabel.value}` : 'No official schedule configured' },
 ])
+
 </script>
 
 <template>

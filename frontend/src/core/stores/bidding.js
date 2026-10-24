@@ -5,9 +5,7 @@ import { api } from '../services/api'
 import { usePlannerStore, effectiveCode } from './planner'
 import { useRoomsStore } from './rooms'
 import { useUserStore } from './user'
-
-// Starting e$ for a module the student has not bid on yet in this plan (offline, or no saved cart)
-const sampleBids = { IS212: 42, IS213: 30, IS214: 22, IS215: 18, COR3001: 36, IS442: 20 }
+import { findClashes, findExamClashes, sectionMeetings } from '../utils/clash'
 
 // The bidding timetable is the next semester of the chosen What-If plan. Pick the plan with `planId`.
 export const useBiddingStore = defineStore('bidding', () => {
@@ -99,7 +97,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       inCart.value.map((code) => {
         const h = bidHistory[code]
         const median = h?.length ? h[0].median : MIN_BID
-        return [code, typed.value[plan.value.id]?.[code] ?? sampleBids[code] ?? median]
+        return [code, typed.value[plan.value.id]?.[code] ?? median]
       }),
     ),
   )
@@ -115,15 +113,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     return sections.filter((s) => s.module === code && liveSections.has(s.id))
   }
 
-  // Booked sections that share a day + slot with another booked section
-  const clashes = computed(() => {
-    const seen = {}
-    bookedSections.value.forEach((s) => {
-      const key = `${s.day}-${s.slot}`
-      seen[key] = [...(seen[key] ?? []), s.id]
-    })
-    return new Set(Object.values(seen).filter((ids) => ids.length > 1).flat())
-  })
+  const clashes = computed(() => new Set([...findClashes(bookedSections.value), ...findExamClashes(bookedSections.value)].flat()))
 
   function swapSection(code, sectionId) {
     if (isLocked(code)) return
@@ -140,18 +130,17 @@ export const useBiddingStore = defineStore('bidding', () => {
   // online once GET /api/bidding/round answers. Sections, bid history and weightage are fetched per
   // module and replace the sample data for that module; modules the backend has nothing for keep the sample.
   const online = ref(false)
-  const round = ref({ term: 'AY24/25 T2', round: '1A', closesAt: null })
+  const round = ref({ term: null, round: null, closesAt: null, availableTerms: [], configured: false })
   const saveError = ref('')
-  // Sample closing time, used while offline or when the backend's round has already closed
-  // (its default BIDDING_ROUND_CLOSES_AT is in Jan 2025)
-  const sampleClose = new Date(Date.now() + (2 * 60 + 15) * 60 * 1000)
-  // The round for the screens: 'AY24/25 T2' -> 'AY24/25 · Sem 2 · Round 1A'
+  const loadError = ref('')
+  const saving = ref(false)
   const roundInfo = computed(() => {
-    const closes = round.value.closesAt && new Date(round.value.closesAt)
+    const date = round.value.closesAt ? new Date(round.value.closesAt) : null
     return {
-      term: `${round.value.term.replace(/ T(\d)$/,' · Sem $1')} · Round ${round.value.round}`,
-      name: `Round ${round.value.round}`,
-      closesAt: closes > new Date() ? closes : sampleClose,
+      term: round.value.term ?? 'No section catalogue',
+      name: round.value.round ? `Round ${round.value.round}` : 'Round not configured',
+      closesAt: date && Number.isFinite(date.getTime()) ? date : null,
+      configured: round.value.configured === true,
     }
   })
   const liveSections = reactive(new Set()) // section ids that came from the backend (only these can be saved in a cart)
@@ -163,7 +152,14 @@ export const useBiddingStore = defineStore('bidding', () => {
     const todo = codes.filter((c) => !fetched.has(c))
     if (!todo.length) return
     todo.forEach((c) => fetched.add(c))
-    const found = await api.sections(todo, round.value.term).catch(() => [])
+    let found
+    try { found = await api.sections(todo, round.value.term) }
+    catch (error) {
+      if (version !== session) return
+      todo.forEach(code => fetched.delete(code))
+      loadError.value = error.message
+      return
+    }
     if (version !== session) return
     // Empty live results must remove sample sections too.
     for (let i = sections.length - 1; i >= 0; i--) {
@@ -183,8 +179,8 @@ export const useBiddingStore = defineStore('bidding', () => {
           api.weightage(code).catch(() => []),
         ])
         if (version !== session) return
-        if (history.length) bidHistory[code] = history.map(({ term, round: r, median, min }) => ({ term, round: r, median, min }))
-        if (marks.length) weightage[code] = marks
+        bidHistory[code] = history.map(({ term, round: r, median, min }) => ({ term, round: r, median, min }))
+        weightage[code] = marks
       }),
     )
   }
@@ -197,12 +193,14 @@ export const useBiddingStore = defineStore('bidding', () => {
     try {
       const cart = await api.cart(id, round.value.term)
       if (version !== session) return
+      chosen.value[id] = {}
+      typed.value[id] = {}
       cart.items.forEach((item) => {
         chosen.value[id] = { ...chosen.value[id], [item.module]: item.sectionId }
         typed.value[id] = { ...typed.value[id], [item.module]: item.amount }
       })
-    } catch {
-      if (version === session) loadedCarts.delete(id)
+    } catch (error) {
+      if (version === session) { loadedCarts.delete(id); loadError.value = error.message }
     }
   }
 
@@ -212,11 +210,15 @@ export const useBiddingStore = defineStore('bidding', () => {
     try {
       const nextRound = await api.round()
       if (version !== session) return
+      if (round.value.term !== nextRound.term) { liveSections.clear(); fetched.clear(); loadedCarts.clear(); chosen.value = {}; typed.value = {} }
       round.value = nextRound
-      online.value = true
-    } catch {
-      return // no backend: sample data only
+      loadError.value = ''
+      online.value = !!nextRound.term
+    } catch (error) {
+      loadError.value = error.message
+      return
     }
+    if (!round.value.term) return
     await Promise.all([fetchModules([...inTarget.value, ...rooms.decided.map((d) => d.module)]), loadCart(plan.value.id)])
   }
 
@@ -240,29 +242,34 @@ export const useBiddingStore = defineStore('bidding', () => {
   const unsaved = computed(() => Object.entries(booked.value).filter(([, id]) => !liveSections.has(id)).map(([code]) => code))
 
   async function save() {
+    if (saving.value) return false
     const version = session
     saveError.value = ''
-    if (!online.value) {
-      saveError.value = 'Connect to the server before saving your bids.'
-      return
+    savedAt.value = null
+    if (!online.value || !round.value.term || !plan.value.id) {
+      saveError.value = 'Connect to the server and select a catalogue term before saving your bids.'
+      return false
     }
-    const items = Object.entries(booked.value)
-      .filter(([, id]) => liveSections.has(id))
-      .map(([code, sectionId]) => ({ module: code, sectionId, amount: Number(bids.value[code]) || 0 }))
-    const low = items.find((i) => i.amount < MIN_BID)
-    if (low) {
-      saveError.value = `Bid at least e$ ${MIN_BID} for ${low.module}.`
-      return
-    }
+    if (clashes.value.size) { saveError.value = 'Resolve class or final-exam clashes before saving.'; return false }
+    const items = Object.entries(booked.value).map(([code, sectionId]) => ({ module: code, sectionId, amount: Number(bids.value[code]) }))
+    if (items.some(item => !Number.isFinite(item.amount) || item.amount < MIN_BID)) { saveError.value = `Bid at least e$ ${MIN_BID} for every module.`; return false }
+    if (items.reduce((sum,item) => sum + item.amount,0) > user.balance) { saveError.value = 'Your bids exceed your available balance.'; return false }
+    const payload = { planId: plan.value.id, term: round.value.term, items }
+    const snapshot = JSON.stringify(payload)
+    saving.value = true
     try {
-      await api.saveCart({ planId: plan.value.id, term: round.value.term, items })
-      if (version !== session) return
+      await api.saveCart(payload)
+      if (version !== session || payload.planId !== plan.value.id || payload.term !== round.value.term) return false
+      const current = { planId: plan.value.id, term: round.value.term, items: Object.entries(booked.value).map(([module,sectionId]) => ({module,sectionId,amount:Number(bids.value[module])})) }
+      if (JSON.stringify(current) !== snapshot) { saveError.value = 'Your bids changed during saving. Save again to keep the latest changes.'; return false }
       savedAt.value = new Date()
-    } catch (e) {
-      if (version !== session) return
-      saveError.value = e.message
-    }
+      return true
+    } catch (error) {
+      if (version === session) saveError.value = error.message
+      return false
+    } finally { if (version === session) saving.value = false }
   }
+  watch([planId, booked, bids], () => { savedAt.value = null })
 
   watch(() => user.uid, () => {
     session++
@@ -273,13 +280,16 @@ export const useBiddingStore = defineStore('bidding', () => {
     selectedModule.value = null
     savedAt.value = null
     saveError.value = ''
+    loadError.value = ''
+    saving.value = false
+    round.value = {term:null,round:null,closesAt:null,availableTerms:[],configured:false}
     loadedCarts.clear()
     fetched.clear()
     liveSections.clear()
   }, { flush: 'sync' })
 
   function slotLabel(s) {
-    return `${days[s.day]} · ${slots[s.slot].start}–${slots[s.slot].end}`
+    return sectionMeetings(s).map(meeting => `${days[meeting.day]} ${meeting.start}–${meeting.end}`).join(' · ')
   }
 
   return {
@@ -295,6 +305,8 @@ export const useBiddingStore = defineStore('bidding', () => {
     selectedModule,
     savedAt,
     saveError,
+    loadError,
+    saving,
     unsaved,
     online,
     round,

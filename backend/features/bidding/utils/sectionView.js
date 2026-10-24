@@ -41,6 +41,10 @@ export function toSectionView(section) {
     profShort: shortProf(section.prof),
     venue: section.venue,
     venueShort: shortVenue(section.venue),
+    term: section.term,
+    sessions: section.sessions,
+    capacity: section.capacity,
+    examPeriod: section.examPeriod,
     exam: section.exam ?? 'No final exam',
   }
 }

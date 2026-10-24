@@ -3,7 +3,7 @@
 // swaps in what GET /api/bidding/... returns for a module, and the sample stays for the rest.
 import { reactive } from 'vue'
 
-export const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+export const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 export const slots = [
   { start: '08:15', end: '11:30' },
   { start: '12:00', end: '15:15' },
