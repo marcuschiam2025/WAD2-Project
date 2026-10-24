@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue'
 import { animate } from 'motion'
 import { useBiddingStore } from '@core/stores/bidding'
 import { useUserStore } from '@core/stores/user'
+import { api } from '@core/services/api'
 import { moduleName } from '@core/data/catalogue'
 import { days, slots, sections, weightage, rateBid, MIN_BID } from '@core/data/bidding'
 import { ease } from '@/motion'
@@ -45,7 +46,38 @@ const roundOptions = computed(() => [
   { value: 'all', label: 'All rounds' },
 ])
 const filtered = computed(() => history.value.filter((h) => round.value === 'all' || h.round === round.value))
-const verdict = computed(() => (bid.value === '' || !filtered.value.length ? null : rateBid(bid.value, filtered.value)))
+// The backend's reference bid (GET /api/bidding/reference): the rating, suggested bid, mean and SD of this
+// module's medians in the chosen round over the last terms before the one being bid for. It is asked for a
+// moment after the bid or round changes. Offline, or for "All rounds", the same formula runs in the browser.
+const reference = ref(null)
+let referenceTimer
+let referenceRequest = 0
+watch(
+  [() => props.code, bid, round, () => bidding.online, () => bidding.round.term],
+  ([code, amount, r, online, term]) => {
+    clearTimeout(referenceTimer)
+    reference.value = null
+    const request = ++referenceRequest
+    if (!code || !online || r === 'all' || amount === '' || amount < MIN_BID) return
+    referenceTimer = setTimeout(async () => {
+      try {
+        const result = await api.referenceBid(code, amount, r, term)
+        if (request === referenceRequest) reference.value = result
+      } catch {
+        // keep the in-browser estimate
+      }
+    }, 300)
+  },
+  { immediate: true },
+)
+const verdict = computed(() => {
+  if (reference.value?.rating) return { ...reference.value, live: true }
+  if (bid.value === '' || !filtered.value.length) return null
+  return { ...rateBid(bid.value, filtered.value), basedOn: filtered.value.length }
+})
+function useSuggested() {
+  bid.value = reference.value.suggested
+}
 
 // Marker position on the At risk / Competitive / Safe meter (0–100%)
 const markerPct = computed(() => {
@@ -64,7 +96,7 @@ const verdictText = computed(() => {
   if (!v) return ''
   const median = `e$ ${+v.mean.toFixed(1)}`
   const label = round.value === 'all' ? '' : ` Round ${round.value}`
-  if (v.rating === 'safe') return `Above the last ${filtered.value.length}${label} medians (${median}).`
+  if (v.rating === 'safe') return `Above the last ${v.basedOn}${label} medians (${median}).`
   if (v.rating === 'competitive') return `Within 1 SD of the ${median} median. You may still be outbid.`
   return `More than 1 SD below the ${median} median.`
 })
@@ -178,6 +210,14 @@ watch(
             <div v-if="verdict" class="flex items-start gap-2">
               <StatusPill :tone="pill[verdict.rating][0]">{{ pill[verdict.rating][1] }}</StatusPill>
               <p class="flex-1 text-[13px] leading-[18px] text-muted-foreground">{{ verdictText }}</p>
+            </div>
+            <!-- The backend's suggested bid: the mean of past medians plus 1 SD -->
+            <div v-if="reference?.suggested && reference.basedOn" class="flex items-center justify-between gap-2 rounded-md bg-muted px-3 py-2">
+              <p class="text-[12.5px] leading-normal">
+                Suggested <span class="font-mono font-bold">e$ {{ reference.suggested }}</span>
+                <span class="text-muted-foreground"> · from {{ reference.basedOn }} past {{ reference.basedOn === 1 ? 'term' : 'terms' }}</span>
+              </p>
+              <BaseButton v-if="Number(bid) !== reference.suggested" size="sm" variant="outline" @click="useSuggested">Use</BaseButton>
             </div>
 
             <SelectField v-model="round" label="BOSS round" :options="roundOptions" />

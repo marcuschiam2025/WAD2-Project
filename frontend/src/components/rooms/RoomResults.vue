@@ -25,8 +25,18 @@ async function add() {
 }
 </script>
 <template>
-  <aside v-if="board" class="flex flex-col gap-4 rounded-lg border border-border bg-muted/30 p-4" aria-labelledby="room-results-title">
-    <div class="flex items-center justify-between gap-2"><h3 id="room-results-title" class="font-semibold">Room decision</h3><span class="rounded-full bg-card px-2 py-1 text-xs font-medium">{{ confirmed ? 'Confirmed' : board.allVoted ? 'Ready' : 'Voting' }}</span></div>
+  <aside
+    v-if="board"
+    class="flex flex-col gap-3 rounded-lg border p-4"
+    :class="confirmed ? 'border-2 border-success bg-success-tint' : 'border-border bg-muted/30'"
+    aria-labelledby="room-results-title"
+  >
+    <div class="flex items-center justify-between gap-2"><h3 id="room-results-title" class="text-overline text-muted-foreground">Room decision</h3><span class="rounded-full bg-card px-2 py-1 text-xs font-medium">{{ confirmed ? 'Confirmed' : board.allVoted ? 'Ready' : 'Voting' }}</span></div>
+    <!-- Confirmed: the section code is the headline -->
+    <div v-if="confirmed" class="flex flex-col leading-tight">
+      <span class="font-mono text-[30px] font-bold">{{ confirmed.section.section }}</span>
+      <span class="text-[12px] text-muted-foreground">{{ confirmed.section.module }} · {{ confirmed.count }} {{ confirmed.count === 1 ? 'vote' : 'votes' }}</span>
+    </div>
     <div>
       <p class="text-sm font-medium">{{ board.votedCount }} / {{ board.memberCount }} voted</p>
       <progress class="mt-2 h-1.5 w-full accent-primary" :value="board.votedCount" :max="board.memberCount || 1" :aria-label="`${board.votedCount} of ${board.memberCount} members voted`" />

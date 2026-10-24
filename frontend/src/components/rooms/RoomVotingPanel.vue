@@ -1,53 +1,84 @@
 <script setup>
+// Right-hand side of a room: pick the module's sections you can attend on the weekly calendar, then submit.
+// Submitted picks stay locked until "Unselect my picks". Votes load from and save to the backend, and refresh
+// every 10 seconds while the page is visible. `dirty` (unsaved picks) is shared with the room decision panel.
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoomsStore } from '@core/stores/rooms'
+import { moduleName } from '@core/data/catalogue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import RoomSectionCalendar from './RoomSectionCalendar.vue'
-import RoomResults from './RoomResults.vue'
-const props = defineProps({ roomId: { type: String, required: true } })
+const props = defineProps({ roomId: { type: String, required: true }, module: { type: String, required: true } })
+const dirty = defineModel('dirty', { type: Boolean, default: false })
 const rooms = useRoomsStore()
 const board = computed(() => rooms.voteBoards[props.roomId])
-const picks = ref([]), dirty = ref(false), feedback = ref('')
+const picks = ref([]), feedback = ref('')
+// Saved picks that haven't been changed since: the calendar is locked until they are unselected
+const submitted = computed(() => !dirty.value && (board.value?.mySectionIds?.length ?? 0) > 0)
+const saving = computed(() => !!rooms.voteSaving[props.roomId])
 watch(() => props.roomId, id => { picks.value = []; dirty.value = false; feedback.value = ''; rooms.loadVotes(id) }, { immediate: true })
 watch(board, value => { if (value && !dirty.value) picks.value = [...value.mySectionIds] })
 function toggle(id) {
+  if (submitted.value) return
   picks.value = picks.value.includes(id) ? picks.value.filter(pick => pick !== id) : [...picks.value, id]
   const saved = board.value?.mySectionIds ?? []
   dirty.value = picks.value.length !== saved.length || picks.value.some(id => !saved.includes(id))
   feedback.value = ''
 }
-async function save() {
+async function save(ids = picks.value) {
   const roomId = props.roomId
-  const ok = await rooms.saveRoomVotes(roomId, picks.value)
+  const ok = await rooms.saveRoomVotes(roomId, ids)
   if (roomId !== props.roomId) return
   if (ok) {
     dirty.value = false
     picks.value = [...rooms.voteBoards[roomId].mySectionIds]
-    feedback.value = picks.value.length ? 'Your section choices are saved.' : 'Your section choices have been cleared.'
+    feedback.value = picks.value.length ? 'Your picks are submitted.' : 'Your picks are cleared. Pick again and submit.'
   }
 }
+// Clearing a vote is saving an empty set of picks
+const unselect = () => save([])
 let timer
 onMounted(() => { timer = setInterval(() => {
   if (document.visibilityState === 'visible' && !rooms.busy && !rooms.voteSaving[props.roomId] && !rooms.voteLoading[props.roomId]) rooms.loadVotes(props.roomId, { quiet: true })
 }, 10000) })
 onBeforeUnmount(() => clearInterval(timer))
 </script>
+
 <template>
-  <section class="card flex flex-col gap-4 p-5" aria-labelledby="room-voting-heading">
-    <div class="flex flex-wrap items-center justify-between gap-2"><h2 id="room-voting-heading" class="text-lg font-semibold">Section voting</h2><BaseButton variant="outline" size="sm" :disabled="rooms.voteLoading[roomId] || rooms.voteSaving[roomId]" @click="rooms.loadVotes(roomId)">Refresh votes</BaseButton></div>
-    <p v-if="!board && rooms.voteLoading[roomId]" role="status">Loading available sections…</p>
-    <p v-if="rooms.voteErrors[roomId]" role="alert" class="text-sm text-destructive">{{ rooms.voteErrors[roomId] }}</p>
+  <section class="flex min-w-0 flex-1 flex-col gap-4 p-5" aria-labelledby="room-voting-heading">
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex flex-col gap-0.5 leading-normal">
+        <h2 id="room-voting-heading" class="text-h4">Modules for bid · {{ module }}</h2>
+        <p class="text-[13px] text-muted-foreground">
+          <template v-if="board">{{ board.term }} · </template>
+          {{ submitted ? "You've submitted these picks. Unselect them if you want to change your votes." : "Pick every section you'd take. You can choose more than one." }}
+        </p>
+      </div>
+      <div v-if="board?.rows.length" class="flex shrink-0 items-center gap-2">
+        <span v-if="dirty" class="text-[12px] text-muted-foreground">Unsaved changes</span>
+        <BaseButton v-if="submitted" variant="outline" :disabled="saving" @click="unselect">{{ saving ? 'Saving…' : 'Unselect my picks' }}</BaseButton>
+        <BaseButton v-else :disabled="!dirty || saving" @click="save()">{{ saving ? 'Saving…' : 'Submit my picks' }}</BaseButton>
+      </div>
+    </div>
+
+    <p v-if="!board && rooms.voteLoading[roomId]" role="status" class="text-[13px] text-muted-foreground">Loading available sections…</p>
+    <p v-if="rooms.voteErrors[roomId]" role="alert" class="text-[13px] text-destructive">{{ rooms.voteErrors[roomId] }}</p>
     <template v-if="board">
-      <p class="text-xs text-muted-foreground">{{ board.term }} · Live voting</p>
-      <p class="text-sm text-muted-foreground">Choose sections you can attend, then save. Each section includes all its weekly meetings.</p>
-      <p v-if="board.missingSectionIds?.length" class="text-sm text-destructive">Some previously selected sections are no longer available. Review and save your choices again.</p>
-      <p v-if="!board.rows.length" class="rounded-md bg-muted p-4 text-sm">No sections are available for this module in {{ board.term }}. Voting will be available when its section data is added.</p>
-      <div v-else class="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div class="flex min-w-0 flex-col gap-4">
-        <RoomSectionCalendar :rows="board.rows" :selected="picks" :disabled="rooms.voteSaving[roomId]" @toggle="toggle" />
-        <details class="rounded-md border border-border p-4">
-          <summary class="cursor-pointer font-medium">Section details &amp; exams</summary>
-          <fieldset :disabled="rooms.voteSaving[roomId]" class="mt-4 flex flex-col gap-3">
+      <p v-if="board.missingSectionIds?.length" class="text-[13px] text-destructive">Some previously selected sections are no longer available. Review and submit your picks again.</p>
+      <p v-if="!board.rows.length" class="rounded-md bg-muted p-4 text-[13px]">
+        No sections are available for {{ module }} {{ moduleName(module) }} in {{ board.term }}. Voting opens when its section data is added.
+      </p>
+      <template v-else>
+        <RoomSectionCalendar :rows="board.rows" :selected="picks" :disabled="saving || submitted" @toggle="toggle" />
+        <div class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground">
+          <span class="flex items-center gap-1.5"><span class="h-3 w-[18px] rounded-sm bg-primary" /> Selected section</span>
+          <span class="flex items-center gap-1.5"><span class="h-3 w-[18px] rounded-sm border border-dashed border-border" /> Available section</span>
+          <span>A section with several weekly classes is picked as a whole.</span>
+        </div>
+        <p v-if="feedback" role="status" class="text-[13px] text-success">{{ feedback }}</p>
+
+        <details class="rounded-lg border border-border p-4">
+          <summary class="cursor-pointer text-[14px] font-medium">Section details &amp; exams</summary>
+          <fieldset :disabled="saving || submitted" class="mt-4 flex flex-col gap-3">
             <legend class="sr-only">Available sections</legend>
             <label v-for="row in board.rows" :key="row.section.id" class="flex cursor-pointer gap-3 rounded-md border p-4" :class="picks.includes(row.section.id) ? 'border-primary bg-primary-tint' : 'border-border'">
               <input type="checkbox" :checked="picks.includes(row.section.id)" class="mt-1 accent-primary" @change="toggle(row.section.id)" />
@@ -61,12 +92,8 @@ onBeforeUnmount(() => clearInterval(timer))
             </label>
           </fieldset>
         </details>
-        </div>
-        <RoomResults :room-id="roomId" :dirty="dirty" />
-      </div>
-      <div v-if="board.rows.length" class="flex flex-wrap items-center gap-3"><BaseButton :disabled="!dirty || rooms.voteSaving[roomId]" @click="save">{{ rooms.voteSaving[roomId] ? 'Saving…' : 'Save choices' }}</BaseButton><span v-if="dirty" class="text-xs text-muted-foreground">Unsaved changes</span></div>
-      <p v-if="feedback" role="status" class="text-sm text-success">{{ feedback }}</p>
-      <p class="text-xs text-muted-foreground">To clear your vote, deselect all sections and save. Room choices do not reserve a BOSS allocation.</p>
+      </template>
+      <p class="text-[12px] text-muted-foreground">Room picks don't reserve a BOSS allocation.</p>
     </template>
   </section>
 </template>

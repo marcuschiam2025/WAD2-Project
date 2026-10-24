@@ -114,8 +114,10 @@ export const api = {
   round: () => request('GET', '/bidding/round'),
   sections: (moduleCodes, term) => request('GET', `/bidding/sections${query({ modules: moduleCodes.join(','), term })}`),
   bidHistory: (moduleCode, round) => request('GET', `/bidding/history/${moduleCode}${query({ round })}`),
-  referenceBid: (moduleCode, amount, round) =>
-    request('GET', `/bidding/reference/${moduleCode}${query({ amount, round })}`),
+  // { rating: 'safe' | 'competitive' | 'at-risk' | null, suggested, mean, sd, basedOn, history }. With term, only
+  // the terms before it count. round is required.
+  referenceBid: (moduleCode, amount, round, term) =>
+    request('GET', `/bidding/reference/${moduleCode}${query({ amount, round, term })}`),
   weightage: (moduleCode) => request('GET', `/bidding/weightage/${moduleCode}`),
   savedBidPlans: (term) => request('GET', `/bidding/plans${query({ term })}`),
   cart: (planId, term) => request('GET', `/bidding/cart${query({ planId, term })}`),

@@ -25,26 +25,35 @@ const checklist = computed(() => planner.checklist)
 const totals = computed(() => checklist.value.totals)
 const pct = (n) => `${totals.value.required ? (n / totals.value.required) * 100 : 0}%`
 
-// Hide the lines being taken this semester too, if the student turns it on (remembered in this browser)
-const HIDE_KEY = 'bidmaxxer:hideInProgress'
-const hideInProgress = ref(readHide())
-function readHide() {
+// Optional filters, remembered in this browser: hide the lines being taken this semester, and the ones planned
+// for a later semester. Cleared lines are always hidden.
+function remembered(key) {
+  let start = false
   try {
-    return localStorage.getItem(HIDE_KEY) === 'true'
-  } catch {
-    return false
-  }
-}
-watch(hideInProgress, (on) => {
-  try {
-    localStorage.setItem(HIDE_KEY, String(on))
+    start = localStorage.getItem(key) === 'true'
   } catch {
     // storage blocked: the toggle still works for this visit
   }
-})
+  const flag = ref(start)
+  watch(flag, (on) => {
+    try {
+      localStorage.setItem(key, String(on))
+    } catch {
+      // storage blocked
+    }
+  })
+  return flag
+}
+const hideInProgress = remembered('bidmaxxer:hideInProgress')
+const hidePlanned = remembered('bidmaxxer:hidePlanned')
+const filters = [
+  { label: 'Hide in progress', flag: hideInProgress, tone: 'warning' },
+  { label: 'Hide planned', flag: hidePlanned, tone: 'primary' },
+]
 
-// Finished courses are hidden: only in-progress, planned and not-yet-planned ones are listed
-const shown = (s) => s.status !== 'cleared' && !(hideInProgress.value && s.status === 'inProgress')
+// Cleared lines are hidden; in progress and planned ones only if their filter is on
+const shown = (s) =>
+  s.status !== 'cleared' && !(hideInProgress.value && s.status === 'inProgress') && !(hidePlanned.value && s.status === 'planned')
 const sections = computed(() =>
   [
     ...checklist.value.groups.map((g) => ({ key: g.key, label: g.label, items: g.slots.filter(shown) })),
@@ -169,7 +178,7 @@ const addLabel = computed(() => {
 <template>
   <section v-if="!checklist.unavailable" v-enter="0.2" class="card flex flex-col gap-4 p-6"> <!-- motion: checklist card fades in, 200ms delay -->
     <div class="flex flex-col gap-0.5">
-      <h2 class="text-[17px] font-semibold">Degree Requirements</h2>
+      <h2 class="text-[17px] font-semibold">Outstanding Modules</h2>
       <p class="text-[13px] text-muted-foreground">
         {{ plan.name }} · {{ left }} of {{ totals.required }} {{ checklist.live ? 'requirements' : 'courses' }} still to clear. Pick one to see what you can take for it.
       </p>
@@ -187,19 +196,23 @@ const addLabel = computed(() => {
         <StatusPill tone="info">{{ totals.planned }} planned</StatusPill>
         <StatusPill tone="neutral">{{ totals.todo }} {{ checklist.live ? 'still incomplete' : 'not in your plan yet' }}</StatusPill>
         <StatusPill v-if="totals.late" tone="destructive">{{ totals.late }} behind the recommended term</StatusPill>
-        <button
-          type="button"
-          :aria-pressed="hideInProgress"
-          class="ml-auto flex items-center gap-2 rounded-md border px-2.5 py-1 text-[12.5px] font-medium transition-colors"
-          :class="hideInProgress ? 'border-warning bg-warning-tint' : 'border-border hover:bg-muted'"
-          @click="hideInProgress = !hideInProgress"
-        >
-          <span
-            class="flex size-3.5 items-center justify-center rounded-[3px] border text-[10px] leading-none"
-            :class="hideInProgress ? 'border-warning bg-warning text-white' : 'border-border'"
-          >{{ hideInProgress ? '✓' : '' }}</span>
-          Hide in progress
-        </button>
+        <div class="ml-auto flex flex-wrap items-center gap-2">
+          <button
+            v-for="f in filters"
+            :key="f.label"
+            type="button"
+            :aria-pressed="f.flag.value"
+            class="flex items-center gap-2 rounded-md border px-2.5 py-1 text-[12.5px] font-medium transition-colors"
+            :class="f.flag.value ? (f.tone === 'warning' ? 'border-warning bg-warning-tint' : 'border-primary bg-primary-tint') : 'border-border hover:bg-muted'"
+            @click="f.flag.value = !f.flag.value"
+          >
+            <span
+              class="flex size-3.5 items-center justify-center rounded-[3px] border text-[10px] leading-none"
+              :class="f.flag.value ? (f.tone === 'warning' ? 'border-warning bg-warning text-white' : 'border-primary bg-primary text-white') : 'border-border'"
+            >{{ f.flag.value ? '✓' : '' }}</span>
+            {{ f.label }}
+          </button>
+        </div>
       </div>
       <p v-if="checklist.live" class="text-[12px] text-muted-foreground">Partial requirements include some courses but still need more. No semester recommendations are specified for these requirements.</p>
       <div v-else class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-muted-foreground">
@@ -212,7 +225,7 @@ const addLabel = computed(() => {
     </div>
 
     <p v-if="!sections.length" class="rounded-md bg-success-tint px-4 py-3 text-[13px] font-medium">
-      <template v-if="left">Everything left is in progress this semester. Turn off "Hide in progress" to see it.</template>
+      <template v-if="left">Nothing to show: everything left is hidden by "Hide in progress" or "Hide planned". Turn a filter off to see it.</template>
       <template v-else>All {{ totals.required }} {{ checklist.live ? 'requirements' : 'courses' }} are cleared.</template>
     </p>
 
@@ -337,7 +350,7 @@ const addLabel = computed(() => {
             </div>
           </div>
           <div v-else key="hint" class="flex h-full items-center justify-center p-8 text-center text-[13px] leading-normal text-muted-foreground">
-            {{ item ? 'Pick a module to see more about it.' : 'Pick a requirement on the left to see which courses can fulfil it.' }}
+            {{ item ? 'Pick a module to see more about it.' : 'Pick a course on the left to see what you can take for it.' }}
           </div>
         </Transition>
       </div>

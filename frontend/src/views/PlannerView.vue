@@ -9,7 +9,6 @@ import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
-import ProgressBar from '@/components/ui/ProgressBar.vue'
 import DegreeChecklist from '@/components/DegreeChecklist.vue'
 import PrereqWarningModal from '@/components/modals/PrereqWarningModal.vue'
 import PlanLimitModal from '@/components/modals/PlanLimitModal.vue'
@@ -216,47 +215,46 @@ const searchResults = computed(() => {
 })
 
 // --- Requirements strip --------------------------------------------------------------------
-// TODO(backend): the V2 design shows a "Track 2" bucket; the requirement checker only has IS depth for now
-const bucketOrder = ['major-core', 'track', 'depth', 'free', 'uni-core']
-const bucketLabel = (b) =>
-  ({
-    'major-core': 'IS core',
-    track: `Track 1 · ${shortTrack(plan.value.tracks[0])}`,
-    depth: 'IS depth',
-    free: 'Electives',
-    'uni-core': 'General education',
-  })[b.key] ?? b.label
-// With the backend, the buckets add up GET /api/plans/:id/check: track requirements, then the rest
-// by what they count toward. Offline, the local overview from the sample catalogue.
-const checkBuckets = [
-  { key: 'MAJOR_CORE', label: () => 'IS core' },
-  { key: 'track', label: () => `Track 1 · ${shortTrack(plan.value.tracks[0])}` },
-  { key: 'MAJOR_ELECTIVES', label: () => 'IS electives' },
-  { key: 'FREE_ELECTIVES', label: () => 'Electives' },
-  { key: 'UNI_CORE', label: () => 'University core' },
-]
+// The Outstanding Modules checklist added up by area, so both always agree: one line = one course, split into
+// cleared (before the current semester), in progress (current semester) and planned (later semesters).
+const UNI_GROUPS = ['uni-cap', 'uni-com', 'uni-civ']
 const requirements = computed(() => {
-  const check = planner.activeCheck
-  if (!check) {
-    return bucketOrder
-      .map((key) => planner.requirements.find((b) => b.key === key))
-      .filter(Boolean)
-      .map((b) => ({ key: b.key, label: bucketLabel(b), planned: Math.min(b.planned, b.required), required: b.required }))
-  }
-  return checkBuckets
-    .map(({ key, label }) => {
-      const reqs = check.requirements.filter((r) => (r.level === 'track' ? 'track' : r.countsToward) === key)
-      return {
-        key,
-        label: label(),
-        planned: reqs.reduce((a, r) => a + Math.min(r.cuPlanned, r.cuRequired), 0),
-        required: reqs.reduce((a, r) => a + r.cuRequired, 0),
-      }
+  const groups = planner.checklist.groups
+  const slotsOf = (keys) => groups.filter((g) => keys.includes(g.key)).flatMap((g) => g.slots)
+  const electives = slotsOf(['major-elective'])
+  // Track lines from the curriculum have ids like "track-PD-1"; one area per track (two for a double track)
+  const trackCodes = [...new Set(electives.filter((s) => s.rule === 'trackList').map((s) => s.id.split('-')[1]))]
+  const trackAreas = trackCodes.length
+    ? trackCodes.map((code, i) => ({
+        key: `track-${code}`,
+        label: `Track${trackCodes.length > 1 ? ` ${i + 1}` : ''} · ${shortTrack(code)}`,
+        slots: electives.filter((s) => s.id.startsWith(`track-${code}-`)),
+      }))
+    : [{ key: 'track', label: plan.value.tracks[0] ? `Track · ${shortTrack(plan.value.tracks[0])}` : 'Track (undecided)', slots: electives.filter((s) => s.rule === 'track') }]
+  return [
+    { key: 'uni', label: 'University core', slots: slotsOf(UNI_GROUPS) },
+    { key: 'major', label: 'IS core', slots: slotsOf(['major-core']) },
+    ...trackAreas,
+    { key: 'is-electives', label: 'IS electives', slots: electives.filter((s) => s.rule === 'anyIs') },
+    { key: 'free', label: 'Free electives', slots: slotsOf(['free']) },
+  ]
+    .filter((b) => b.slots.length)
+    .map((b) => {
+      const count = (status) => b.slots.filter((x) => x.status === status).length
+      const cleared = count('cleared')
+      const inProgress = count('inProgress')
+      const planned = count('planned')
+      return { key: b.key, label: b.label, required: b.slots.length, cleared, inProgress, planned, filled: cleared + inProgress + planned }
     })
-    .filter((b) => b.required > 0)
 })
-// Prereq problems from the planner, plus exclusions and other rules only the backend's check knows about
-const onTrack = computed(() => !planner.hasAnyWarning && (planner.activeCheck?.onTrack ?? true))
+const inPlan = computed(() => {
+  const t = planner.checklist.totals
+  return { filled: t.cleared + t.inProgress + t.planned, required: t.required }
+})
+const pct = (n, of) => `${of ? (n / of) * 100 : 0}%`
+// Same rule as the red cards: a prerequisite or co-requisite not met somewhere in the plan
+const onTrack = computed(() => !planner.hasAnyWarning)
+
 </script>
 
 <template>
@@ -504,28 +502,35 @@ const onTrack = computed(() => !planner.hasAnyWarning && (planner.activeCheck?.o
         </div>
       </section>
 
-      <!-- Module requirements -->
+      <!-- Module requirements: the checklist below, added up by area -->
       <section v-enter="0.1" class="card flex flex-col gap-4 p-6"> <!-- motion: requirements strip fades in, 100ms delay -->
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
           <div class="flex items-center gap-3">
-            <span v-if="planner.activeCheck" class="font-mono text-[13px] text-muted-foreground">
-              {{ planner.activeCheck.plannedCu }} / {{ planner.activeCheck.requiredCu }} CU planned
-            </span>
+            <span class="font-mono text-[13px] text-muted-foreground">{{ inPlan.filled }} / {{ inPlan.required }} courses in your plan</span>
             <StatusPill v-if="onTrack" tone="success">On track</StatusPill>
             <StatusPill v-else tone="destructive">Prereq issues</StatusPill>
           </div>
         </div>
-        <div class="grid grid-cols-5 gap-14">
+        <div class="grid gap-x-10 gap-y-5" :style="{ gridTemplateColumns: `repeat(${requirements.length}, minmax(0, 1fr))` }">
           <div v-for="b in requirements" :key="b.key" class="flex flex-col gap-1.5">
-            <span class="text-[13px] text-muted-foreground">{{ b.label }}</span>
-            <span class="font-mono text-[14px] font-bold">{{ b.planned }} / {{ b.required }} CU</span>
-            <ProgressBar
-              :value="Math.min(1, b.planned / b.required)"
-              :color="b.planned >= b.required ? 'bg-success' : 'bg-primary'"
-              track="h-1.5 w-full"
-            />
+            <span class="truncate text-[13px] text-muted-foreground" :title="b.label">{{ b.label }}</span>
+            <span class="font-mono text-[14px] font-bold">{{ b.filled }} / {{ b.required }}</span>
+            <div class="flex h-1.5 overflow-hidden rounded-full bg-border" role="img" :aria-label="`${b.label}: ${b.cleared} cleared, ${b.inProgress} in progress, ${b.planned} planned, of ${b.required}`">
+              <span class="bg-success transition-[width] duration-500" :style="{ width: pct(b.cleared, b.required) }" />
+              <span class="bg-warning transition-[width] duration-500" :style="{ width: pct(b.inProgress, b.required) }" />
+              <span class="bg-primary transition-[width] duration-500" :style="{ width: pct(b.planned, b.required) }" />
+            </div>
+            <span class="text-[11.5px] text-muted-foreground">
+              {{ b.filled === b.required && b.cleared === b.required ? 'Done' : `${b.cleared} cleared${b.inProgress ? ` · ${b.inProgress} in progress` : ''}${b.planned ? ` · ${b.planned} planned` : ''}` }}
+            </span>
           </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground">
+          <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-success" /> Cleared</span>
+          <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-warning" /> In progress</span>
+          <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-primary" /> Planned</span>
+          <span>One course = one line in Outstanding Modules below.</span>
         </div>
       </section>
 

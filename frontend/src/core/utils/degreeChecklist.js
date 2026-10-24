@@ -104,11 +104,12 @@ export function placedModules(plan, catalogue, exempted = []) {
   const placed = []
   const seen = new Set()
   plan.semesters.forEach((sem, i) => {
-    if (sem.loa) return
     sem.modules.forEach((entry) => {
       const code = effectiveCode(entry)
       const mod = catalogue[code]
       if (!mod || seen.has(code)) return
+      // A leave-of-absence term only counts an internship
+      if (sem.loa && !mod.fulfils?.includes('CORE:INTERNSHIP')) return
       seen.add(code)
       placed.push({ mod, semId: sem.id, status: statusAt(i, nowIdx) })
     })
