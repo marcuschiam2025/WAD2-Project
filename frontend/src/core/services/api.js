@@ -92,6 +92,7 @@ export const api = {
   referenceBid: (moduleCode, amount, round) =>
     request('GET', `/bidding/reference/${moduleCode}${query({ amount, round })}`),
   weightage: (moduleCode) => request('GET', `/bidding/weightage/${moduleCode}`),
+  savedBidPlans: (term) => request('GET', `/bidding/plans${query({ term })}`),
   cart: (planId, term) => request('GET', `/bidding/cart${query({ planId, term })}`),
   // { planId, term, items: [{ module, sectionId, amount }] }
   saveCart: (cart) => request('PUT', '/bidding/cart', cart),
@@ -100,5 +101,5 @@ export const api = {
   validateCart: (sectionIds) => request('POST', '/bidding/validate-cart', { sectionIds }),
 
   // Google Calendar
-  exportCalendar: (accessToken, sectionIds) => request('POST', '/calendar/export', { accessToken, sectionIds }),
+  exportCalendar: (accessToken, sectionIds, termStart, weeks = 13) => request('POST', '/calendar/export', { accessToken, sectionIds, termStart, weeks }),
 }

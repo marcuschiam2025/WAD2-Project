@@ -161,7 +161,7 @@ const biddingWindows = computed(() => [
     <PageHeader :overline="dateLabel" title="Your week at a glance" :subtitle="`Welcome back, ${user.profile.firstName}. ${round.term}`">
       <template #actions>
         <StatusPill tone="warning">{{ round.name }} closes {{ closesLabel }}</StatusPill>
-        <BaseButton variant="outline" to="/bidding/finalised">Sync to Calendar</BaseButton>
+        <BaseButton variant="outline" to="/bidding/finalised">Calendar downloads</BaseButton>
       </template>
     </PageHeader>
 

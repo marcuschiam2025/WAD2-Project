@@ -135,6 +135,25 @@ export async function saveCart(req, res) {
   res.json({ cart, clashes, allocated: total, balance })
 }
 
+// Saved carts are snapshots of choices, not confirmation of BOSS allocation.
+export async function listSavedPlans(req, res) {
+  const term = await selectedTerm(req.query.term)
+  const carts = await BidCart.find({ user: req.user._id, term: { $in: termAliases(term) } })
+    .sort({ updatedAt: -1 }).populate('plan', 'name user').lean()
+  const owned = carts.filter(cart => cart.plan && String(cart.plan.user) === String(req.user._id))
+  const ids = [...new Set(owned.flatMap(cart => cart.items.map(item => item.sectionId)))]
+  const sections = ids.length ? await loadSections({ term, ids }) : []
+  res.json(owned.map(cart => {
+    const items = cart.items.map(item => {
+      const section = sections.find(s => s.sectionId === item.sectionId && s.module === item.module)
+      return { module: item.module, sectionId: item.sectionId, amount: item.amount, section: section ? toSectionView(section) : null }
+    })
+    return { id: String(cart._id), planId: String(cart.plan._id), name: cart.plan.name, term,
+      updatedAt: cart.updatedAt, allocated: getTotal(items), items,
+      missingModules: items.filter(item => !item.section).map(item => item.module) }
+  }))
+}
+
 // DELETE /api/bidding/cart/:code?planId=…&term=… — takes one module out of the plan's cart
 export async function dropCartItem(req, res) {
   const planId = await requireOwnPlan(req, req.query.planId)

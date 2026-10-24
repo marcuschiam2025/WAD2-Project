@@ -124,7 +124,8 @@ Note that `frontend/src/core/router/` is page navigation for the Vue app, while 
 | GET / PUT | `/bidding/cart` | PUT returns any timetable `clashes` |
 | POST | `/bidding/validate-cart` | `{ sectionIds }` → duplicate module, class time and exam clashes |
 | GET | `/bidding/co-bids/:partyId` | which party members bid for which section |
-| POST | `/calendar/export` | `{ accessToken, sectionIds, termStart }` → Google Calendar API v3 |
+| GET | `/bidding/plans?term=…` | Current user’s saved bid carts with section details and missing-data warnings |
+| POST | `/calendar/export` | `{ accessToken, sectionIds, termStart, weeks }` → Google Calendar API v3; requires separate calendar permission |
 
 ### Legacy plan index repair
 
@@ -135,3 +136,7 @@ apply with `node --env-file=.env scripts/repair-plan-index.js --apply`.
 The repair removes only that exact obsolete index, preserves documents and current indexes,
 and refuses to proceed if documents still contain the legacy fields. Run once per database;
 it is safe to rerun. Do not use a blanket index synchronization against a shared database.
+
+### Saved bidding plans and calendar downloads
+
+The saved plans screen displays persisted bid carts for the catalogue term, not confirmed BOSS allocations. Calendar downloads use every weekly meeting and require the first teaching Monday and number of consecutive weeks. Recess weeks, holidays and exams are not added or removed automatically. The frontend downloads an `.ics` file; Firebase sign-in alone does not grant Google Calendar access.
