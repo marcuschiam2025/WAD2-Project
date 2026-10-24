@@ -511,14 +511,14 @@ export const usePlannerStore = defineStore('planner', () => {
 
   // Outstanding Modules: the 36 courses of the course progression (data/degree.js), matched against the backend's
   // module catalogue (its tags, e.g. CORE:NUMERACY, and the track course lists) when it is loaded, else the sample one
-  const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModules : modules))
+  const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModulesFor(activePlan.value.majorId) : modules))
   const exempted = computed(() => user.profile.exempted ?? [])
   const checklist = computed(() =>
     buildChecklist(activePlan.value, checklistCatalogue.value, {
       exempted: exempted.value,
       freeExempt: user.profile.freeExemptions ?? 0,
       markedDone: user.profile.markedDone ?? [],
-      trackReqs: catalogue.online ? catalogue.trackRequirements : null, // each track's compulsory course + list
+      trackReqs: catalogue.online ? catalogue.trackRequirementsFor(activePlan.value.majorId) : null, // each track's compulsory course + list
     }),
   )
 

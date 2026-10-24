@@ -1,5 +1,5 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { api } from '../services/api'
 import { liveModules } from '../data/catalogue'
 import { degreeGroups } from '../data/degree'
@@ -17,9 +17,8 @@ export const useCatalogueStore = defineStore('catalogue', () => {
   const online = ref(false)
   const majors = ref([])
   const details = reactive({}) // code -> GET /api/modules/:code (the list leaves descriptions out)
-  const trackModules = ref({}) // track code -> the module codes its requirements list (from the major's requirements)
-  // track code -> { name, reqs: [{ id, label, codes, count }] }: e.g. BA = 1 compulsory (IS217) + any 3 from a list
-  const trackRequirements = ref({})
+  const curricula = reactive({}) // curriculum id -> complete backend requirement bundle
+  const trackRequirementsFor = majorId => curricula[majorId]?.trackRequirements ?? {}
   const loadedMajors = new Set()
   let loading = null
 
@@ -48,9 +47,10 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     if (!majorId || loadedMajors.has(majorId)) return
     loadedMajors.add(majorId)
     try {
-      const { tracks } = await api.majorRequirements(majorId)
-      const lists = { ...trackModules.value }
-      const reqs = { ...trackRequirements.value }
+      const bundle = await api.majorRequirements(majorId)
+      const { tracks } = bundle
+      const lists = {}
+      const reqs = {}
       tracks.forEach((t) => {
         lists[t.trackCode] = [...new Set(t.requirements.flatMap((r) => r.modules ?? []))]
         reqs[t.trackCode] = {
@@ -61,8 +61,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
             .map((r) => ({ id: r._id, label: r.label, codes: r.modules ?? [], count: r.rule === 'all' ? (r.modules ?? []).length : (r.n ?? r.cuRequired ?? 1) })),
         }
       })
-      trackModules.value = lists
-      trackRequirements.value = reqs
+      curricula[majorId] = { ...bundle, trackModules: lists, trackRequirements: reqs }
     } catch {
       loadedMajors.delete(majorId)
     }
@@ -72,9 +71,9 @@ export const useCatalogueStore = defineStore('catalogue', () => {
   //   category  track (in a track's list) | depth (another IS / IS related course) | major-core | free
   //   basket    managing | tss | cmw (university core baskets)      grad  sustainability | sg-asia
   // The catalogue fields (fulfils, categories, prerequisites, ...) come along for the module details.
-  const checklistModules = computed(() => {
+  function checklistModulesFor(majorId) {
     const tracksOf = {}
-    Object.entries(trackModules.value).forEach(([track, codes]) => codes.forEach((c) => (tracksOf[c] ??= []).push(track)))
+    Object.entries(curricula[majorId]?.trackModules ?? {}).forEach(([track, codes]) => codes.forEach((c) => (tracksOf[c] ??= []).push(track)))
     const out = {}
     Object.values(liveModules).forEach((m) => {
       const tracks = tracksOf[m._id] ?? []
@@ -101,7 +100,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
       }
     })
     return out
-  })
+  }
 
   async function loadDetail(code) {
     if (details[code] || !online.value) return
@@ -119,7 +118,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     return mods.map((m) => ({ code: m._id, name: m.title }))
   }
 
-  return { online, majors, details, trackModules, trackRequirements, checklistModules, load, loadMajor, loadDetail, majorIdFor, search }
+  return { online, majors, details, curricula, trackRequirementsFor, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
 })
 
 // Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store
