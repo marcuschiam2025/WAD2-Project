@@ -1,6 +1,7 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import { classmates, rooms as sampleRooms, roomPrereqs } from '../data/rooms'
+import { computed, ref, watch } from 'vue'
+import { classmates, roomPrereqs } from '../data/rooms'
+import { useUserStore } from './user'
 import { sections } from '../data/bidding'
 
 export const MAX_ROOM_SIZE = 8
@@ -25,12 +26,18 @@ export function canSetAdmin(room, actorId, targetId) {
 }
 
 export const useRoomsStore = defineStore('rooms', () => {
-  const rooms = ref(structuredClone(sampleRooms))
+  const rooms = ref([])
   // room id -> section ids the signed-in student picked
-  const myVotes = ref({ 482913: ['IS442-G1', 'IS442-G2'] })
+  const myVotes = ref({})
 
   // room id -> the section the signed-in student accepted
   const accepted = ref({})
+  const user = useUserStore()
+  watch(() => user.uid, () => {
+    rooms.value = []
+    myVotes.value = {}
+    accepted.value = {}
+  }, { flush: 'sync' })
 
   const hasVoted = (room, id) =>
     id === ME ? (myVotes.value[room.id] ?? []).length > 0 : Object.values(room.votes).some((v) => v.includes(id))

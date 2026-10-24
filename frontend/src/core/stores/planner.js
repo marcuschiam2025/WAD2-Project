@@ -48,42 +48,15 @@ function sem(id, mods, extra = {}) {
   return { id, label: `Y${y} · S${s}`, exchange: false, loa: false, modules: mods, ...extra }
 }
 
-// y2s2 is the semester the BOSS Bidding Planner bids for, so it differs between the sample plans.
-const PLAN_1_Y2S2 = ['IS442', 'IS215', 'IS214']
-
-function samplePlan(id, name, tracks, y2s2 = PLAN_1_Y2S2) {
-  return {
-    id,
-    name,
-    tracks,
-    currentSem: 'Y2S1',
-    semesters: [
-      sem('Y1S1', ['IS111', 'IS112', 'GEC101', 'COR1100']),
-      sem('Y1S2', ['IS113', 'IS210', 'GEC102', 'COR2100']),
-      sem('Y2S1', ['IS211', 'IS216', 'IS213', 'STAT151']),
-      sem('Y2S2', [...y2s2]),
-      sem('Y3S1', ['CS412 → IS460', 'IS330 → IS4302', 'HSS210'], { exchange: true }),
-      sem('Y3S2', ['IS424', 'IS428', 'IS460']),
-      sem('Y4S1', ['IS483', 'IS441']),
-      sem('Y4S2', ['IS480', 'UE elective']),
-    ],
-  }
-}
-
 export const usePlannerStore = defineStore('planner', () => {
-  const plans = ref([
-    samplePlan(1, 'Plan 1', ['BA', 'SMCT']),
-    samplePlan(2, 'Plan 2', ['BA', 'FT'], ['IS442', 'IS212', 'COR3001']),
-    samplePlan(3, 'Plan 3', ['PD'], ['IS212', 'IS214', 'IS215']),
-  ])
-  const activePlanId = ref(1)
-  const basket = ref(['IS460', 'IS441', 'IS428', 'IS453', 'IS217'])
-
-  const activePlan = computed(() => plans.value.find((p) => p.id === activePlanId.value) ?? plans.value[0])
+  const plans = ref([])
+  const activePlanId = ref(null)
+  const basket = ref([])
+  const emptyPlan = { id: null, name: '', tracks: [], currentSem: 'Y1S1', semesters: [] }
+  const activePlan = computed(() => plans.value.find(p => p.id === activePlanId.value) ?? plans.value[0] ?? emptyPlan)
 
   // --- Backend sync ------------------------------------------------------------------------
-  // online: plans come from /api/plans and every edit is saved back with PUT. Offline (no backend),
-  // the sample plans above are used and nothing is saved.
+  // Plans are loaded for the authenticated account and edits are saved with PUT.
   const user = useUserStore()
   const catalogue = useCatalogueStore()
   const online = ref(false)
@@ -91,6 +64,7 @@ export const usePlannerStore = defineStore('planner', () => {
   const checks = ref({}) // plan id -> GET /api/plans/:id/check result
   const lastSaved = new Map() // plan id -> the body last sent (or loaded), so unchanged plans aren't re-sent
   let loading = null
+  let session = 0
 
   // A new student's first plan: their major, tracks, current semester and the modules from onboarding
   function firstPlan() {
@@ -116,20 +90,30 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   async function refreshCheck(id) {
+    const version = session
     try {
-      checks.value[id] = await api.checkPlan(id)
+      const check = await api.checkPlan(id)
+      if (version !== session) return
+      checks.value[id] = check
     } catch {
+      if (version !== session) return
       delete checks.value[id] // no major / no requirements yet: the screens use the local overview
     }
   }
 
   // Load the student's plans, creating the first one if they have none. Safe to call more than once.
   function load() {
+    if (!user.isSignedIn || !user.onboarded) return Promise.resolve()
+    const version = session
     loading ??= (async () => {
       await catalogue.load()
+      if (version !== session) return
       let list = await api.plans()
+      if (version !== session) return
       const isNew = !list.length
       if (isNew) list = [await api.createPlan(firstPlan())]
+      if (version !== session) return
+      basket.value = [...(user.profile.basket ?? [])]
       if (isNew) user.profile.appliedToPlans = true // firstPlan already used the onboarding answers
       plans.value = list.map(fromApi)
       plans.value.forEach(remember)
@@ -142,8 +126,9 @@ export const usePlannerStore = defineStore('planner', () => {
         catalogue.loadMajor(p.majorId)
       })
     })().catch((e) => {
+      if (version !== session) return
       loading = null
-      if (e.status) syncError.value = e.message // the backend answered with an error (0 = not running: stay on samples)
+      syncError.value = e.message
     })
     return loading
   }
@@ -181,15 +166,20 @@ export const usePlannerStore = defineStore('planner', () => {
   // Save edited plans, half a second after the last change
   let saveTimer
   async function flush() {
+    const version = session
+    if (!online.value) return
     for (const plan of plans.value) {
+      if (version !== session) return
       const body = JSON.stringify(toApi(plan))
       if (lastSaved.get(plan.id) === body) continue
       lastSaved.set(plan.id, body)
       try {
         await api.updatePlan(plan.id, toApi(plan))
+        if (version !== session) return
         syncError.value = ''
         refreshCheck(plan.id)
       } catch (e) {
+        if (version !== session) return
         lastSaved.delete(plan.id)
         syncError.value = e.message
       }
@@ -346,6 +336,21 @@ export const usePlannerStore = defineStore('planner', () => {
     { immediate: true },
   )
 
+  watch(() => user.uid, () => {
+    session++
+    clearTimeout(saveTimer)
+    online.value = false
+    loading = null
+    lastSaved.clear()
+    checks.value = {}
+    plans.value = []
+    activePlanId.value = null
+    basket.value = []
+    placedByRoom.clear()
+    basketFromRoom.clear()
+    syncError.value = ''
+  }, { flush: 'sync' })
+
   function nextSemId(plan) {
     const last = plan.semesters.at(-1).id.match(/\d/g).map(Number)
     return last[1] === 1 ? `Y${last[0]}S2` : `Y${last[0] + 1}S1`
@@ -365,12 +370,8 @@ export const usePlannerStore = defineStore('planner', () => {
   // the semesters from the current one onwards start empty.
   function addPlan() {
     if (plans.value.length >= MAX_PLANS) return false
-    if (!online.value) {
-      const id = Math.max(0, ...plans.value.map((p) => p.id)) + 1
-      plans.value.push(samplePlan(id, `Plan ${plans.value.length + 1}`, [...activePlan.value.tracks]))
-      activePlanId.value = id
-      return true
-    }
+    if (!online.value) return false
+    const version = session
     const from = activePlan.value
     const now = semIndex(from, from.currentSem)
     api
@@ -381,6 +382,7 @@ export const usePlannerStore = defineStore('planner', () => {
         semesters: toApi(from).semesters.map((s, i) => ({ ...s, modules: i < now ? [...s.modules] : [] })),
       })
       .then((created) => {
+        if (version !== session) return
         const plan = fromApi(created)
         remember(plan)
         plans.value.push(plan)

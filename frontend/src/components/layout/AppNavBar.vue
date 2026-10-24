@@ -39,9 +39,9 @@ function go(path) {
   router.push(path)
 }
 
-function logOut() {
+async function logOut() {
   menuOpen.value = false
-  user.signOut()
+  await user.signOut()
   router.push('/')
 }
 </script>

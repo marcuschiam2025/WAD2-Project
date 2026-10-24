@@ -17,15 +17,38 @@ pnpm dev
 # terminal 2 — app on http://localhost:5173 (/api is proxied to the backend on :4000)
 cd frontend
 pnpm install           # run this first after cloning
+cp .env.example .env.local # add the public Firebase Web app settings
 pnpm dev               # pnpm build for a production build
 ```
 
-To try login before the frontend handles it, set `FIREBASE_WEB_API_KEY` in `backend/.env` and open
-http://localhost:4000/test (a temporary page in `backend/test-page/`, not served when `NODE_ENV=production`).
-New users are created in MongoDB as `role: 'student'`; make someone an admin by setting `role: 'admin'` on their document.
+Google sign-in is connected on `/signin`. Add the Firebase Web app settings to `frontend/.env.local`
+(from Firebase Console → Project settings → Your apps), then restart Vite. The web API key,
+auth domain and project ID are public app configuration; **never put the Admin private key or MongoDB URI in a frontend file**.
+Add `localhost` to Firebase Authentication's authorized domains when testing locally.
 
-The Pinia stores currently run on the sample data in `frontend/src/core/data`, so the UI works without the API.
-Each store has `TODO(Backend n)` comments marking where to call `frontend/src/core/services/api.js` instead.
+The backend verifies each Firebase ID token and accepts SMU accounts. MongoDB stores the profile,
+intake year, completed/exempted modules, semester history, balance and onboarding status.
+New users start with `role: 'student'`; trusted maintainers assign `role: 'admin'` directly in MongoDB.
+Clients cannot edit role or Firebase identity. API requests obtain a current ID token from the Firebase SDK.
+
+`http://localhost:4000/test` remains a development-only auth diagnostic page. It is not served in production.
+
+Quiz results and plans use the authenticated backend. Plans and private bidding caches clear on account changes;
+late responses from the previous account are discarded. Rooms still require backend integration, and bidding still
+contains sample catalogue/round fallbacks: those flows are not yet complete.
+
+Verification:
+
+```bash
+cd backend
+pnpm test
+# In frontend/:
+pnpm test
+pnpm build
+```
+
+One backend quiz persistence test is opt-in and needs a disposable MongoDB replica set; see the quiz test documentation.
+For a manual auth check: sign in, finish setup, refresh and verify the saved profile, then sign out and confirm protected routes return to sign-in.
 
 ## Folder structure
 

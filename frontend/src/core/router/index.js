@@ -102,8 +102,9 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const user = useUserStore()
+  await user.initialize()
   if (to.meta.auth && !user.isSignedIn) return { name: 'signin' }
   // Nobody gets into the app before finishing onboarding
   if (to.meta.auth && !user.onboarded && to.name !== 'onboarding') return { name: 'onboarding' }

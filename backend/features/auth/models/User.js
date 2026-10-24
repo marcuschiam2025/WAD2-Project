@@ -8,6 +8,13 @@ const userSchema = new mongoose.Schema(
     name: { type: String, trim: true }, // from the Firebase token, editable by the student
     school: { type: String, default: 'SCIS' },
     major: { type: String, default: 'Information Systems' },
+    currentSem: { type: String, match: /^Y[1-5]S[12]$/ },
+    takenBySem: { type: Map, of: [String], default: {} },
+    exempted: [String],
+    freeExemptions: { type: Number, min: 0, max: 6, default: 0 },
+    markedDone: [String],
+    balance: { type: Number, min: 0, default: 210 },
+    onboarded: { type: Boolean, default: false },
     intakeYear: Number, // e.g. 2025, decides which track requirements apply
     yearOfStudy: { type: Number, min: 1, max: 5 },
     tracks: [String], // track codes, e.g. ['BA', 'SMT']; empty = undecided

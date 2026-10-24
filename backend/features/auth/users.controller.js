@@ -1,7 +1,6 @@
 // By the time these run, requireAuth has already put the logged-in user on req.user.
 
-// Fields a student may edit about themselves (role is deliberately not here)
-const EDITABLE = ['name', 'major', 'intakeYear', 'yearOfStudy', 'tracks', 'completedModules', 'basket', 'consents']
+import { profileUpdate } from './utils/profile.js'
 
 // GET /api/users/me
 export function getProfile(req, res) {
@@ -10,13 +9,8 @@ export function getProfile(req, res) {
 
 // PATCH /api/users/me
 export async function updateProfile(req, res) {
-  for (const field of EDITABLE) {
-    if (req.body[field] !== undefined) {
-      req.user[field] = req.body[field]
-    }
-  }
-
   try {
+    Object.assign(req.user, profileUpdate(req.body, req.user))
     await req.user.save()
   } catch (error) {
     // e.g. yearOfStudy outside 1-5
