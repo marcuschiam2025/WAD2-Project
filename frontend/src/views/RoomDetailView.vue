@@ -26,7 +26,7 @@ async function leave() {
 <template>
   <div>
     <PageHeader overline="Collab Rooms" :title="room?.name || 'Room unavailable'"><template #actions><BaseButton variant="outline" to="/rooms">All rooms</BaseButton></template></PageHeader>
-    <main class="mx-auto flex max-w-3xl flex-col gap-5 px-5 py-8">
+    <main class="mx-auto flex max-w-7xl flex-col gap-5 px-5 py-8">
       <section v-if="!room" class="card p-5"><p>This room is unavailable, or you are no longer a member.</p><BaseButton class="mt-3" variant="outline" @click="rooms.load">Refresh rooms</BaseButton></section>
       <template v-else>
         <section class="card flex flex-col gap-4 p-5">

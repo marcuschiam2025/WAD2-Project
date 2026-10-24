@@ -38,3 +38,17 @@
 ## Next chunk
 
 Connect admin acceptance and the bidding handoff, then member-management controls. The old votes URL redirects to the room detail screen where voting now lives. A second real account is still needed for interactive multi-user verification; membership, term validation and exclusion of former members are covered by automated tests.
+
+## Calendar restored
+
+- Room detail voting now includes a weekly calendar backed by the same live
+  section rows and saved ballots. The room layout is wider to fit the calendar.
+- Every meeting of a section is shown, including weekend classes. Selecting any
+  meeting toggles that section's single ballot ID across all its meetings.
+- Exact meeting ranges form rows; alternatives stack in a cell instead of
+  covering one another. The rows are not a proportional time scale.
+- Vote counts and names remain visible; full section details and exams are
+  available below the calendar. Saving, clearing, polling and reload behaviour
+  use the existing backend integration.
+- Verified: all 11 frontend tests and production build pass. Live signed-in
+  browser review is pending; the current browser is on the sign-in page.
