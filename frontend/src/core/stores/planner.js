@@ -65,6 +65,49 @@ export const usePlannerStore = defineStore('planner', () => {
   const lastSaved = new Map() // plan id -> the body last sent (or loaded), so unchanged plans aren't re-sent
   let loading = null
   let session = 0
+  const basketSaving = ref(false)
+  const basketError = ref('')
+  let savedBasket = '[]'
+  let basketRequest = null
+
+  // Serialize snapshots: a slower earlier request must not overwrite a newer edit.
+  function saveBasket() {
+    if (basketRequest) return basketRequest
+    if (!online.value || !user.isSignedIn) {
+      basketError.value = 'Connect to the server before saving your basket.'
+      return Promise.reject(new Error(basketError.value))
+    }
+    const version = session
+    basketSaving.value = true
+    basketError.value = ''
+    const request = Promise.resolve().then(async () => {
+      try {
+        while (version === session && online.value) {
+          const snapshot = JSON.stringify(basket.value)
+          if (snapshot === savedBasket) break
+          const data = await api.updateMe({ basket: JSON.parse(snapshot) })
+          if (version !== session) return
+          savedBasket = snapshot
+          user.profile.basket = [...data.basket]
+        }
+      } catch (error) {
+        if (version !== session) return
+        savedBasket = null // The server may have committed before a network failure.
+        basketError.value = error.message
+        throw error
+      } finally {
+        if (basketRequest === request) {
+          basketRequest = null
+          basketSaving.value = false
+        }
+      }
+    })
+    basketRequest = request
+    return request
+  }
+  watch(basket, () => {
+    if (online.value) saveBasket().catch(() => {})
+  }, { deep: true, flush: 'sync' })
 
   // A new student's first plan: their major, tracks, current semester and the modules from onboarding
   function firstPlan() {
@@ -113,7 +156,9 @@ export const usePlannerStore = defineStore('planner', () => {
       const isNew = !list.length
       if (isNew) list = [await api.createPlan(firstPlan())]
       if (version !== session) return
+      online.value = false
       basket.value = [...(user.profile.basket ?? [])]
+      savedBasket = JSON.stringify(basket.value)
       if (isNew) user.profile.appliedToPlans = true // firstPlan already used the onboarding answers
       plans.value = list.map(fromApi)
       plans.value.forEach(remember)
@@ -346,6 +391,10 @@ export const usePlannerStore = defineStore('planner', () => {
     plans.value = []
     activePlanId.value = null
     basket.value = []
+    savedBasket = '[]'
+    basketRequest = null
+    basketSaving.value = false
+    basketError.value = ''
     placedByRoom.clear()
     basketFromRoom.clear()
     syncError.value = ''
@@ -469,6 +518,9 @@ export const usePlannerStore = defineStore('planner', () => {
     load,
     reload,
     basket,
+    basketSaving,
+    basketError,
+    saveBasket,
     requirements,
     plannedCu,
     requiredCu,

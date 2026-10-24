@@ -21,6 +21,10 @@ import iconAlert from '@/assets/figma/alert-12.svg'
 import iconGrip from '@/assets/figma/icon-grip.svg'
 import iconPlus from '@/assets/figma/plus-14.svg'
 
+async function retryBasket() {
+  try { await planner.saveBasket() } catch { /* The basket error remains visible for retry. */ }
+}
+
 const router = useRouter()
 const planner = usePlannerStore()
 const rooms = useRoomsStore()
@@ -28,7 +32,7 @@ const catalogue = useCatalogueStore()
 
 // Modules whose section was accepted in a collab room get their own colour
 const roomDecision = (code) => rooms.decided.find((d) => d.module === effectiveCode(code))
-// Plans come from /api/plans through the planner store (sample plans when the backend isn't running)
+// Plans come from the authenticated backend through the planner store.
 const plan = computed(() => planner.activePlan)
 
 const tabsRef = ref(null)
@@ -272,6 +276,11 @@ const onTrack = computed(() => !planner.hasAnyWarning && (planner.activeCheck?.o
               </div>
             </div>
             <p class="text-[12px] text-muted-foreground">Saved from Match Results and search.</p>
+            <p v-if="planner.basketSaving" role="status" class="text-xs text-muted-foreground">Saving basket…</p>
+            <div v-if="planner.basketError" role="alert" class="text-xs text-destructive">
+              <p>Basket not saved: {{ planner.basketError }}</p>
+              <BaseButton size="sm" variant="link" :disabled="planner.basketSaving" @click="retryBasket">Retry saving</BaseButton>
+            </div>
           </div>
 
           <label class="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 focus-within:border-ring">

@@ -5,9 +5,39 @@ import { useQuizStore, quizTrackNames, sectionLabels } from '@core/stores/quiz'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { api } from '@core/services/api'
+import { usePlannerStore } from '@core/stores/planner'
+import { useUserStore } from '@core/stores/user'
 const route = useRoute()
 const router = useRouter()
 const quiz = useQuizStore()
+const planner = usePlannerStore()
+const user = useUserStore()
+const addingModule = ref(null)
+const basketNotice = ref('')
+const basketActionError = ref('')
+async function addModule(code) {
+  const account = user.uid
+  addingModule.value = code
+  basketNotice.value = ''
+  basketActionError.value = ''
+  try {
+    await planner.load()
+    if (account !== user.uid) return
+    if (!planner.online) throw new Error(planner.syncError || 'Could not load your saved basket. Please try again.')
+    planner.addToBasket(code)
+    await planner.saveBasket()
+    if (account !== user.uid) return
+    basketNotice.value = `${code} saved to your planner basket.`
+  } catch (error) { if (account === user.uid) basketActionError.value = error.message }
+  finally { addingModule.value = null }
+}
+async function retryBasket() {
+  const account = user.uid
+  basketActionError.value = ''
+  try { await planner.saveBasket(); if (account === user.uid) basketNotice.value = 'Your planner basket is saved.' }
+  catch (error) { if (account === user.uid) basketActionError.value = error.message }
+}
+watch(() => user.uid, () => { addingModule.value = null; basketNotice.value = ''; basketActionError.value = '' })
 const loading = ref(true)
 const moduleSuggestions = ref(null)
 const moduleLoading = ref(false)
@@ -74,6 +104,11 @@ onMounted(async () => { await quiz.initialize(); loading.value = false })
                 <li v-for="module in modulesFor(result.track)" :key="module.code">
                   <a :href="module.sourceUrl" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-primary hover:underline">{{ module.code }} · {{ module.name }} ↗</a>
                   <p class="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{{ module.summary }}</p>
+                  <BaseButton class="mt-2" size="sm" variant="outline"
+                    :disabled="addingModule !== null || planner.basketSaving || (planner.basket.includes(module.code) && !planner.basketError)"
+                    @click="addModule(module.code)">
+                    {{ addingModule === module.code ? 'Saving…' : planner.basket.includes(module.code) ? (planner.basketSaving ? 'Saving…' : planner.basketError ? 'Retry save' : 'In planner basket') : 'Add to planner basket' }}
+                  </BaseButton>
                 </li>
               </ul>
               <details class="mt-3 text-xs">
@@ -85,6 +120,11 @@ onMounted(async () => { await quiz.initialize(); loading.value = false })
           </section>
         </div>
 
+        <p v-if="basketNotice" role="status" class="text-sm text-primary">{{ basketNotice }}</p>
+        <div v-if="basketActionError || planner.basketError" role="alert" class="flex flex-wrap items-center gap-3 text-sm">
+          <p>{{ basketActionError || planner.basketError }}</p>
+          <BaseButton variant="link" :disabled="planner.basketSaving" @click="retryBasket">Retry saving basket</BaseButton>
+        </div>
         <p v-if="moduleLoading" role="status" class="text-xs text-muted-foreground">Finding modules to explore…</p>
         <div v-if="moduleError" class="flex flex-wrap items-center gap-3 text-sm" role="status"><p>{{ moduleError }}</p><BaseButton variant="link" @click="loadModules">Retry modules</BaseButton></div>
         <p v-if="moduleSuggestions" class="text-xs text-muted-foreground">
