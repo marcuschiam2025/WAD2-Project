@@ -4,7 +4,7 @@ import mongoose from 'mongoose'
 const userSchema = new mongoose.Schema(
   {
     firebaseUid: { type: String, required: true, unique: true }, // links this document to the Firebase account
-    email: { type: String, required: true, lowercase: true, trim: true }, // from the Firebase token, always @smu.edu.sg
+    email: { type: String, required: true, lowercase: true, trim: true }, // from Firebase; SMU students or provisioned staff
     name: { type: String, trim: true }, // from the Firebase token, editable by the student
     school: { type: String, default: 'SCIS' },
     major: { type: String, default: 'Information Systems' },
@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema(
       gmail: { type: Boolean, default: false },
       outlook: { type: Boolean, default: false },
     },
-    // 'admin' is set by hand in MongoDB; checked by requireAdmin in middleware/auth.js.
+    // 'admin' is assigned by the controlled bootstrap script; checked by requireAdmin in middleware/auth.js.
     // Not in EDITABLE (users.controller.js), so students cannot change it themselves.
     role: { type: String, enum: ['student', 'admin'], default: 'student' },
   },

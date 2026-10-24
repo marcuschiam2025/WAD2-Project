@@ -1,10 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { routeAccess } from './access'
 
 // meta.layout: 'app' shows the signed-in nav bar; 'bare' shows nothing.
 // meta.auth: route needs a signed-in student.
 // meta.nav: which nav link is highlighted.
 const routes = [
+  { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue'), meta: { layout: 'bare', auth: true, admin: true } },
   { path: '/', name: 'landing', component: () => import('@/views/LandingView.vue'), meta: { layout: 'bare' } },
   { path: '/signin', name: 'signin', component: () => import('@/views/SignInView.vue'), meta: { layout: 'bare' } },
   {
@@ -105,10 +107,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const user = useUserStore()
   await user.initialize()
-  if (to.meta.auth && !user.isSignedIn) return { name: 'signin' }
-  // Nobody gets into the app before finishing onboarding
-  if (to.meta.auth && !user.onboarded && to.name !== 'onboarding') return { name: 'onboarding' }
-  if (to.name === 'signin' && user.isSignedIn) return { name: user.onboarded ? 'dashboard' : 'onboarding' }
+  return routeAccess(to, user)
 })
 
 export default router

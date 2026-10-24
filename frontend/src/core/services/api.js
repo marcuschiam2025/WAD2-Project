@@ -47,6 +47,8 @@ function query(params) {
 }
 
 export const api = {
+  adminOverview: () => request('GET', '/admin'),
+  adminAudit: (before) => request('GET', `/admin/audit${query({ before })}`),
   // Users / profile
   me: () => request('GET', '/users/me'),
   updateMe: (data) => request('PATCH', '/users/me', data),
