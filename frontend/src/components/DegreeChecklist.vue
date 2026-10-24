@@ -57,7 +57,7 @@ const selectedId = ref(null)
 const moduleKey = ref(null)
 const item = computed(() => sections.value.flatMap((s) => s.items).find((i) => i.id === selectedId.value) ?? null)
 // The modules that can fill a checklist line, from the backend catalogue (or the sample one offline)
-const candidatesOf = (i) => candidatesFor(i, plan.value, planner.checklistCatalogue, planner.exempted)
+const candidatesOf = (i) => candidatesFor(i, plan.value, planner.checklistCatalogue, planner.exempted).filter(m => !planner.checklistCatalogue[m.code]?.archived || m.placement)
 
 const candidates = computed(() => (item.value ? candidatesOf(item.value) : []))
 // Long lists (baskets, electives) get a filter box

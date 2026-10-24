@@ -24,7 +24,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
   let loading = null
 
   function load() {
-    loading ??= Promise.all([api.modules(), api.majors()])
+    loading ??= Promise.all([api.modules({ includeArchived: true }), api.majors()])
       .then(([mods, majorList]) => {
         mods.forEach((m) => (liveModules[m._id] = m))
         majors.value = majorList
@@ -88,6 +88,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
         name: m.title,
         cu: m.cu ?? 1,
         live: true,
+        archived: m.archived === true,
         category,
         tracks,
         basket: fulfils.map((t) => BASKET_OF[t]).find(Boolean),

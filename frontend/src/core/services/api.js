@@ -47,6 +47,13 @@ function query(params) {
 }
 
 export const api = {
+  adminModules: (params = {}) => request('GET', `/admin/modules${query(params)}`),
+  adminModule: (code) => request('GET', `/admin/modules/${encodeURIComponent(code)}`),
+  createAdminModule: (data) => request('POST', '/admin/modules', data),
+  updateAdminModule: (code, data) => request('PUT', `/admin/modules/${encodeURIComponent(code)}`, data),
+  archiveAdminModule: (code, revision) => request('POST', `/admin/modules/${encodeURIComponent(code)}/archive`, { revision }),
+  restoreAdminModule: (code, revision) => request('POST', `/admin/modules/${encodeURIComponent(code)}/restore`, { revision }),
+  deleteAdminModule: (code, revision) => request('DELETE', `/admin/modules/${encodeURIComponent(code)}`, { revision }),
   adminOverview: () => request('GET', '/admin'),
   adminAudit: (before) => request('GET', `/admin/audit${query({ before })}`),
   // Users / profile

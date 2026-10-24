@@ -2,8 +2,8 @@
 
 Branch: `feat/admin-catalogue`. This chunk provides protected staff access,
 `/admin`, paginated change history, an audited transaction helper and revision
-filters for subsequent catalogue editors. Module/schedule/curriculum/bidding
-editors are not implemented yet. No existing academic data is migrated.
+filters for subsequent catalogue editors. The module create/edit editor is now implemented (see below). Archive/restore and guarded deletion are also implemented. Schedule,
+curriculum and bidding editors remain pending. No existing academic data is migrated.
 
 ## Provision the demo admin
 
@@ -68,3 +68,59 @@ semantics. They do not establish real Firebase sign-in or MongoDB rollback.
 Those checks require the chosen demo identity and a transaction-capable test
 MongoDB database. Do not provision an account or change the shared database just
 to run a unit test.
+
+## Module editor — first editor chunk
+
+- `/admin` now includes search (50 records per page), module creation and editing.
+- Editable fields: title, CU, school/department, description, prerequisite and
+  corequisite AND/OR groups, exclusions, track-course count rule, requisite notes,
+  catalogue tags and known offering terms. Codes are immutable after creation.
+- Staff review the complete form before confirming. Unknown module/school
+  references, self-references, unexpected fields and stale revisions are rejected.
+- Admin-only endpoints: `GET /api/admin/modules?q=&after=`,
+  `GET /api/admin/modules/:code`, `POST /api/admin/modules` and
+  `PUT /api/admin/modules/:code`. POST uses `code`; PUT requires `revision`.
+  PUT is a complete replacement of editable fields, not a partial patch.
+- Module writes and audit snapshots share one MongoDB transaction. Existing
+  student plans and curriculum membership are not rewritten. Students reload
+  the catalogue to receive changed details; open tabs do not yet auto-refresh.
+- The destructive seed command refuses to run if academic staff audit entries
+  exist, including on a remote database with `--remote`.
+- Schedules, curriculum editors and bidding-round configuration remain
+  subsequent chunks. Module lifecycle controls are described below.
+- The demo admin has been provisioned; the user confirmed staff sign-in and
+  module create/edit persistence worked. Unit tests do not establish transaction rollback on
+  the shared Atlas database. No live academic records were changed for testing.
+
+Latest automated verification: 85 backend tests passed, one integration test
+skipped; all 13 frontend tests passed and the production build passed. The dedicated demo admin was subsequently provisioned through the audited CLI.
+
+
+## Archive, restore and guarded deletion
+
+- Admin UI actions use a separate confirmation panel and the loaded revision.
+  Permanent deletion additionally requires typing the module code.
+- `POST /api/admin/modules/:code/archive`, `POST .../:code/restore` and
+  `DELETE /api/admin/modules/:code` require `{ revision }` and admin authorization.
+- Archive hides modules from normal module search, new room creation and fresh
+  quiz recommendations. Existing degree plans, curriculum checks, rooms and carts
+  retain their records. Archive does not cancel class sections or invalidate an
+  existing bid cart. Open student tabs must reload to receive catalogue changes.
+- Whole-catalogue reads can use `includeArchived=true` so existing academic
+  records retain their titles and requirement information. Individual detail
+  reads remain available for archived modules. Checklist discovery excludes new
+  archived candidates while retaining already-placed records.
+- Delete requires an archived module with an admin `create` audit entry. Original
+  seeded modules can only be archived. Known dependencies are checked in the
+  mutation transaction: other requisites, curriculum requirements, sections,
+  degree plans (including exchange mappings), carts, bid history, rooms, student
+  profiles/baskets and stored quiz recommendation fields. Errors/timeouts abort
+  deletion. Audit history is retained after deletion.
+- Dependency queries describe the current application schema; MongoDB has no
+  cross-collection foreign keys. Snapshot checks are not a global lock against
+  concurrent student writes or external scripts. Original catalogue data should
+  be archived rather than deleted; do not bypass the application with raw writes.
+- Latest automated verification: 86 backend passed, one database integration test
+  skipped; all 13 frontend tests and production build passed. Dependency queries
+  were validated through read-only MongoDB calls. Live archive/restore/delete
+  interactions remain for user review; no modules were changed by those checks.

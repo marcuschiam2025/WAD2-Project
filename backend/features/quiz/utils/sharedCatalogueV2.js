@@ -31,7 +31,7 @@ export function createSharedCatalogueLoader({
     const done = new Set(completedModules.map((c) => c.trim().toUpperCase()))
     const membership = (code) => foundTracks.filter((t) => rules.some((r) => r.ownerId === t._id && r.modules?.includes(code))).map((t) => quizCode(t.trackCode))
     const candidates = codes.map((code) => byCode.get(code)).filter(Boolean).filter((m) =>
-      !done.has(m._id) && unmetGroups(m.prerequisites, (c) => done.has(c)).length === 0 &&
+      !m.archived && !done.has(m._id) && unmetGroups(m.prerequisites, (c) => done.has(c)).length === 0 &&
       !(m.mutuallyExclusive ?? []).some((c) => done.has(c)),
     ).map((m) => {
       const tags = editorial.modules.find((item) => item.code === m._id)?.themeTags ?? []

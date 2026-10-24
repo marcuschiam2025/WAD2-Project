@@ -28,6 +28,11 @@ for (const name of COLLECTIONS) {
 await connectDB(uri)
 const db = mongoose.connection.db
 
+if (await db.collection('auditentries').findOne({ entity: { $in: ['module', 'section', 'curriculum', 'track', 'bidding-round'] } })) {
+  await mongoose.disconnect()
+  throw new Error('Catalogue has staff edits. Seeding is blocked to preserve them. Use a separate disposable database for reseeding.')
+}
+
 for (const name of COLLECTIONS) {
   await db.collection(name).deleteMany({}) // clear the old catalogue
   await db.collection(name).insertMany(data[name])

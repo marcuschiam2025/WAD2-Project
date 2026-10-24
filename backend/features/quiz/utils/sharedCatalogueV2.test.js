@@ -8,11 +8,12 @@ test('loads only top-two AY2025 tracks, maps SMT and uses shared module titles a
   const calls = []
   const load = createSharedCatalogueLoader({
     tracks: async (filter) => { calls.push(filter); return [{ _id: 'smart', trackCode: 'SMCT' }, { _id: 'data', trackCode: 'BA' }] },
-    requirements: async () => [{ ownerId: 'smart', modules: ['NEW101', 'LOCKED', 'DONE', 'EXCLUDED'] }, { ownerId: 'data', modules: ['NEW101', 'ADVANCED'] }],
+    requirements: async () => [{ ownerId: 'smart', modules: ['NEW101', 'LOCKED', 'DONE', 'EXCLUDED', 'ARCHIVED'] }, { ownerId: 'data', modules: ['NEW101', 'ADVANCED'] }],
     modules: async () => [
       { _id: 'NEW101', title: 'Shared title', description: 'Shared description', prerequisites: [['BASE', 'OTHER']] },
       { _id: 'LOCKED', title: 'Locked', prerequisites: [['MISSING']] },
       { _id: 'DONE', title: 'Done' },
+      { _id: 'ARCHIVED', title: 'Archived', archived: true },
       { _id: 'EXCLUDED', title: 'Excluded', mutuallyExclusive: ['BASE'] },
       { _id: 'ADVANCED', title: 'Advanced', requisiteNotes: ['Instructor permission'] },
     ],

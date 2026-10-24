@@ -16,7 +16,7 @@ export async function listModules(req, res) {
   const limit = Number(req.query.limit)
 
   // Build the MongoDB filter from whichever query params were sent
-  const filter = {}
+  const filter = req.query.includeArchived === 'true' ? {} : { archived: { $ne: true } }
   if (category) {
     filter.categories = String(category)
   }

@@ -92,3 +92,5 @@ Connect admin acceptance and the bidding handoff, then member-management control
   a leading section, each member adds it to an owned bidding cart and saves, then
   refreshes to verify persistence. Test removal and ownership transfer in a separate
   disposable room. Automated tests do not replace this two-account check.
+
+The user reported the interactive room test passed on 24 October 2026.

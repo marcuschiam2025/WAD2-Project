@@ -57,7 +57,7 @@ export async function listParties(req, res) {
 export async function createParty(req, res) {
   const { name, module } = req.body
   if (typeof name !== 'string' || !name.trim() || name.trim().length > 80 || typeof module !== 'string' || !/^[A-Z][A-Z0-9-]{1,24}$/.test(module)) throw httpError(400, 'Provide a party name and valid module code')
-  if (!await Module.exists({ _id: module })) throw httpError(400, 'Choose a module from the catalogue')
+  if (!await Module.exists({ _id: module, archived: { $ne: true } })) throw httpError(400, 'Choose a module from the catalogue')
   const party = new Party({ name: name.trim(), module, inviteCode: await uniqueInviteCode(), owner: req.user._id, members: [req.user._id] })
   await party.save()
   await party.populate('members', MEMBER_FIELDS)
