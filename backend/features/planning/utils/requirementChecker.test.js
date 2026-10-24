@@ -150,3 +150,15 @@ test('an internship in an LOA term counts towards the internship requirement', (
   assert.deepEqual(internshipResult.modules, [{ code: 'INTERNSHIP', title: 'INTERNSHIP', status: 'planned', semester: 'Y1S2' }])
   assert.equal(result.requiredCu, 1)
 })
+
+test('all and choose-N require course coverage as well as the credit target', () => {
+  const p = { currentSem: 'Y2S1', semesters: [{ id: 'Y1S1', modules: ['A'] }, { id: 'Y2S1', modules: [] }] }
+  const cat = { A: mod('A', { cu: 2 }), B: mod('B') }
+  for (const rule of ['all', 'chooseN']) {
+    const r = req('R', { rule, modules: ['A', 'B'], n: 2, cuRequired: 2 })
+    const result = checkPlan(p, { major: { _id: 'M', totalCU: 2 }, requirements: [r], catalogue: cat })
+    assert.equal(result.requirements[0].status, 'outstanding')
+    assert.ok(result.requirements[0].outstanding)
+    assert.ok((result.requirements[0].outstanding.mustTake ?? result.requirements[0].outstanding.chooseFrom).some(m => m.code === 'B'))
+  }
+})

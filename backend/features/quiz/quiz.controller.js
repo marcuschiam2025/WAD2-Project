@@ -55,7 +55,7 @@ export async function getRecommendations(req, res) {
       const modules = listed
         .map((code) => found.find((m) => m._id === code))
         .filter(Boolean)
-        .filter((m) => !done.has(m._id) && unmetGroups(m.prerequisites, (c) => done.has(c)).length === 0)
+        .filter((m) => !m.archived && !done.has(m._id) && unmetGroups(m.prerequisites, (c) => done.has(c)).length === 0)
         .slice(0, 3)
       return { track, modules }
     }),

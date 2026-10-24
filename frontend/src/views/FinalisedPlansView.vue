@@ -37,6 +37,7 @@ const cell = (copy, code) => copy.items.find(item => item.module === code)
 const schedule = copy => copy.items.map(item => item.section).filter(Boolean)
 function blocked(copy) {
   if (!copy.items.length) return 'This saved cart is empty.'
+  if (schedule(copy).some(section => section.archived)) return 'This saved cart contains an archived section. Review it in bidding before exporting.'
   if (copy.missingModules.length) return `Section data is unavailable for ${copy.missingModules.join(', ')}. Update this cart before exporting.`
   if (findClashes(schedule(copy)).length || findExamClashes(schedule(copy)).length) return 'Saved sections now clash. Review this cart before exporting.'
   return ''

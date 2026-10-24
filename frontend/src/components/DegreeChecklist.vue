@@ -23,7 +23,7 @@ const catalogue = useCatalogueStore()
 const plan = computed(() => planner.activePlan)
 const checklist = computed(() => planner.checklist)
 const totals = computed(() => checklist.value.totals)
-const pct = (n) => `${(n / totals.value.required) * 100}%`
+const pct = (n) => `${totals.value.required ? (n / totals.value.required) * 100 : 0}%`
 
 // Hide the lines being taken this semester too, if the student turns it on (remembered in this browser)
 const HIDE_KEY = 'bidmaxxer:hideInProgress'
@@ -57,7 +57,7 @@ const selectedId = ref(null)
 const moduleKey = ref(null)
 const item = computed(() => sections.value.flatMap((s) => s.items).find((i) => i.id === selectedId.value) ?? null)
 // The modules that can fill a checklist line, from the backend catalogue (or the sample one offline)
-const candidatesOf = (i) => candidatesFor(i, plan.value, planner.checklistCatalogue, planner.exempted)
+const candidatesOf = (i) => candidatesFor(i, plan.value, planner.checklistCatalogue, planner.exempted).filter(m => !planner.checklistCatalogue[m.code]?.archived || m.placement)
 
 const candidates = computed(() => (item.value ? candidatesOf(item.value) : []))
 // Long lists (baskets, electives) get a filter box
@@ -117,7 +117,7 @@ const CATEGORY_LABEL = { IS: 'IS course', IS_TRACK: 'IS track course', IS_RELATE
 // Internship, Community Service and Global Exposure can be marked as done; the line then counts as cleared
 // and leaves the list (undo it from the profile page)
 function markDone(i) {
-  user.markDone(i.id)
+  user.markDone(i.manualDoneId ?? i.id)
   selectedId.value = null
   moduleKey.value = null
 }
@@ -167,11 +167,11 @@ const addLabel = computed(() => {
 </script>
 
 <template>
-  <section v-enter="0.2" class="card flex flex-col gap-4 p-6"> <!-- motion: checklist card fades in, 200ms delay -->
+  <section v-if="!checklist.unavailable" v-enter="0.2" class="card flex flex-col gap-4 p-6"> <!-- motion: checklist card fades in, 200ms delay -->
     <div class="flex flex-col gap-0.5">
-      <h2 class="text-[17px] font-semibold">Outstanding Modules</h2>
+      <h2 class="text-[17px] font-semibold">Degree Requirements</h2>
       <p class="text-[13px] text-muted-foreground">
-        {{ plan.name }} · {{ left }} of {{ totals.required }} courses still to clear. Pick one to see what you can take for it.
+        {{ plan.name }} · {{ left }} of {{ totals.required }} {{ checklist.live ? 'requirements' : 'courses' }} still to clear. Pick one to see what you can take for it.
       </p>
     </div>
 
@@ -185,7 +185,7 @@ const addLabel = computed(() => {
         <StatusPill tone="success">{{ totals.cleared }} cleared</StatusPill>
         <StatusPill tone="warning">{{ totals.inProgress }} in progress</StatusPill>
         <StatusPill tone="info">{{ totals.planned }} planned</StatusPill>
-        <StatusPill tone="neutral">{{ totals.todo }} not in your plan yet</StatusPill>
+        <StatusPill tone="neutral">{{ totals.todo }} {{ checklist.live ? 'still incomplete' : 'not in your plan yet' }}</StatusPill>
         <StatusPill v-if="totals.late" tone="destructive">{{ totals.late }} behind the recommended term</StatusPill>
         <button
           type="button"
@@ -201,7 +201,8 @@ const addLabel = computed(() => {
           Hide in progress
         </button>
       </div>
-      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-muted-foreground">
+      <p v-if="checklist.live" class="text-[12px] text-muted-foreground">Partial requirements include some courses but still need more. No semester recommendations are specified for these requirements.</p>
+      <div v-else class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-muted-foreground">
         <span class="font-medium text-foreground">Semester tags</span>
         <span v-for="(label, tone) in semesterToneLabel" :key="tone" class="flex items-center gap-1.5">
           <span class="h-3 w-5 rounded-[4px] border" :class="semesterTone[tone]" /> {{ label }}
@@ -212,7 +213,7 @@ const addLabel = computed(() => {
 
     <p v-if="!sections.length" class="rounded-md bg-success-tint px-4 py-3 text-[13px] font-medium">
       <template v-if="left">Everything left is in progress this semester. Turn off "Hide in progress" to see it.</template>
-      <template v-else>All {{ totals.required }} courses are cleared.</template>
+      <template v-else>All {{ totals.required }} {{ checklist.live ? 'requirements' : 'courses' }} are cleared.</template>
     </p>
 
     <div v-else class="flex h-[560px] overflow-hidden rounded-lg border border-border">
@@ -241,9 +242,9 @@ const addLabel = computed(() => {
           <div class="flex flex-col gap-0.5 border-b border-border px-4 py-3 leading-normal">
             <p class="text-[14px] font-semibold">{{ item.label }}</p>
             <p class="text-[12px] text-muted-foreground">
-              Recommended {{ item.rec.label }}<template v-if="candidates.length"> · {{ candidates.length }} option{{ candidates.length === 1 ? '' : 's' }}</template>
+              {{ item.rec ? 'Recommended ' + item.rec.label : 'No recommended semester specified' }}<template v-if="candidates.length"> · {{ candidates.length }} option{{ candidates.length === 1 ? '' : 's' }}</template>
             </p>
-            <BaseButton v-if="item.id in MARK_DONE" size="sm" variant="outline" class="mt-2 self-start" @click="markDone(item)">
+            <BaseButton v-if="(item.manualDoneId ?? item.id) in MARK_DONE" size="sm" variant="outline" class="mt-2 self-start" @click="markDone(item)">
               Mark as done
             </BaseButton>
           </div>
@@ -321,7 +322,7 @@ const addLabel = computed(() => {
               <p class="text-overline text-muted-foreground">Counts as</p>
               <p class="text-[14px] font-medium">{{ item.label }}</p>
               <p class="text-[13px] text-muted-foreground">
-                Recommended {{ item.rec.label }}<template v-if="item.how"> · {{ item.how === 'Bid' ? 'bid for it in BOSS' : item.how === 'PASG' ? 'pre-assigned by the school' : 'pre-assigned, or bid for it' }}</template>
+                {{ item.rec ? 'Recommended ' + item.rec.label : 'No recommended semester specified' }}<template v-if="item.how"> · {{ item.how === 'Bid' ? 'bid for it in BOSS' : item.how === 'PASG' ? 'pre-assigned by the school' : 'pre-assigned, or bid for it' }}</template>
               </p>
               <p v-if="item.note" class="text-[13px] text-muted-foreground">{{ item.note }}</p>
             </div>
@@ -336,10 +337,11 @@ const addLabel = computed(() => {
             </div>
           </div>
           <div v-else key="hint" class="flex h-full items-center justify-center p-8 text-center text-[13px] leading-normal text-muted-foreground">
-            {{ item ? 'Pick a module to see more about it.' : 'Pick a course on the left to see what you can take for it.' }}
+            {{ item ? 'Pick a module to see more about it.' : 'Pick a requirement on the left to see which courses can fulfil it.' }}
           </div>
         </Transition>
       </div>
     </div>
   </section>
+  <section v-else class="card p-6"><h2 class="text-[17px] font-semibold">Degree Requirements</h2><p class="mt-2 text-sm text-muted-foreground">Live curriculum requirements have not loaded for this plan. Reload to retry; completion is unavailable until they load.</p></section>
 </template>

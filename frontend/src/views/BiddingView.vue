@@ -201,8 +201,9 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
             >. Undo it in the room.
           </p>
           <p v-if="bidding.notOffered.length" class="text-[13px] text-muted-foreground">
-            No section data yet for {{ bidding.notOffered.join(', ') }}, so {{ bidding.notOffered.length === 1 ? 'it is' : 'they are' }} not shown here.
+            No active sections available for {{ bidding.notOffered.join(', ') }}, so {{ bidding.notOffered.length === 1 ? 'it is' : 'they are' }} not shown here.
           </p>
+          <p v-if="bidding.archivedSelections.length" role="alert" class="text-[13px] text-destructive">Archived selections: {{ bidding.archivedSelections.join(', ') }}. Choose an active alternative or remove the module before saving. Your previous saved cart is retained.</p>
           <p v-if="bidding.clashes.size" class="text-[13px] text-destructive">
             Class or exam clash: {{ clashList }} overlap. Click one and pick an alternative section.
           </p>

@@ -52,7 +52,7 @@ async function logOut() {
       <BrandLogo to="/dashboard" />
       <nav class="flex items-start gap-6">
         <RouterLink
-          v-for="link in links"
+          v-for="link in [...links, ...(user.profile.role === 'admin' ? [{ key: 'admin', label: 'Admin', to: '/admin' }] : [])]"
           :key="link.key"
           :to="link.to"
           class="relative border-b-2 pt-[22px] pb-5 text-[14px] leading-normal whitespace-nowrap transition-colors"

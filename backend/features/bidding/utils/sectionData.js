@@ -30,9 +30,9 @@ export function normalizeSection(raw) {
  if (shared && raw.finalExam) {
   const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(raw.finalExam.date))
   meeting({day:0,start:raw.finalExam.start,end:raw.finalExam.end})
-  examPeriod={date,start:raw.finalExam.start,end:raw.finalExam.end}
+  examPeriod={date,start:raw.finalExam.start,end:raw.finalExam.end,...(raw.finalExam.venue?{venue:raw.finalExam.venue}:{})}
  }
- return {...raw,sectionId:shared?`${term}:${module}:${section}`:raw.sectionId,module,section,term,sessions,
+ return {...raw,sectionId:raw.sectionId??(shared?`${term}:${module}:${section}`:raw.sectionId),module,section,term,sessions,
   day:sessions[0].day,slot:sessions[0].slot,venue:sessions[0].venue,
   prof:shared?raw.instructor:raw.prof,examPeriod,
   exam:shared?(examPeriod?`${examPeriod.date} · ${examPeriod.start} – ${examPeriod.end}`:'No final exam'):raw.exam??'No final exam'}

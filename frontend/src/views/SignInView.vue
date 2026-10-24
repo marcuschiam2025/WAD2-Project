@@ -12,7 +12,7 @@ const user = useUserStore()
 async function continueWithGoogle() {
   try {
     await user.signIn()
-    await router.push(user.onboarded ? '/dashboard' : '/onboarding')
+    await router.push(user.profile.role === 'admin' ? '/admin' : user.onboarded ? '/dashboard' : '/onboarding')
   } catch { /* The store exposes the sign-in error below. */ }
 }
 </script>
@@ -28,7 +28,7 @@ async function continueWithGoogle() {
         </p>
         <div class="flex items-center gap-2 rounded-md bg-primary-tint px-3 py-2.5">
           <img :src="iconInfo" alt="" class="size-4" />
-          <p class="text-[13px] font-medium">Use your @smu.edu.sg Google account</p>
+          <p class="text-[13px] font-medium">Students: use your @smu.edu.sg Google account</p>
         </div>
         <button
           type="button"
@@ -41,7 +41,7 @@ async function continueWithGoogle() {
         </button>
         <p v-if="user.error" role="alert" class="text-sm text-destructive">{{ user.error }}</p>
         <p class="text-[12px] leading-[18px] text-muted-foreground">
-          Google shares your name and email to identify your account.
+          Authorised staff can use their registered Google account. Google shares your name and email to identify your account.
         </p>
       </div>
     </section>

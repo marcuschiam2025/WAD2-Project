@@ -16,7 +16,7 @@ export const authClient = {
   async signIn() {
     const sdk = await firebaseClient()
     const provider = new sdk.GoogleAuthProvider()
-    provider.setCustomParameters({ prompt: 'select_account', hd: 'smu.edu.sg' })
+    provider.setCustomParameters({ prompt: 'select_account' })
     return (await sdk.signInWithPopup(sdk.auth, provider)).user
   },
   async signOut() {

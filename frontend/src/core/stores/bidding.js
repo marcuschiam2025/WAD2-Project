@@ -39,11 +39,11 @@ export const useBiddingStore = defineStore('bidding', () => {
   // Modules decided in collab rooms are bid for whichever plan is picked
   const roomCodes = computed(() => rooms.decided.map((d) => d.module).filter((c) => sections.some((s) => s.module === c && liveSections.has(s.id))))
   const planCodes = computed(() => [
-    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c && liveSections.has(s.id))), ...roomCodes.value]),
+    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))), ...roomCodes.value, ...Object.keys(chosen.value[plan.value.id] ?? {}).filter(code => sections.some(s => s.module === code && liveSections.has(s.id)))]),
   ])
   // Modules in the timetable only because a collab room decided on them (not in the plan's next semester)
   const fromRooms = computed(() => rooms.decided.filter((d) => roomCodes.value.includes(d.module)))
-  const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c && liveSections.has(s.id))))
+  const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))))
 
   // Per plan: modules taken out of the cart, the section picked per module, and the e$ typed per module.
   // The dropped list is kept in this browser: the saved cart can't tell a dropped module from a new one.
@@ -86,7 +86,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       inCart.value.map((code) => {
         const pick = chosen.value[plan.value.id]?.[code]
         const valid = sections.some((s) => s.id === pick && s.module === code && liveSections.has(s.id))
-        return [code, decidedSection(code) ?? (valid ? pick : sections.find((s) => s.module === code && liveSections.has(s.id)).id)]
+        return [code, decidedSection(code) ?? (valid ? pick : sections.find((s) => s.module === code && !s.archived && liveSections.has(s.id))?.id)]
       }),
     ),
   )
@@ -107,16 +107,17 @@ export const useBiddingStore = defineStore('bidding', () => {
   watch(planId, () => (selectedModule.value = null))
 
   const bookedSections = computed(() => Object.values(booked.value).map((id) => sections.find((s) => s.id === id)))
+  const archivedSelections = computed(() => bookedSections.value.filter(s => s?.archived).map(s => `${s.module} ${s.section}`))
   const allocated = computed(() => Object.values(bids.value).reduce((a, b) => a + (Number(b) || 0), 0))
 
   function sectionsFor(code) {
-    return sections.filter((s) => s.module === code && liveSections.has(s.id))
+    return sections.filter((s) => s.module === code && !s.archived && liveSections.has(s.id))
   }
 
   const clashes = computed(() => new Set([...findClashes(bookedSections.value), ...findExamClashes(bookedSections.value)].flat()))
 
   function swapSection(code, sectionId) {
-    if (isLocked(code)) return
+    if (isLocked(code) || !sections.some(s => s.id === sectionId && s.module === code && !s.archived && liveSections.has(s.id))) return
     const id = plan.value.id
     chosen.value[id] = { ...chosen.value[id], [code]: sectionId }
   }
@@ -145,6 +146,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   })
   const liveSections = reactive(new Set()) // section ids that came from the backend (only these can be saved in a cart)
   const fetched = new Set() // module codes already asked for
+  const cartLoads = new Map()
   const loadedCarts = new Set() // plan ids whose saved cart has been applied
 
   async function fetchModules(codes) {
@@ -187,21 +189,24 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   // The plan's saved cart: the section and e$ per module
   async function loadCart(id) {
-    const version = session
+    const version = session, term = round.value.term
     if (!id || loadedCarts.has(id)) return
-    loadedCarts.add(id)
-    try {
-      const cart = await api.cart(id, round.value.term)
-      if (version !== session) return
-      chosen.value[id] = {}
-      typed.value[id] = {}
-      cart.items.forEach((item) => {
-        chosen.value[id] = { ...chosen.value[id], [item.module]: item.sectionId }
-        typed.value[id] = { ...typed.value[id], [item.module]: item.amount }
-      })
-    } catch (error) {
-      if (version === session) { loadedCarts.delete(id); loadError.value = error.message }
-    }
+    if (cartLoads.has(id)) return cartLoads.get(id)
+    const pending = (async () => {
+      try {
+        const cart = await api.cart(id, term)
+        if (version !== session || term !== round.value.term) return
+        await fetchModules(cart.items.map(item => item.module))
+        if (version !== session || term !== round.value.term) return
+        chosen.value[id] = Object.fromEntries(cart.items.map(item => [item.module, item.sectionId]))
+        typed.value[id] = Object.fromEntries(cart.items.map(item => [item.module, item.amount]))
+        loadedCarts.add(id)
+      } catch (error) {
+        if (version === session && term === round.value.term) loadError.value = error.message
+      }
+    })()
+    cartLoads.set(id, pending)
+    try { await pending } finally { if (cartLoads.get(id) === pending) cartLoads.delete(id) }
   }
 
   async function load() {
@@ -210,7 +215,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     try {
       const nextRound = await api.round()
       if (version !== session) return
-      if (round.value.term !== nextRound.term) { liveSections.clear(); fetched.clear(); loadedCarts.clear(); chosen.value = {}; typed.value = {} }
+      if (round.value.term !== nextRound.term) { liveSections.clear(); fetched.clear(); loadedCarts.clear(); cartLoads.clear(); chosen.value = {}; typed.value = {} }
       round.value = nextRound
       loadError.value = ''
       online.value = !!nextRound.term
@@ -229,6 +234,33 @@ export const useBiddingStore = defineStore('bidding', () => {
   watch(planId, (id) => {
     if (online.value) loadCart(id)
   })
+
+  async function addRoomSection(roomId, sectionId, targetPlanId) {
+    const version = session
+    if (!planner.plans.some(plan => plan.id === targetPlanId)) throw new Error('Choose one of your degree plans.')
+    planId.value = targetPlanId
+    await load()
+    if (!online.value || !round.value.term) throw new Error('Connect the bidding planner before adding this section.')
+    if (!loadedCarts.has(targetPlanId)) throw new Error(loadError.value || 'Your saved cart could not be loaded. Try again.')
+    const term = round.value.term
+    const prepared = await api.roomHandoff(roomId, { sectionId, planId: targetPlanId, term })
+    if (version !== session) throw new Error('Your account changed. Please try again.')
+    await fetchModules([prepared.section.module])
+    if (version !== session || term !== round.value.term || targetPlanId !== plan.value.id) throw new Error('Your bidding context changed. Please try again.')
+    const section = sections.find(s => s.id === prepared.section.id && liveSections.has(s.id))
+    if (!section || prepared.term !== term) throw new Error('This section is not available in the bidding term.')
+    const others = bookedSections.value.filter(s => s && s.module !== section.module)
+    if (findClashes([section, ...others]).length || findExamClashes([section, ...others]).length) throw new Error('This section clashes with your current bidding choices. Review them first.')
+    const amount = typed.value[targetPlanId]?.[section.module] ?? MIN_BID
+    const total = others.reduce((sum, s) => sum + Number(bids.value[s.module] || 0), 0) + Number(amount)
+    if (!Number.isFinite(total) || total > user.balance) throw new Error('Adding this module would exceed your available bidding balance.')
+    chosen.value[targetPlanId] = { ...chosen.value[targetPlanId], [section.module]: section.id }
+    typed.value[targetPlanId] = { ...typed.value[targetPlanId], [section.module]: amount }
+    dropped.value[targetPlanId] = (dropped.value[targetPlanId] ?? []).filter(code => code !== section.module)
+    selectedModule.value = section.module
+    savedAt.value = null
+    return prepared
+  }
 
   // Take a module out of the cart (it stays in the What-If plan)
   function dropModule(code) {
@@ -250,6 +282,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       saveError.value = 'Connect to the server and select a catalogue term before saving your bids.'
       return false
     }
+    if (archivedSelections.value.length) { saveError.value = 'A selected section has been archived. Choose an active alternative or remove the module before saving.'; return false }
     if (clashes.value.size) { saveError.value = 'Resolve class or final-exam clashes before saving.'; return false }
     const items = Object.entries(booked.value).map(([code, sectionId]) => ({ module: code, sectionId, amount: Number(bids.value[code]) }))
     if (items.some(item => !Number.isFinite(item.amount) || item.amount < MIN_BID)) { saveError.value = `Bid at least e$ ${MIN_BID} for every module.`; return false }
@@ -284,6 +317,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     saving.value = false
     round.value = {term:null,round:null,closesAt:null,availableTerms:[],configured:false}
     loadedCarts.clear()
+    cartLoads.clear()
     fetched.clear()
     liveSections.clear()
   }, { flush: 'sync' })
@@ -312,6 +346,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     round,
     roundInfo,
     bookedSections,
+    archivedSelections,
     allocated,
     clashes,
     bidHistory,
@@ -320,6 +355,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     setBid,
     dropModule,
     load,
+    addRoomSection,
     save,
     slotLabel,
   }

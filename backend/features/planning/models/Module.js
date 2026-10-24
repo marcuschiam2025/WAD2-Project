@@ -1,9 +1,11 @@
 import mongoose from 'mongoose'
 
-// Catalogue entry, built from the SMU courses report by scripts/build-catalogue.js. Seeded, read-only.
+// Catalogue entry, built from the SMU courses report by scripts/build-catalogue.js. Seeded initially; staff edits are audited.
 const moduleSchema = new mongoose.Schema(
   {
     _id: { type: String, required: true }, // course code, e.g. IS460
+    archived: { type: Boolean, default: false },
+    revision: { type: Number, default: 0 },
     title: { type: String, required: true },
     cu: { type: Number, default: 1 },
     schoolId: { type: String, ref: 'School', default: null },

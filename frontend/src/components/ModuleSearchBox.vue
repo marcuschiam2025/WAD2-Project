@@ -19,7 +19,7 @@ const catalogue = useCatalogueStore()
 onMounted(() => props.live && catalogue.load())
 const all = computed(() =>
   (props.live && catalogue.online
-    ? Object.values(liveModules).map((m) => ({ code: m._id, name: m.title }))
+    ? Object.values(liveModules).filter(m => !m.archived).map((m) => ({ code: m._id, name: m.title }))
     : Object.values(modules)
   ).sort((a, b) => a.code.localeCompare(b.code)),
 )

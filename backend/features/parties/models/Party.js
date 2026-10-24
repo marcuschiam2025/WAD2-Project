@@ -10,6 +10,7 @@ const partySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     description: String,
+    revision: { type: Number, default: 0 },
     term: String, // pinned on the first saved ballot
     module: { type: String, required: true }, // module the party is bidding for
     inviteCode: { type: String, required: true, unique: true, uppercase: true },

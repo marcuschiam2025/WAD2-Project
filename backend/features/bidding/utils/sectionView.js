@@ -33,6 +33,7 @@ export function shortVenue(venue) {
 export function toSectionView(section) {
   return {
     id: section.sectionId,
+    archived: section.archived === true,
     module: section.module,
     section: section.section,
     day: section.day,

@@ -47,6 +47,26 @@ function query(params) {
 }
 
 export const api = {
+  adminRound: () => request('GET', '/admin/bidding-round'),
+  saveAdminRound: data => request('PUT', '/admin/bidding-round', data),
+  adminModules: (params = {}) => request('GET', `/admin/modules${query(params)}`),
+  adminModule: (code) => request('GET', `/admin/modules/${encodeURIComponent(code)}`),
+  createAdminModule: (data) => request('POST', '/admin/modules', data),
+  updateAdminModule: (code, data) => request('PUT', `/admin/modules/${encodeURIComponent(code)}`, data),
+  archiveAdminModule: (code, revision) => request('POST', `/admin/modules/${encodeURIComponent(code)}/archive`, { revision }),
+  restoreAdminModule: (code, revision) => request('POST', `/admin/modules/${encodeURIComponent(code)}/restore`, { revision }),
+  deleteAdminModule: (code, revision) => request('DELETE', `/admin/modules/${encodeURIComponent(code)}`, { revision }),
+  adminSections: (module, term) => request('GET', `/admin/sections${query({ module, term })}`),
+  createAdminSection: (data) => request('POST', '/admin/sections', data),
+  updateAdminSection: (data) => request('PUT', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}`, data),
+  archiveAdminSection: (data) => request('POST', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/archive`, { revision: data.revision }),
+  restoreAdminSection: (data) => request('POST', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/restore`, { revision: data.revision }),
+  adminCurricula: () => request('GET', '/admin/curricula'),
+  adminCurriculum: (id) => request('GET', `/admin/curricula/${encodeURIComponent(id)}`),
+  updateAdminTrack: (major, id, data) => request('PUT', `/admin/curricula/${encodeURIComponent(major)}/tracks/${encodeURIComponent(id)}`, data),
+  updateAdminRequirement: (major, id, data) => request('PUT', `/admin/curricula/${encodeURIComponent(major)}/requirements/${encodeURIComponent(id)}`, data),
+  adminOverview: () => request('GET', '/admin'),
+  adminAudit: (before) => request('GET', `/admin/audit${query({ before })}`),
   // Users / profile
   me: () => request('GET', '/users/me'),
   updateMe: (data) => request('PATCH', '/users/me', data),
@@ -83,6 +103,10 @@ export const api = {
   joinRoom: (inviteCode) => request('POST', '/parties/join', { inviteCode }),
   leaveRoom: (id) => request('DELETE', `/parties/${id}/members/me`),
   vote: (id, sectionIds, term) => request('PUT', `/parties/${id}/votes`, { sectionIds, term }),
+  confirmRoom: (id, sectionId, revision) => request('POST', `/parties/${id}/finalise`, { sectionId, revision }),
+  removeRoomMember: (id, memberId, revision) => request('DELETE', `/parties/${id}/members/${memberId}`, { revision }),
+  transferRoom: (id, userId, revision) => request('POST', `/parties/${id}/owner`, { userId, revision }),
+  roomHandoff: (id, data) => request('POST', `/parties/${id}/handoff`, data),
   roomVotes: (id) => request('GET', `/parties/${id}/votes`),
   roomUpdates: (id, since) => request('GET', `/parties/${id}/updates?since=${since}`),
 
