@@ -1,5 +1,5 @@
 import { httpError } from '../../middleware/errorHandler.js'
-import { canonicalTerm, normalizeSection } from '../bidding/utils/sectionData.js'
+import { canonicalTerm, normalizeSection, termLabel, INSTRUCTOR_SEPARATOR } from '../bidding/utils/sectionData.js'
 import { moduleCode } from './modules.service.js'
 import { revisionFilter } from './changes.js'
 const fail = message => { throw httpError(400, message) }
@@ -26,7 +26,8 @@ export function validateSectionInput(input) {
   const identity = sectionIdentity(input)
   const capacity = input.capacity ?? null
   if (capacity !== null && (!Number.isSafeInteger(capacity) || capacity < 1 || capacity > 10000)) fail('Capacity must be a positive whole number, or blank if unknown')
-  if (!Array.isArray(input.classSlots) || input.classSlots.length < 1 || input.classSlots.length > 14) fail('Add between 1 and 14 weekly meetings')
+  // 0 is allowed: work-study electives and SMU-X projects have no fixed class time
+  if (!Array.isArray(input.classSlots) || input.classSlots.length > 14) fail('Add up to 14 weekly meetings')
   const classSlots = input.classSlots.map(slot => {
     if (!slot || Object.keys(slot).some(key => !['day', 'start', 'end', 'venue'].includes(key)) || !days.includes(slot.day)) fail('Invalid weekly meeting')
     return { day: slot.day, ...period(slot) }
@@ -46,8 +47,23 @@ export function validateSectionInput(input) {
   }
   return { ...identity, instructor: text(input.instructor ?? '', 'instructor'), capacity, classSlots, finalExam }
 }
+// The editor's input in the stored catalogue format (see scripts/build-sections.js and models/Section.js).
+// Fields the editor doesn't show (title, topic, session, dates) are left as they are on update.
+export function toStoredSection(data) {
+  const instructors = data.instructor.split(INSTRUCTOR_SEPARATOR.trim()).map(name => name.trim()).filter(Boolean)
+  return {
+    sectionId: `${data.moduleCode}-${data.sectionCode}`,
+    module: data.moduleCode,
+    section: data.sectionCode,
+    term: termLabel(data.termKey),
+    instructors,
+    capacity: data.capacity,
+    meetings: data.classSlots.map(slot => ({ day: days.indexOf(slot.day), start: slot.start, end: slot.end, venue: slot.venue || null })),
+    finalExam: data.finalExam,
+  }
+}
 export function sectionSnapshot(raw) {
-  return Object.fromEntries(['_id', 'moduleCode', 'termKey', 'sectionCode', 'instructor', 'capacity', 'classSlots', 'finalExam', 'sectionId', 'module', 'term', 'section', 'day', 'slot', 'prof', 'venue', 'exam', 'revision', 'archived'].filter(key => raw[key] !== undefined).map(key => [key, raw[key]]))
+  return Object.fromEntries(['_id', 'moduleCode', 'termKey', 'sectionCode', 'instructor', 'instructors', 'capacity', 'classSlots', 'meetings', 'finalExam', 'sectionId', 'module', 'term', 'section', 'day', 'slot', 'prof', 'venue', 'exam', 'revision', 'archived'].filter(key => raw[key] !== undefined).map(key => [key, raw[key]]))
 }
 export function sectionEditorView(raw) {
   const normalized = normalizeSection(raw)
@@ -71,7 +87,8 @@ export function createSectionEditor({ change, read, activeModule, insert, update
       if (!creating && (before.revision ?? 0) !== input.revision) throw httpError(409, 'Section changed. Reload before saving.')
       if (creating && !await activeModule(data.moduleCode, session)) fail('Choose an active module from the catalogue')
       if (before && !before.moduleCode && before.exam && before.exam !== 'No final exam' && !data.finalExam) fail('This legacy section has an exam note. Enter its structured exam date and times before saving.')
-      const after = creating ? await insert({ _id: id, ...data, revision: 0 }, session) : await update(before, data, session)
+      const stored = toStoredSection(data)
+      const after = creating ? await insert({ ...stored, archived: false, revision: 0 }, session) : await update(before, stored, session)
       if (!after) throw httpError(409, 'Section changed. Reload before saving.')
       return { before: before ? sectionSnapshot(before) : null, after: sectionSnapshot(after) }
     })

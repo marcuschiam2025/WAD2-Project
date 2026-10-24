@@ -9,7 +9,27 @@ test('section validation retains all meetings, Singapore exam date and rejects b
   const data = validateSectionInput(input)
   assert.equal(normalizeSection(data).examPeriod.date, '2027-04-20')
   assert.equal(data.classSlots.length, 2)
-  for (const bad of [{ ...input, capacity: -1 }, { ...input, classSlots: [] }, { ...input, classSlots: [{ day: 'MON', start: '11:00', end: '10:00' }] }, { ...input, finalExam: { ...input.finalExam, date: '2027-02-30' } }, { ...input, classSlots: [input.classSlots[0], input.classSlots[0]] }, { ...input, revision: '0' }, { ...input, archived: true }]) assert.throws(() => validateSectionInput(bad), { status: 400 })
+  // Work-study and SMU-X sections have no weekly meetings
+  assert.equal(validateSectionInput({ ...input, classSlots: [] }).classSlots.length, 0)
+  for (const bad of [{ ...input, capacity: -1 }, { ...input, classSlots: [{ day: 'MON', start: '11:00', end: '10:00' }] }, { ...input, finalExam: { ...input.finalExam, date: '2027-02-30' } }, { ...input, classSlots: [input.classSlots[0], input.classSlots[0]] }, { ...input, revision: '0' }, { ...input, archived: true }]) assert.throws(() => validateSectionInput(bad), { status: 400 })
+})
+test('the editor saves sections in the catalogue format that build-sections writes', async () => {
+  const { validateSectionInput, toStoredSection } = await import('./sections.service.js')
+  const stored = toStoredSection(validateSectionInput({ ...input, instructor: 'LEE, YUN; KELLY NGO' }))
+  assert.equal(stored.sectionId, 'IS216-G1')
+  assert.equal(stored.term, 'AY26/27 T2')
+  assert.deepEqual(stored.instructors, ['LEE, YUN', 'KELLY NGO'])
+  assert.deepEqual(stored.meetings[1], { day: 4, start: '09:00', end: '10:30', venue: 'B' })
+  const read = normalizeSection(stored)
+  assert.equal(read.prof, 'LEE, YUN; KELLY NGO')
+  assert.equal(read.sessions.length, 2)
+  assert.equal(read.examPeriod.date, '2027-04-20')
+})
+test('catalogue sections without meetings read with no sessions', () => {
+  const read = normalizeSection({ sectionId: 'IS483-G1', module: 'IS483', term: 'AY26/27 T2', section: 'G1', meetings: [], instructors: ['KYONG JIN SHIM'] })
+  assert.deepEqual(read.sessions, [])
+  assert.equal(read.day, null)
+  assert.equal(read.exam, 'No final exam')
 })
 test('section updates use audit transaction and loaded revision without changing legacy section links', async () => {
   const { createSectionEditor } = await import('./sections.service.js').catch(() => ({}))

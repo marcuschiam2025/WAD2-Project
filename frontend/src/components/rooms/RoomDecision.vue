@@ -1,6 +1,7 @@
 <script setup>
 // Accept card for a room: once everyone has voted, the section with the most votes can be accepted.
 // A tie means accepting exactly one of the tied sections. Everything can be undone or switched.
+import { meetingLabel } from '@core/utils/clash'
 import { computed } from 'vue'
 import { useRoomsStore } from '@core/stores/rooms'
 import { days, slots, sections } from '@core/data/bidding'
@@ -16,7 +17,7 @@ const rooms = useRoomsStore()
 const room = computed(() => rooms.getRoom(props.roomId))
 const state = computed(() => rooms.roomState(room.value))
 
-const when = (s) => `${days[s.day].slice(0, 3)} ${slots[s.slot].start}–${slots[s.slot].end}`
+const when = meetingLabel
 const leaders = computed(() =>
   state.value.leaders.map((id) => {
     const voters = rooms.votersOf(room.value, id).map(rooms.person)

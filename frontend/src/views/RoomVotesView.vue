@@ -1,4 +1,5 @@
 <script setup>
+import { meetingLabel } from '@core/utils/clash'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoomsStore } from '@core/stores/rooms'
@@ -33,7 +34,7 @@ const ranking = computed(() => [...rows.value].sort((a, b) => b.count - a.count 
 const votedCount = computed(() => new Set(rows.value.flatMap((r) => r.voters.map((v) => v.id))).size)
 const totalVotes = computed(() => rows.value.reduce((a, r) => a + r.count, 0))
 
-const when = (s) => `${days[s.day].slice(0, 3)} ${slots[s.slot].start}–${slots[s.slot].end}`
+const when = meetingLabel
 const cardsAt = (day, slot) => rows.value.filter((r) => r.section.day === day && r.section.slot === slot)
 const names = (r) => r.voters.map((v) => v.short).join(', ')
 

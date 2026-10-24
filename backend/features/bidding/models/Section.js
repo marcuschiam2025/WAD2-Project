@@ -42,8 +42,11 @@ const sectionSchema = new mongoose.Schema({
   meetings: [meetingSchema],
   startDate: String, // YYYY-MM-DD
   endDate: String,
-  exam: String, // not in the BOSS timetable export yet
+  exam: String, // free-text exam note on older rows; finalExam is the structured version
+  finalExam: { date: Date, start: String, end: String, venue: String }, // set by staff in the admin panel
   capacity: Number,
+  archived: { type: Boolean, default: false }, // staff archive: hidden from new choices, kept for saved carts
+  revision: { type: Number, default: 0 }, // bumped on every admin edit, so two admins can't overwrite each other
 })
 
 // MongoDB has no foreign keys, so check the module exists before a section is saved.

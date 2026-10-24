@@ -1,5 +1,6 @@
 <script setup>
 // Timetable of a module's sections where a room member ticks the slots they'd take.
+import { meetingLabel } from '@core/utils/clash'
 import { computed } from 'vue'
 import { days, slots, sections } from '@core/data/bidding'
 import { moduleName } from '@core/data/catalogue'
@@ -21,7 +22,7 @@ function toggle(id) {
   selected.value = selected.value.includes(id) ? selected.value.filter((x) => x !== id) : [...selected.value, id]
 }
 
-const label = (s) => `${days[s.day].slice(0, 3)} ${slots[s.slot].start}–${slots[s.slot].end}`
+const label = meetingLabel
 </script>
 
 <template>
