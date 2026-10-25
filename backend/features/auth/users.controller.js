@@ -1,7 +1,7 @@
 // By the time these run, requireAuth has already put the logged-in user on req.user.
 
 // Fields a student may edit about themselves (role is deliberately not here)
-const EDITABLE = ['name', 'major', 'intakeYear', 'yearOfStudy', 'tracks', 'completedModules', 'basket', 'consents']
+const EDITABLE = ['name', 'major', 'intakeYear', 'yearOfStudy', 'tracks', 'completedModules', 'basket', 'consents','bossBalance']
 
 // GET /api/users/me
 export function getProfile(req, res) {

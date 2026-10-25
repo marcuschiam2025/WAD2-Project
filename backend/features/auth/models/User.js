@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema(
     major: { type: String, default: 'Information Systems' },
     intakeYear: Number, // e.g. 2025, decides which track requirements apply
     yearOfStudy: { type: Number, min: 1, max: 5 },
+    bossBalance: { type: Number, min: 0, default: null }, //idk if we want to set a default here in case a user has not set their credits, but I think the logic could be handled somewhere else
     tracks: [String], // track codes, e.g. ['BA', 'SMT']; empty = undecided
     completedModules: [String], // module codes, entered manually
     basket: [String], // modules saved from match results for the What-If Planner

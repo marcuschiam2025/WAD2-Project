@@ -58,7 +58,7 @@ export async function createParty(req, res) {
   const memberEmails = req.body.memberEmails || [];
   const emails = memberEmails.map((email) => String(email).toLowerCase()) //convert emails to lowercase within the list
   const invitees = await User.find({ email: { $in: emails } })//goes through the list find invited classmates, puts it into an object
-  const blocked = [];
+  const blocked = []; // different from banned. block is not saved to the mongoDB
 
 
   if (!name || !module || !termKey) {
@@ -243,6 +243,14 @@ export async function saveVotes(req, res) {
 
   await party.save();
   res.json(party.votes);
+}
+
+// DELETE /api/parties/:id/votes — take my votes back
+export async function clearVotes(req, res) {
+  const party = req.party
+  party.votes = party.votes.filter((vote) => !vote.user.equals(req.user._id))
+  await party.save()
+  res.status(204).end()
 }
 
 // PUT /api/parties/:id/my-section { sectionId, status } — the one section I'm going for
