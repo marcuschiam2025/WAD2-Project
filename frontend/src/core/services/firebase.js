@@ -1,4 +1,7 @@
 let client
+// Lets BidMaxxer create and edit events, without reading or changing the student's other calendars
+const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
+let calendarToken = null
 export async function firebaseClient() {
   if (!client) client = (async () => {
     const [{ initializeApp, getApps }, sdk] = await Promise.all([import('firebase/app'), import('firebase/auth')])
@@ -19,7 +22,29 @@ export const authClient = {
     provider.setCustomParameters({ prompt: 'select_account' })
     return (await sdk.signInWithPopup(sdk.auth, provider)).user
   },
+  // Asks Google for permission to add events to the signed-in student's own calendar and returns an
+  // OAuth access token for it. Call it straight from a click so the popup isn't blocked. Google access
+  // tokens last about an hour; this one is kept in memory only, so a later export may ask again.
+  async calendarAccessToken() {
+    if (calendarToken && calendarToken.expires > Date.now()) return calendarToken.value
+    const sdk = await firebaseClient()
+    const user = sdk.auth.currentUser
+    if (!user) throw new Error('Sign in before adding classes to Google Calendar.')
+    const provider = new sdk.GoogleAuthProvider()
+    provider.addScope(CALENDAR_SCOPE)
+    provider.setCustomParameters({ login_hint: user.email ?? '' })
+    const result = await sdk.reauthenticateWithPopup(user, provider)
+    const value = sdk.GoogleAuthProvider.credentialFromResult(result)?.accessToken
+    if (!value) throw new Error('Google did not return calendar access. Please try again.')
+    calendarToken = { value, expires: Date.now() + 50 * 60 * 1000 }
+    return value
+  },
+  // After Google refuses the token (e.g. the calendar box was unticked), so the next try asks again
+  forgetCalendarToken() {
+    calendarToken = null
+  },
   async signOut() {
+    calendarToken = null
     const sdk = await firebaseClient()
     await sdk.signOut(sdk.auth)
   },

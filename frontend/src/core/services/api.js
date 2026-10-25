@@ -128,5 +128,7 @@ export const api = {
   validateCart: (sectionIds) => request('POST', '/bidding/validate-cart', { sectionIds }),
 
   // Google Calendar
-  exportCalendar: (accessToken, sectionIds, termStart, weeks = 13) => request('POST', '/calendar/export', { accessToken, sectionIds, termStart, weeks }),
+  // termStart (Monday of the first teaching week) is only needed for sections without teaching dates
+  exportCalendar: (accessToken, sectionIds, termStart, weeks = 13) =>
+    request('POST', '/calendar/export', { accessToken, sectionIds, termStart: termStart || undefined, weeks }),
 }

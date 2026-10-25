@@ -20,3 +20,19 @@ test('calendar export preserves all exact weekly meetings, dates, unique IDs and
   assert.throws(()=>buildIcs([], '2026-08-17',13),/sections/)
  } finally {await server.close()}
 })
+
+test('calendar export uses each section\'s own teaching dates and only needs a Monday for sections without them',async()=>{
+ const server=await createServer({configFile:false,server:{middlewareMode:true,hmr:false,ws:false},optimizeDeps:{noDiscovery:true,include:[]},appType:'custom'})
+ try {
+  const {buildIcs,hasTeachingDates}=await server.ssrLoadModule('/src/core/utils/ics.js')
+  const dated={id:'IS442-G1',module:'IS442',section:'G1',name:'Enterprise Solution Delivery',startDate:'2027-01-11',endDate:'2027-04-18',sessions:[{day:2,start:'19:00',end:'22:15',venue:'SCIS SR 3-4'}]}
+  const ics=buildIcs([dated])
+  assert.ok(ics.includes('DTSTART;TZID=Asia/Singapore:20270113T190000'))
+  assert.ok(ics.includes('RRULE:FREQ=WEEKLY;UNTIL=20270418T155959Z'))
+  assert.ok(!ics.includes('COUNT='))
+  assert.equal(hasTeachingDates({startDate:'2027-02-30',endDate:'2027-04-18'}),false)
+  const undated={...dated,id:'IS111-G1',module:'IS111',startDate:null,endDate:null}
+  assert.throws(()=>buildIcs([dated,undated]),/date/)
+  assert.ok(buildIcs([dated,undated],'2027-01-11',13).includes('COUNT=13'))
+ } finally {await server.close()}
+})
