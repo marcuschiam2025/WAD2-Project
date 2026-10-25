@@ -25,12 +25,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }, // adds createdAt and updatedAt
 )
 
+const User = mongoose.model('User', userSchema)
+
 // Finds the user for a verified Firebase login, or creates them on their first login.
-// Usage: const user = await User.findOrCreate(firebaseUser)
-userSchema.statics.findOrCreate = async function (firebaseUser) {
-  let user = await this.findOne({ firebaseUid: firebaseUser.uid })
+// Usage: const user = await findOrCreateUser(firebaseUser)
+export async function findOrCreateUser(firebaseUser) {
+  let user = await User.findOne({ firebaseUid: firebaseUser.uid })
   if (!user) {
-    user = await this.create({
+    user = await User.create({
       firebaseUid: firebaseUser.uid,
       email: firebaseUser.email,
       name: firebaseUser.name,
@@ -40,4 +42,4 @@ userSchema.statics.findOrCreate = async function (firebaseUser) {
   return user
 }
 
-export default mongoose.model('User', userSchema)
+export default User

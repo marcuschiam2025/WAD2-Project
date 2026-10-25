@@ -1,5 +1,5 @@
 import { auth } from '../config/firebase.js'
-import User from '../features/auth/models/User.js'
+import findOrCreateUser from '../features/auth/models/User.js'
 
 const ALLOWED_DOMAIN = '@smu.edu.sg'
 
@@ -29,7 +29,7 @@ export async function requireAuth(req, res, next) {
   }
 
   // 3. Get the user from MongoDB (the database code lives in models/User.js)
-  req.user = await User.findOrCreate(firebaseUser)
+  req.user = await findOrCreate(firebaseUser)
 
   // 4. Hand over to the next function
   next()

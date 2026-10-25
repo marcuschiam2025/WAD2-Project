@@ -1,184 +1,332 @@
-import crypto from 'node:crypto'
-import Party from './models/Party.js'
-import User from '../auth/models/User.js'
-import Module from '../planning/models/Module.js'
-import Section from '../bidding/models/Section.js'
-import { unmetGroups } from '../planning/utils/requisites.js'
-import { httpError } from '../../middleware/errorHandler.js'
+import crypto from "crypto"; //apparently this is more secure than the math.random?
+import Party from "./models/Party.js";
+import User from "../auth/models/User.js";
+import Module from "../planning/models/Module.js";
+import Section from "../bidding/models/Section.js";
+import { unmetGroups } from "../planning/utils/requisites.js";
+import { httpError } from "../../middleware/errorHandler.js";
 
-const MEMBER_FIELDS = 'name email'
+const MEMBER_FIELDS = "name email";
+const SECTION_STATUSES = ["considering", "bidding", "enrolled"];
 
-// Unmet prerequisite groups as text, e.g. ['IS111 or CS101']
 async function missingPrereqs(user, moduleCode) {
-  const mod = await Module.findById(moduleCode).lean()
-  return unmetGroups(mod?.prerequisites, (c) => user.completedModules.includes(c)).map((g) => g.join(' or '))
+  const mod = await Module.findById(moduleCode).lean();
+  const groups = unmetGroups(mod?.prerequisites, (code) =>
+    user.completedModules.includes(code),
+  );
+  return groups.map((group) => group.join(" or "));
 }
 
-async function uniqueInviteCode() {
-  for (;;) {
-    const code = crypto.randomBytes(2).toString('hex').toUpperCase()
-    if (!(await Party.exists({ inviteCode: code }))) return code
+function isMember(party, userId) {
+  return party.members.some((memberId) => memberId.equals(userId));
+}
+
+async function generateInviteCode(length = 6) {
+  const CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  while (true) {
+    let code = "";
+    for (let i = 0; i < length; i++) {
+      code += CHARS[crypto.randomInt(CHARS.length)];
+    }
+    const taken = await Party.exists({ inviteCode: code });
+    if (!taken) {
+      return code;
+    }
   }
 }
 
-const isMember = (party, user) => party.members.some((m) => (m._id ?? m).equals(user._id))
-const isOwner = (party, user) => party.owner.equals(user._id)
-
-async function findPartyForMember(req) {
-  const party = await Party.findById(req.params.id)
-  if (!party) throw httpError(404, 'Party not found')
-  if (!isMember(party, req.user)) throw httpError(403, 'You are not a member of this party')
-  return party
+function removeUserFromParty(party, userId) {
+  party.members = party.members.filter((memberId) => !memberId.equals(userId));
+  party.votes = party.votes.filter((vote) => !vote.user.equals(userId));
+  party.memberSections = party.memberSections.filter(
+    (entry) => !entry.user.equals(userId),
+  );
 }
 
-// GET /api/parties — parties I'm in
 export async function listParties(req, res) {
   const parties = await Party.find({ members: req.user._id })
-    .select('name description module inviteCode maxMembers members updatedAt')
-    .populate('members', MEMBER_FIELDS)
-    .sort({ updatedAt: -1 })
-  res.json(parties)
+    .select(
+      "name description module termKey inviteCode maxMembers members updatedAt",
+    )
+    .populate("members", MEMBER_FIELDS)
+    .sort({ updatedAt: -1 });
+  res.json(parties);
 }
 
-// POST /api/parties { name, description, module, maxMembers, memberEmails? }
-// Invitees missing the module's prerequisites are returned in `blocked` instead of being added.
 export async function createParty(req, res) {
-  const { name, description, module, maxMembers, memberEmails = [] } = req.body
-  const party = new Party({
+  const { name, description, module, termKey, maxMembers } = req.body;
+  const memberEmails = req.body.memberEmails || [];
+  const emails = memberEmails.map((email) => String(email).toLowerCase()) //convert emails to lowercase within the list
+  const invitees = await User.find({ email: { $in: emails } })//goes through the list find invited classmates, puts it into an object
+  const blocked = [];
+
+
+  if (!name || !module || !termKey) {
+    throw httpError(400, "name, module and termKey are required");
+  }
+
+  const newParty = new Party({
     name,
     description,
     module,
+    termKey,
     maxMembers,
-    inviteCode: await uniqueInviteCode(),
+    inviteCode: await generateInviteCode(),
     owner: req.user._id,
     members: [req.user._id],
-  })
+  });
 
-  const blocked = []
-  const invitees = await User.find({ email: { $in: memberEmails.map((e) => String(e).toLowerCase()) } })
+  //invites the members (invitees is a list of objects, each object being a user)
   for (const invitee of invitees) {
-    if (party.members.length >= party.maxMembers) break
-    const missing = await missingPrereqs(invitee, module)
-    if (missing.length) blocked.push({ email: invitee.email, name: invitee.name, missing })
-    else if (!isMember(party, invitee)) party.members.push(invitee._id)
+    if (party.members.length >= party.maxMembers) break; 
+
+    const missing = await missingPrereqs(invitee, module);
+
+    if (missing.length > 0) {
+      blocked.push({ email: invitee.email, name: invitee.name, missing });
+    } else if (!isMember(party, invitee._id)) {
+      party.members.push(invitee._id);
+    }
   }
 
-  await party.save()
-  res.status(201).json({ party, blocked })
+  await newParty.save();
+  res.status(201).json({ party, blocked });
 }
 
-// POST /api/parties/join { inviteCode }
 export async function joinParty(req, res) {
-  const party = await Party.findOne({ inviteCode: String(req.body.inviteCode ?? '').toUpperCase() })
-  if (!party) throw httpError(404, 'No party found for that invite code')
-  if (isMember(party, req.user)) return res.json(party)
-  if (party.banned.some((id) => id.equals(req.user._id))) throw httpError(403, 'You cannot join this party')
-  if (party.members.length >= party.maxMembers) throw httpError(409, 'This party is full')
-
-  const missing = await missingPrereqs(req.user, party.module)
-  if (missing.length) {
-    return res.status(403).json({ error: `Missing prerequisite for ${party.module}`, missing })
+  const inviteCode = String(req.body.inviteCode || "")
+    .trim()
+    .toUpperCase();
+  const party = await Party.findOne({ inviteCode });
+  if (!party) {
+    throw httpError(404, "No party found for that invite code");
   }
 
-  party.members.push(req.user._id)
-  await party.save()
-  res.json(party)
+  const userId = req.user._id;
+  if (isMember(party, userId)) {
+    return res.json(party); // already in: nothing to do
+  }
+  if (party.banned.some((bannedId) => bannedId.equals(userId))) {
+    throw httpError(403, "You cannot join this party");
+  }
+  if (party.members.length >= party.maxMembers) {
+    throw httpError(409, "This party is full");
+  }
+
+  const missing = await missingPrereqs(req.user, party.module);
+  if (missing.length > 0) {
+    return res
+      .status(403)
+      .json({ error: `Missing prerequisite for ${party.module}`, missing });
+  }
+
+  party.members.push(userId);
+  await party.save();
+  res.json(party);
 }
 
-// GET /api/parties/:id
+// GET /api/parties/:id  (loadParty + requireMember run first)
 export async function getParty(req, res) {
-  const party = await findPartyForMember(req)
+  const party = req.party;
   await party.populate([
-    { path: 'members', select: MEMBER_FIELDS },
-    { path: 'importedPlans.plan' },
-    { path: 'comments.user', select: MEMBER_FIELDS },
-  ])
-  res.json(party)
+    { path: "members", select: MEMBER_FIELDS },
+    { path: "votes.user", select: MEMBER_FIELDS },
+    { path: "memberSections.user", select: MEMBER_FIELDS },
+  ]);
+  res.json(party);
 }
 
-// GET /api/parties/:id/updates?since=<ISO date> — short-polling endpoint; 204 when nothing changed
-export async function getUpdates(req, res) {
-  const party = await findPartyForMember(req)
-  const since = new Date(req.query.since ?? 0)
-  if (party.updatedAt <= since) return res.status(204).end()
-  await party.populate('members', MEMBER_FIELDS)
-  res.json(party)
+// DELETE /api/parties/:id  (owner only)
+export async function deleteParty(req, res) {
+  await req.party.deleteOne();
+  res.status(204).end();
 }
+
+// GET /api/parties/:id/updates?since=<ISO date>
+// Short-polling: 204 (no body) when nothing changed since the given time
+export async function getUpdates(req, res) {
+  const party = req.party;
+  const since = new Date(req.query.since || 0);
+
+  if (party.updatedAt <= since) {
+    return res.status(204).end();
+  }
+  await party.populate([
+    { path: "members", select: MEMBER_FIELDS },
+    { path: "memberSections.user", select: MEMBER_FIELDS },
+  ]);
+  res.json(party);
+}
+
+// ---------------------------------------------------------------------------
+// Members
+// ---------------------------------------------------------------------------
 
 // DELETE /api/parties/:id/members/me — leave; the party is deleted when the last member leaves
 export async function leaveParty(req, res) {
-  const party = await findPartyForMember(req)
-  party.members = party.members.filter((m) => !m.equals(req.user._id))
-  party.votes = party.votes.filter((v) => !v.user.equals(req.user._id))
-  if (!party.members.length) await party.deleteOne()
-  else {
-    if (isOwner(party, req.user)) party.owner = party.members[0]
-    await party.save()
+  const party = req.party;
+  const userId = req.user._id;
+  const wasOwner = party.owner.equals(userId);
+
+  removeUserFromParty(party, userId);
+
+  if (party.members.length === 0) {
+    await party.deleteOne();
+  } else {
+    if (wasOwner) {
+      party.owner = party.members[0]; // longest-standing remaining member takes over
+    }
+    await party.save();
   }
-  res.status(204).end()
+  res.status(204).end();
 }
 
 // POST /api/parties/:id/ban { userId } — owner removes a member and blocks them from rejoining
 export async function banMember(req, res) {
-  const party = await findPartyForMember(req)
-  if (!isOwner(party, req.user)) throw httpError(403, 'Only the party owner can ban members')
-  party.members = party.members.filter((m) => String(m) !== req.body.userId)
-  if (!party.banned.some((id) => String(id) === req.body.userId)) party.banned.push(req.body.userId)
-  await party.save()
-  res.json(party)
+  const party = req.party;
+  const userId = req.body.userId;
+
+  if (!userId) {
+    throw httpError(400, "userId is required");
+  }
+  if (party.owner.equals(userId)) {
+    throw httpError(400, "The owner cannot ban themselves");
+  }
+
+  removeUserFromParty(party, userId);
+
+  const alreadyBanned = party.banned.some((bannedId) =>
+    bannedId.equals(userId),
+  );
+  if (!alreadyBanned) {
+    party.banned.push(userId);
+  }
+
+  await party.save();
+  res.json(party);
 }
 
-// PUT /api/parties/:id/votes { sectionIds } — my preferred slots for the party's module
+// DELETE /api/parties/:id/ban/:userId — owner lifts a ban (the user can then rejoin with the code)
+export async function unbanMember(req, res) {
+  const party = req.party;
+  party.banned = party.banned.filter(
+    (bannedId) => !bannedId.equals(req.params.userId),
+  );
+  await party.save();
+  res.json(party);
+}
+
+// ---------------------------------------------------------------------------
+// Sections: votes and "my section"
+// ---------------------------------------------------------------------------
+
+// PUT /api/parties/:id/votes { sectionIds } — sections I'd be happy with (replaces my old vote)
 export async function saveVotes(req, res) {
-  const party = await findPartyForMember(req)
-  const sectionIds = [...new Set(req.body.sectionIds ?? [])]
-  const valid = await Section.countDocuments({ sectionId: { $in: sectionIds }, module: party.module })
-  if (valid !== sectionIds.length) throw httpError(400, `All sections must belong to ${party.module}`)
+  const party = req.party;
+  const userId = req.user._id;
+  const sectionIds = [...new Set(req.body.sectionIds || [])]; // Set removes duplicates
 
-  const mine = party.votes.find((v) => v.user.equals(req.user._id))
-  if (mine) mine.sectionIds = sectionIds
-  else party.votes.push({ user: req.user._id, sectionIds })
-  await party.save()
-  res.json(party.votes)
+  const validCount = await Section.countDocuments({
+    sectionId: { $in: sectionIds },
+    module: party.module,
+  });
+  if (validCount !== sectionIds.length) {
+    throw httpError(400, `All sections must belong to ${party.module}`);
+  }
+
+  const myVote = party.votes.find((vote) => vote.user.equals(userId));
+  if (myVote) {
+    myVote.sectionIds = sectionIds;
+  } else {
+    party.votes.push({ user: userId, sectionIds });
+  }
+
+  await party.save();
+  res.json(party.votes);
 }
 
-// GET /api/parties/:id/votes — per-section counts and voters
-export async function getVotes(req, res) {
-  const party = await findPartyForMember(req)
-  await party.populate('votes.user', MEMBER_FIELDS)
-  const sections = await Section.find({ module: party.module }).sort({ day: 1, slot: 1 })
-  res.json(
-    sections.map((s) => {
-      const voters = party.votes.filter((v) => v.sectionIds.includes(s.sectionId)).map((v) => v.user)
-      return { section: s, count: voters.length, voters, finalised: party.finalisedSection === s.sectionId }
-    }),
-  )
+// PUT /api/parties/:id/my-section { sectionId, status } — the one section I'm going for
+export async function setMySection(req, res) {
+  const party = req.party;
+  const userId = req.user._id;
+  const { sectionId } = req.body;
+  const status = req.body.status || "considering";
+
+  if (!sectionId) {
+    throw httpError(400, "sectionId is required");
+  }
+  if (!SECTION_STATUSES.includes(status)) {
+    throw httpError(
+      400,
+      `status must be one of: ${SECTION_STATUSES.join(", ")}`,
+    );
+  }
+  const sectionExists = await Section.exists({
+    sectionId,
+    module: party.module,
+  });
+  if (!sectionExists) {
+    throw httpError(400, `That section does not belong to ${party.module}`);
+  }
+
+  const mine = party.memberSections.find((entry) => entry.user.equals(userId));
+  if (mine) {
+    mine.sectionId = sectionId;
+    mine.status = status;
+    mine.updatedAt = new Date();
+  } else {
+    party.memberSections.push({ user: userId, sectionId, status });
+  }
+
+  await party.save();
+  res.json(party.memberSections);
 }
 
-// POST /api/parties/:id/finalise { sectionId } — owner locks in the agreed slot
-export async function finaliseSection(req, res) {
-  const party = await findPartyForMember(req)
-  if (!isOwner(party, req.user)) throw httpError(403, 'Only the party owner can finalise a slot')
-  party.finalisedSection = req.body.sectionId
-  await party.save()
-  res.json(party)
+// DELETE /api/parties/:id/my-section — stop sharing my section
+export async function clearMySection(req, res) {
+  const party = req.party;
+  party.memberSections = party.memberSections.filter(
+    (entry) => !entry.user.equals(req.user._id),
+  );
+  await party.save();
+  res.status(204).end();
 }
 
-// PUT /api/parties/:id/plans { planIds } — share my What-If plans with the party
-export async function sharePlans(req, res) {
-  const party = await findPartyForMember(req)
-  party.importedPlans = [
-    ...party.importedPlans.filter((p) => !p.user.equals(req.user._id)),
-    ...(req.body.planIds ?? []).map((plan) => ({ user: req.user._id, plan })),
-  ]
-  await party.save()
-  res.json(party.importedPlans)
-}
+// GET /api/parties/:id/sections
+// Every section of the module, with who voted for it and who is going for it
+export async function getSectionSummary(req, res) {
+  const party = req.party;
+  await party.populate([
+    { path: "votes.user", select: MEMBER_FIELDS },
+    { path: "memberSections.user", select: MEMBER_FIELDS },
+  ]);
+  const sections = await Section.find({ module: party.module }).sort({
+    day: 1,
+    slot: 1,
+  });
 
-// POST /api/parties/:id/comments { module, text }
-export async function addComment(req, res) {
-  const party = await findPartyForMember(req)
-  party.comments.push({ user: req.user._id, module: req.body.module, text: req.body.text })
-  await party.save()
-  res.status(201).json(party.comments.at(-1))
+  const summary = [];
+  for (const section of sections) {
+    const voters = [];
+    for (const vote of party.votes) {
+      if (vote.sectionIds.includes(section.sectionId)) {
+        voters.push(vote.user);
+      }
+    }
+
+    const goingFor = [];
+    for (const entry of party.memberSections) {
+      if (entry.sectionId === section.sectionId) {
+        goingFor.push({
+          user: entry.user,
+          status: entry.status,
+          updatedAt: entry.updatedAt,
+        });
+      }
+    }
+
+    summary.push({ section, voteCount: voters.length, voters, goingFor });
+  }
+
+  res.json(summary);
 }

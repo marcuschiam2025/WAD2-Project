@@ -1,8 +1,8 @@
-import mongoose from 'mongoose'
+import mongoose from "mongoose";
 
-export const MAX_PARTY_SIZE = 8
+export const MAX_PARTY_SIZE = 8;
 
-const { ObjectId } = mongoose.Schema.Types
+const { ObjectId } = mongoose.Schema.Types;
 
 // A party of students planning and bidding for one module together.
 // updatedAt doubles as the cursor for the polling endpoint.
@@ -10,25 +10,53 @@ const partySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     description: String,
-    module: { type: String, required: true }, // module the party is bidding for
+    module: { type: String, required: true ,uppercase: true}, // module the party is bidding for
+    termKey: { type: String, required: true },
     inviteCode: { type: String, required: true, unique: true, uppercase: true },
-    owner: { type: ObjectId, ref: 'User', required: true },
+    owner: { type: ObjectId, ref: "User", required: true },
     maxMembers: { type: Number, min: 2, max: MAX_PARTY_SIZE, default: 6 },
-    members: [{ type: ObjectId, ref: 'User' }],
-    banned: [{ type: ObjectId, ref: 'User' }],
-    votes: [{ _id: false, user: { type: ObjectId, ref: 'User' }, sectionIds: [String] }],
-    finalisedSection: String,
-    importedPlans: [{ _id: false, user: { type: ObjectId, ref: 'User' }, plan: { type: ObjectId, ref: 'Plan' } }],
-    comments: [
+    members: [{ type: ObjectId, ref: "User" }],
+    banned: [{ type: ObjectId, ref: "User" }],
+
+    //vote from each member may not necesarily be the actual section they choose
+    votes: [
       {
-        user: { type: ObjectId, ref: 'User' },
-        module: String,
-        text: { type: String, required: true, maxlength: 500 },
-        createdAt: { type: Date, default: Date.now },
+        _id: false,
+        user: { type: ObjectId, ref: "User" },
+        sectionIds: [String],
       },
     ],
+
+    //memberSections refer to the actual section they bid for
+    memberSections: {
+      type: [
+        {
+          _id: false,
+          user: { type: ObjectId, ref: "User", required: true },
+          sectionId: { type: String, required: true },
+          status: {
+            type: String,
+            enum: ["considering", "bidding", "enrolled"],
+            default: "considering",
+          },
+          updatedAt: { type: Date, default: Date.now },
+        },
+      ],
+      validate: {
+        // at most one entry per member
+        validator(list) {
+          const ids = list.map((s) => s.user.toString());
+          return new Set(ids).size === ids.length;
+        },
+        message: "A member can only share one section",
+      },
+    },
   },
   { timestamps: true },
-)
+);
 
-export default mongoose.model('Party', partySchema)
+const Party = mongoose.model("Party", partySchema);
+
+export default Party;
+
+
