@@ -3,8 +3,9 @@ import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { useBiddingStore } from '@core/stores/bidding'
 import { useUserStore } from '@core/stores/user'
 import { api } from '@core/services/api'
+import { authClient } from '@core/services/firebase'
 import { moduleName } from '@core/data/catalogue'
-import { buildIcs, downloadFile } from '@core/utils/ics'
+import { buildIcs, downloadFile, hasTeachingDates } from '@core/utils/ics'
 import { findClashes, findExamClashes } from '@core/utils/clash'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -15,6 +16,8 @@ const copies = ref([])
 const loading = ref(false)
 const error = ref('')
 const exportError = ref('')
+const exportMessage = ref('')
+const adding = ref(null) // id of the saved plan being added to Google Calendar
 const termStart = ref('')
 const weeks = ref(13)
 let revision = 0
@@ -35,6 +38,9 @@ onBeforeUnmount(() => { revision++ })
 const modules = computed(() => [...new Set(copies.value.flatMap(copy => copy.items.map(item => item.module)))])
 const cell = (copy, code) => copy.items.find(item => item.module === code)
 const schedule = copy => copy.items.map(item => item.section).filter(Boolean)
+// Sections carry their own teaching dates; only plans with a section missing them need the manual dates
+const needsDates = copy => schedule(copy).some(section => !hasTeachingDates(section))
+const anyNeedsDates = computed(() => copies.value.some(needsDates))
 function blocked(copy) {
   if (!copy.items.length) return 'This saved cart is empty.'
   if (schedule(copy).some(section => section.archived)) return 'This saved cart contains an archived section. Review it in bidding before exporting.'
@@ -42,8 +48,32 @@ function blocked(copy) {
   if (findClashes(schedule(copy)).length || findExamClashes(schedule(copy)).length) return 'Saved sections now clash. Review this cart before exporting.'
   return ''
 }
+function googleError(err) {
+  if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return 'Google Calendar access was cancelled.'
+  if (err.code === 'auth/popup-blocked') return 'Your browser blocked the Google popup. Allow popups for this site and try again.'
+  if (err.code === 'auth/user-mismatch') return 'Choose the Google account you signed in to BidMaxxer with.'
+  return err.message
+}
+// Adds the plan's classes straight into the student's Google Calendar, next to their other commitments
+async function addToGoogle(copy) {
+  exportError.value = ''
+  exportMessage.value = ''
+  const reason = blocked(copy)
+  if (reason) { exportError.value = reason; return }
+  adding.value = copy.id
+  try {
+    const token = await authClient.calendarAccessToken()
+    const ids = schedule(copy).map(section => section.id)
+    const { created } = await api.exportCalendar(token, ids, needsDates(copy) ? termStart.value : '', weeks.value)
+    exportMessage.value = `Added ${created} weekly class series from ${copy.name} to your Google Calendar.`
+  } catch (err) {
+    if (/not granted/.test(err.message)) authClient.forgetCalendarToken()
+    exportError.value = googleError(err)
+  } finally { adding.value = null }
+}
 function exportCopy(copy) {
   exportError.value = ''
+  exportMessage.value = ''
   try {
     const reason = blocked(copy)
     if (reason) throw new Error(reason)
@@ -69,13 +99,17 @@ function exportCopy(copy) {
       </section>
       <template v-else>
         <section class="card flex flex-col gap-3 p-5">
-          <h2 class="text-lg font-semibold">Calendar dates</h2>
-          <p class="text-sm text-muted-foreground">Use your official teaching schedule. Downloads repeat each meeting weekly, including recess weeks and public holidays; adjust those dates after import. Final exams are not included.</p>
-          <div class="flex flex-wrap gap-4">
-            <label class="flex flex-col gap-1 text-sm">Monday of first teaching week<input v-model="termStart" type="date" class="rounded-md border border-border p-2" /></label>
-            <label class="flex flex-col gap-1 text-sm">Consecutive weeks<input v-model.number="weeks" type="number" min="1" max="20" class="w-32 rounded-md border border-border p-2" /></label>
-          </div>
-          <p class="text-xs text-muted-foreground">Import the .ics file into Google Calendar, Outlook or Apple Calendar. Re-importing may create duplicates.</p>
+          <h2 class="text-lg font-semibold">Calendar export</h2>
+          <p class="text-sm text-muted-foreground">Each class repeats weekly between its section's start and end dates from the class timetable, including recess weeks and public holidays; adjust those dates after adding them. Final exams are not included.</p>
+          <template v-if="anyNeedsDates">
+            <p class="text-sm">Some saved sections have no teaching dates yet. Enter your official teaching schedule for those.</p>
+            <div class="flex flex-wrap gap-4">
+              <label class="flex flex-col gap-1 text-sm">Monday of first teaching week<input v-model="termStart" type="date" class="rounded-md border border-border p-2" /></label>
+              <label class="flex flex-col gap-1 text-sm">Consecutive weeks<input v-model.number="weeks" type="number" min="1" max="20" class="w-32 rounded-md border border-border p-2" /></label>
+            </div>
+          </template>
+          <p class="text-xs text-muted-foreground">"Add to Google Calendar" asks Google for permission to add events, then puts the classes straight into your calendar so you can see them next to your other commitments. Or download the .ics file for Google Calendar, Outlook or Apple Calendar. Adding the same plan twice creates duplicates.</p>
+          <p v-if="exportMessage" role="status" class="text-sm text-success">{{ exportMessage }}</p>
           <p v-if="exportError" role="alert" class="text-sm text-destructive">{{ exportError }}</p>
         </section>
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -85,7 +119,8 @@ function exportCopy(copy) {
             <p class="text-sm text-muted-foreground">{{ copy.items.length }} modules · {{ copy.term }}</p>
             <p v-if="copy.updatedAt" class="text-xs text-muted-foreground">Saved {{ new Date(copy.updatedAt).toLocaleString() }}</p>
             <p v-if="blocked(copy)" class="text-sm text-destructive">{{ blocked(copy) }}</p>
-            <BaseButton :disabled="!!blocked(copy) || !termStart" @click="exportCopy(copy)">Download calendar (.ics)</BaseButton>
+            <BaseButton :disabled="!!blocked(copy) || (needsDates(copy) && !termStart) || adding !== null" @click="addToGoogle(copy)">{{ adding === copy.id ? 'Adding to Google Calendar…' : 'Add to Google Calendar' }}</BaseButton>
+            <BaseButton variant="outline" :disabled="!!blocked(copy) || (needsDates(copy) && !termStart)" @click="exportCopy(copy)">Download calendar (.ics)</BaseButton>
             <BaseButton variant="outline" :to="`/bidding?plan=${copy.planId}`">Edit bids</BaseButton>
           </article>
         </div>

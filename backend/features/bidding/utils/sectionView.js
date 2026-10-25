@@ -47,5 +47,7 @@ export function toSectionView(section) {
     capacity: section.capacity,
     examPeriod: section.examPeriod,
     exam: section.exam ?? 'No final exam',
+    startDate: section.startDate ?? null, // teaching dates, e.g. 2027-01-11 to 2027-04-18 (null for older rows)
+    endDate: section.endDate ?? null,
   }
 }
