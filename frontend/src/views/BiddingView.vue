@@ -32,11 +32,18 @@ watch(() => bidding.planId, id => {
 })
 const dragging = ref(null)
 
-// Modules whose section was accepted in a collab room are locked, and show the room's friends
-const friendsOf = (code) => {
+// A module booked in the section a collab room confirmed is locked to it, and shows the whole party on its card:
+// you first (with your ring), then the people you are bidding with. If several rooms confirmed the same section,
+// everyone from all of them.
+const partyOf = (code) => {
   const d = bidding.locked[code]
-  return d ? rooms.getRoom(d.roomId).members.filter((id) => id !== 'me').map(rooms.person) : []
+  if (!d) return []
+  const ids = new Set(d.roomIds.flatMap((roomId) => rooms.getRoom(roomId)?.members ?? []))
+  ids.delete('me')
+  return [rooms.person('me'), ...[...ids].map(rooms.person)]
 }
+// Just the others, for the sentence under the calendar
+const friendsOf = (code) => partyOf(code).filter((p) => !p.you)
 const lockedFocus = computed(() => (bidding.selectedModule ? (bidding.locked[bidding.selectedModule] ?? null) : null))
 
 // The timetable is the next semester of whichever What-If plan is picked here
@@ -184,12 +191,13 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
                   :variant="variantFor(s)"
                   :class="[isDimmed(s) && 'opacity-30 grayscale', bidding.isLocked(s.module) && bidding.selectedModule === s.module && 'ring-2 ring-success ring-offset-2']"
                 >
-                  <span v-if="friendsOf(s.module).length" class="mt-1 flex">
+                  <span v-if="partyOf(s.module).length" class="mt-1 flex">
                     <UserAvatar
-                      v-for="(f, i) in friendsOf(s.module)"
+                      v-for="(f, i) in partyOf(s.module)"
                       :key="f.id"
                       :initials="f.initials"
-                      :title="f.name"
+                      :title="f.you ? 'You' : f.name"
+                      :you="f.you"
                       class="ring-2 ring-success-tint"
                       :class="i > 0 && '-ml-1'"
                     />
@@ -224,8 +232,9 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
           </div>
           </div>
           <p v-if="lockedFocus" class="text-[13px] leading-normal">
-            <span class="font-mono font-bold">{{ lockedFocus.module }} {{ lockedFocus.sectionId.split('-')[1] }}</span> is locked because you accepted it in
-            {{ lockedFocus.roomName }}. Undo the accept in the room to swap sections.
+            <span class="font-mono font-bold">{{ lockedFocus.module }} {{ lockedFocus.sectionId.split(':').pop() }}</span> is locked because
+            {{ lockedFocus.roomName }} confirmed it, and you are bidding for it with
+            {{ friendsOf(lockedFocus.module).map((f) => f.name).join(', ') || 'your room' }}. Reopen the decision in the room to swap sections.
             <RouterLink :to="`/rooms/${lockedFocus.roomId}`" class="font-medium text-primary hover:underline">Open room</RouterLink>
           </p>
           <p v-if="bidding.fromRooms.length" class="text-[13px] text-muted-foreground">

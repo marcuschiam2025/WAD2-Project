@@ -61,6 +61,8 @@ export function buildCurriculumChecklist(plan, catalogue, bundle, { exempted = [
     const semId = status === 'cleared' ? null : taken.at(-1)?.semId ?? null
     const progress = r.rule === 'flag' ? (status === 'todo' ? 'Not yet fulfilled' : 'Fulfilled or included in your plan') : `${sum(taken) + freeCredit} / ${r.cuRequired} CU included${r.rule === 'chooseN' ? ` · ${taken.length} / ${r.n} courses` : ''}`
     return { manualDoneId: r.tag === 'CORE:INTERNSHIP' ? 'internship' : r.tag === 'CORE:GLOBAL_EXPOSURE' ? 'exposure' : null, id: r._id, label: r.label, rule: 'curriculum', requirement: r, status, urgency: null, semId,
+      // What the requirement holds, for course-by-course totals (see curriculumLayout.js)
+      taken: taken.map(p => ({ code: p.mod.code, cu: p.mod.cu ?? 1, status: p.status, exempt: !!p.exempt, semId: p.semId })), marked, freeCredit, extra,
       detail: `${marked ? 'Marked as done' : progress}${taken.length ? ` · ${taken.map(p => p.mod.code).join(', ')}` : ''}${extra ? ' · Additional track; courses may also count elsewhere' : ''}`,
       rec: null,
       chip: { text: status === 'todo' ? (taken.length ? 'Partial' : 'Incomplete') : { cleared: 'Cleared', exempted: 'Exempted', inProgress: 'In progress', planned: 'Planned' }[status], tone: status === 'todo' ? 'neutral' : status === 'inProgress' ? 'inProgress' : status === 'exempted' ? 'exempted' : 'planned' } }

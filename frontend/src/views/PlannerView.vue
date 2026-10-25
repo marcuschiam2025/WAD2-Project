@@ -226,6 +226,12 @@ const searchResults = computed(() => {
 // cleared (before the current semester), in progress (current semester) and planned (later semesters).
 const UNI_GROUPS = ['uni-cap', 'uni-com', 'uni-civ']
 const countSlots = (b) => {
+  // The live curriculum rows carry credit counts, so an area adds up course by course (a requirement 2 of 5 met counts 2)
+  if (b.slots.length && b.slots.every((x) => x.credit)) {
+    const add = (key) => Math.round(b.slots.reduce((n, x) => n + x.credit[key], 0) * 10) / 10
+    const [cleared, exempted, inProgress, planned] = ['cleared', 'exempted', 'inProgress', 'planned'].map(add)
+    return { key: b.key, label: b.label, required: add('required'), cleared, exempted, inProgress, planned, filled: cleared + exempted + inProgress + planned }
+  }
   const count = (status) => b.slots.filter((x) => x.status === status).length
   const cleared = count('cleared')
   const exempted = count('exempted')
@@ -235,8 +241,13 @@ const countSlots = (b) => {
 }
 const requirements = computed(() => {
   const groups = planner.checklist.groups
-  // The live checklist (backend curriculum) already groups its requirements by area
-  if (planner.checklist.live) return groups.filter((g) => g.slots.length).map(countSlots)
+  // The live checklist (backend curriculum) is already grouped by area; the three University Core headings are one area
+  if (planner.checklist.live) {
+    const uni = groups.filter((g) => /^uni-|^core-/.test(g.key))
+    const rest = groups.filter((g) => g.slots.length && !uni.includes(g))
+    const merged = uni.length ? [{ key: 'uni', label: 'University core', slots: uni.flatMap((g) => g.slots) }] : []
+    return [...merged, ...rest].filter((g) => g.slots.length).map(countSlots)
+  }
   const slotsOf = (keys) => groups.filter((g) => keys.includes(g.key)).flatMap((g) => g.slots)
   const electives = slotsOf(['major-elective'])
   // Track lines from the curriculum have ids like "track-PD-1"; one area per track (two for a double track)
@@ -519,7 +530,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
           <div class="flex items-center gap-3">
-            <span class="font-mono text-[13px] text-muted-foreground">{{ inPlan.filled }} / {{ inPlan.required }} {{ planner.checklist.live ? 'requirements' : 'courses' }} in your plan</span>
+            <span class="font-mono text-[13px] text-muted-foreground">{{ inPlan.filled }} / {{ inPlan.required }} {{ planner.checklist.live && !planner.checklist.byCredit ? 'requirements' : 'courses' }} in your plan</span>
             <StatusPill v-if="onTrack" tone="success">On track</StatusPill>
             <StatusPill v-else tone="destructive">Prereq issues</StatusPill>
           </div>
@@ -544,7 +555,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
           <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-exempt" /> Exempted</span>
           <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-warning" /> In progress</span>
           <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-primary" /> Planned</span>
-          <span>{{ planner.checklist.live ? 'One requirement' : 'One course' }} = one line in Outstanding Modules below.</span>
+          <span>{{ planner.checklist.live && !planner.checklist.byCredit ? 'One requirement' : 'Counted in courses' }}: a requirement part met still counts the courses it has.</span>
         </div>
       </section>
 

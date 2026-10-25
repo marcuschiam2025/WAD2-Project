@@ -4,6 +4,7 @@ import { modules, liveModules, requirementBuckets } from '../data/catalogue'
 import { api } from '../services/api'
 import { buildChecklist } from '../utils/degreeChecklist'
 import { buildCurriculumChecklist } from '../utils/curriculumChecklist'
+import { layoutCurriculum } from '../utils/curriculumLayout'
 import { useCatalogueStore } from './catalogue'
 import { useRoomsStore } from './rooms'
 import { useUserStore } from './user'
@@ -514,9 +515,9 @@ export const usePlannerStore = defineStore('planner', () => {
   // module catalogue (its tags, e.g. CORE:NUMERACY, and the track course lists) when it is loaded, else the sample one
   const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModulesFor(activePlan.value.majorId) : modules))
   const exempted = computed(() => user.profile.exempted ?? [])
-  // Online, the checklist follows the plan's curriculum from the backend (GET /api/majors/:id/requirements),
-  // so edits made in the admin panel show up here. Offline, the fixed course-progression template
-  // (data/degree.js): one line per course (36 in all), with recommended semesters.
+  // Online, the checklist follows the plan's curriculum from the backend (GET /api/majors/:id/requirements), so edits
+  // made in the admin panel show up here. curriculumLayout.js lists it under the course-progression headings and adds
+  // the recommended semesters. Offline, the fixed course-progression template (data/degree.js): 36 lines.
   const checklist = computed(() => {
     const options = {
       exempted: exempted.value,
@@ -525,7 +526,8 @@ export const usePlannerStore = defineStore('planner', () => {
     }
     const bundle = catalogue.curricula[activePlan.value.majorId]
     if (catalogue.online && bundle && bundle.requirementsAvailable !== false) {
-      return buildCurriculumChecklist(activePlan.value, checklistCatalogue.value, bundle, options)
+      const majorCode = catalogue.majors.find((m) => m._id === activePlan.value.majorId)?.majorCode ?? ''
+      return layoutCurriculum(buildCurriculumChecklist(activePlan.value, checklistCatalogue.value, bundle, options), activePlan.value, bundle, { majorCode })
     }
     if (catalogue.online && activePlan.value.majorId) {
       return { live: true, unavailable: true, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
