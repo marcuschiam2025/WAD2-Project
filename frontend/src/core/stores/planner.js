@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { modules, liveModules, requirementBuckets } from '../data/catalogue'
 import { api } from '../services/api'
 import { buildChecklist } from '../utils/degreeChecklist'
+import { buildCurriculumChecklist } from '../utils/curriculumChecklist'
 import { useCatalogueStore } from './catalogue'
 import { useRoomsStore } from './rooms'
 import { useUserStore } from './user'
@@ -513,16 +514,27 @@ export const usePlannerStore = defineStore('planner', () => {
   // module catalogue (its tags, e.g. CORE:NUMERACY, and the track course lists) when it is loaded, else the sample one
   const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModulesFor(activePlan.value.majorId) : modules))
   const exempted = computed(() => user.profile.exempted ?? [])
-  // One line per course (36 in all), with recommended semesters. Track lines come from the plan's curriculum:
-  // its compulsory course(s) and one line per course still to pick (e.g. "Any 3 Track Courses" = 3 lines).
-  const checklist = computed(() =>
-    buildChecklist(activePlan.value, checklistCatalogue.value, {
+  // Online, the checklist follows the plan's curriculum from the backend (GET /api/majors/:id/requirements),
+  // so edits made in the admin panel show up here. Offline, the fixed course-progression template
+  // (data/degree.js): one line per course (36 in all), with recommended semesters.
+  const checklist = computed(() => {
+    const options = {
       exempted: exempted.value,
       freeExempt: user.profile.freeExemptions ?? 0,
       markedDone: user.profile.markedDone ?? [],
+    }
+    const bundle = catalogue.curricula[activePlan.value.majorId]
+    if (catalogue.online && bundle && bundle.requirementsAvailable !== false) {
+      return buildCurriculumChecklist(activePlan.value, checklistCatalogue.value, bundle, options)
+    }
+    if (catalogue.online && activePlan.value.majorId) {
+      return { live: true, unavailable: true, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
+    }
+    return buildChecklist(activePlan.value, checklistCatalogue.value, {
+      ...options,
       trackReqs: catalogue.online ? catalogue.trackRequirementsFor(activePlan.value.majorId) : null,
-    }),
-  )
+    })
+  })
 
   const hasAnyWarning = computed(() => {
     const plan = activePlan.value

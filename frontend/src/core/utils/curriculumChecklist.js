@@ -22,7 +22,7 @@ export function buildCurriculumChecklist(plan, catalogue, bundle, { exempted = [
     seen.add(code); placed.push({ mod: catalogue[code], semId, status })
   }
   // Exemptions are completed even if a stale placement of the same code remains.
-  exempted.forEach(code => add(code, 'Exempt', 'cleared'))
+  exempted.forEach(code => { add(code, 'Exempt', 'cleared'); if (placed.at(-1)?.mod.code === code) placed.at(-1).exempt = true })
   plan.semesters.forEach((s, i) => {
     s.modules.forEach(entry => {
       const code = effectiveCode(entry)
@@ -55,13 +55,15 @@ export function buildCurriculumChecklist(plan, catalogue, bundle, { exempted = [
     const freeCredit = r.rule === 'anyFromCategory' && r.categories?.includes('ANY') ? Math.max(0, Number(freeExempt) || 0) : 0
     const satisfies = rows => met(r, rows) || (freeCredit > 0 && sum(rows) + freeCredit >= r.cuRequired)
     let status = marked || satisfies(done) ? 'cleared' : satisfies(current) ? 'inProgress' : satisfies(taken) ? 'planned' : 'todo'
+    // Met by profile exemptions alone: shown in its own colour
+    if (status === 'cleared' && !marked && taken.some(p => p.exempt) && satisfies(taken.filter(p => p.exempt))) status = 'exempted'
     if (!marked && exchangeIndex >= 0) status = exchangeIndex < now ? 'cleared' : exchangeIndex === now ? 'inProgress' : 'planned'
     const semId = status === 'cleared' ? null : taken.at(-1)?.semId ?? null
     const progress = r.rule === 'flag' ? (status === 'todo' ? 'Not yet fulfilled' : 'Fulfilled or included in your plan') : `${sum(taken) + freeCredit} / ${r.cuRequired} CU included${r.rule === 'chooseN' ? ` · ${taken.length} / ${r.n} courses` : ''}`
     return { manualDoneId: r.tag === 'CORE:INTERNSHIP' ? 'internship' : r.tag === 'CORE:GLOBAL_EXPOSURE' ? 'exposure' : null, id: r._id, label: r.label, rule: 'curriculum', requirement: r, status, urgency: null, semId,
       detail: `${marked ? 'Marked as done' : progress}${taken.length ? ` · ${taken.map(p => p.mod.code).join(', ')}` : ''}${extra ? ' · Additional track; courses may also count elsewhere' : ''}`,
       rec: null,
-      chip: { text: status === 'todo' ? (taken.length ? 'Partial' : 'Incomplete') : { cleared: 'Cleared', inProgress: 'In progress', planned: 'Planned' }[status], tone: status === 'todo' ? 'neutral' : status === 'inProgress' ? 'inProgress' : 'planned' } }
+      chip: { text: status === 'todo' ? (taken.length ? 'Partial' : 'Incomplete') : { cleared: 'Cleared', exempted: 'Exempted', inProgress: 'In progress', planned: 'Planned' }[status], tone: status === 'todo' ? 'neutral' : status === 'inProgress' ? 'inProgress' : status === 'exempted' ? 'exempted' : 'planned' } }
   }
   function append(r, row, track) {
     if (r.rule === 'flag') { other.push(row); return }
@@ -72,9 +74,9 @@ export function buildCurriculumChecklist(plan, catalogue, bundle, { exempted = [
   }
   for (const r of rules) append(r, describe(r, r.rule === 'flag' ? placed.filter(p => matches(r, p.mod)) : allocated.get(r._id)), r.level === 'track' ? main : null)
   for (const track of selected.slice(1)) for (const r of sorted(track.requirements ?? [])) append(r, describe(r, placed.filter(p => matches(r, p.mod)), true), track)
-  for (const g of groups) for (const status of ['cleared', 'inProgress', 'planned', 'todo']) g[status] = g.slots.filter(s => s.status === status).length
+  for (const g of groups) for (const status of ['cleared', 'exempted', 'inProgress', 'planned', 'todo']) g[status] = g.slots.filter(s => s.status === status).length
   const flat = [...groups.flatMap(g => g.slots), ...other]
   const totals = { required: flat.length, late: 0 }
-  for (const status of ['cleared', 'inProgress', 'planned', 'todo']) totals[status] = flat.filter(s => s.status === status).length
+  for (const status of ['cleared', 'exempted', 'inProgress', 'planned', 'todo']) totals[status] = flat.filter(s => s.status === status).length
   return { groups, other, totals, live: true }
 }

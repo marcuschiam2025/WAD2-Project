@@ -170,3 +170,17 @@ test('all and choose-N require course coverage as well as the credit target', ()
     assert.ok((result.requirements[0].outstanding.mustTake ?? result.requirements[0].outstanding.chooseFrom).some(m => m.code === 'B'))
   }
 })
+
+test('profile exemptions count as cleared, meet prerequisites, and show as exempted', () => {
+  // IS113 needs IS111 or CS101 first; the student is exempted from IS111
+  const result = checkPlan(plan([['IS113', 'IS216']], 'Y1S1'), { major, requirements, tracks: [ba], catalogue, exempted: ['IS111'] })
+  assert.deepEqual(result.warnings, [])
+  assert.deepEqual(result.exempted, ['IS111'])
+  const swDev = find(result, 'SW_DEV')
+  assert.deepEqual(swDev.modules.map((m) => [m.code, m.status]), [['IS111', 'exempted'], ['IS113', 'planned'], ['IS216', 'planned']])
+  assert.equal(swDev.cuDone, 1)
+
+  // An exempted course that is also in the plan is counted once, as exempted
+  const twice = checkPlan(plan([['IS111']], 'Y1S1'), { major, requirements, tracks: [ba], catalogue, exempted: ['IS111'] })
+  assert.deepEqual(find(twice, 'SW_DEV').modules.map((m) => [m.code, m.status]), [['IS111', 'exempted']])
+})

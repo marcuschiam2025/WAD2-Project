@@ -53,7 +53,7 @@ const filters = [
 
 // Cleared lines are hidden; in progress and planned ones only if their filter is on
 const shown = (s) =>
-  s.status !== 'cleared' && !(hideInProgress.value && s.status === 'inProgress') && !(hidePlanned.value && s.status === 'planned')
+  s.status !== 'cleared' && s.status !== 'exempted' && !(hideInProgress.value && s.status === 'inProgress') && !(hidePlanned.value && s.status === 'planned')
 const sections = computed(() =>
   [
     ...checklist.value.groups.map((g) => ({ key: g.key, label: g.label, items: g.slots.filter(shown) })),
@@ -145,6 +145,7 @@ const placementPill = (p) =>
     ? ['neutral', 'Not in your plan']
     : {
         cleared: ['success', `Cleared · ${p.semId}`],
+        exempted: ['exempt', 'Exempted'],
         inProgress: ['warning', `In progress · ${p.semId}`],
         planned: ['info', `Planned · ${p.semId}`],
       }[p.status]
@@ -187,11 +188,13 @@ const addLabel = computed(() => {
     <div class="flex flex-col gap-3">
       <div class="flex h-2 overflow-hidden rounded-full bg-border">
         <span class="bg-success transition-[width] duration-500" :style="{ width: pct(totals.cleared) }" />
+        <span class="bg-exempt transition-[width] duration-500" :style="{ width: pct(totals.exempted ?? 0) }" />
         <span class="bg-warning transition-[width] duration-500" :style="{ width: pct(totals.inProgress) }" />
         <span class="bg-primary transition-[width] duration-500" :style="{ width: pct(totals.planned) }" />
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <StatusPill tone="success">{{ totals.cleared }} cleared</StatusPill>
+        <StatusPill v-if="totals.exempted" tone="exempt">{{ totals.exempted }} exempted</StatusPill>
         <StatusPill tone="warning">{{ totals.inProgress }} in progress</StatusPill>
         <StatusPill tone="info">{{ totals.planned }} planned</StatusPill>
         <StatusPill tone="neutral">{{ totals.todo }} {{ checklist.live ? 'still incomplete' : 'not in your plan yet' }}</StatusPill>
@@ -284,7 +287,7 @@ const addLabel = computed(() => {
                 <span
                   v-if="m.placement"
                   class="shrink-0 rounded-full px-1.5 text-[10.5px] font-semibold"
-                  :class="{ cleared: 'bg-success-tint text-foreground', inProgress: 'bg-warning-tint text-warning', planned: 'bg-primary-tint text-primary' }[m.placement.status]"
+                  :class="{ cleared: 'bg-success-tint text-foreground', exempted: 'bg-exempt-tint text-exempt', inProgress: 'bg-warning-tint text-warning', planned: 'bg-primary-tint text-primary' }[m.placement.status]"
                 >{{ m.placement.semId }}</span>
               </button>
             </li>
