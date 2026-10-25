@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { useCatalogueStore } from '@core/stores/catalogue'
-import { modules, moduleName, tracks, trackName } from '@core/data/catalogue'
+import { modules, liveModules, moduleName, tracks, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -161,6 +161,13 @@ function cardState(code, sem) {
   if (status(sem) === 'done') return 'done'
   if (planner.hasWarning(plan.value, code, sem.id)) return 'warning'
   return 'planned'
+}
+
+// A course not run in about 2 years, planned for now or later (the backend's check warns about it too)
+function notOffered(code, sem) {
+  const mod = liveModules[effectiveCode(code)]
+  if (status(sem) === 'done' || mod?.offeredRecently !== false) return null
+  return mod.lastOffered ? `Not offered since ${mod.lastOffered}` : 'Not offered recently'
 }
 
 function warningText(code, sem) {
@@ -473,6 +480,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                   </span>
                   <span v-if="cardState(code, col.sem) === 'warning'" class="text-[11px] text-destructive">{{ warningText(code, col.sem) }}</span>
                   <span v-else class="line-clamp-2 text-[11px] text-muted-foreground">{{ moduleName(effectiveCode(code)) }}</span>
+                  <span v-if="notOffered(code, col.sem)" class="text-[11px] font-medium text-warning">{{ notOffered(code, col.sem) }}</span>
                   <button
                     v-if="status(col.sem) !== 'done' && !roomDecision(code)"
                     type="button"

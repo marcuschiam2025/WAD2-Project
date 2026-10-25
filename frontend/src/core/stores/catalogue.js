@@ -23,7 +23,9 @@ export const useCatalogueStore = defineStore('catalogue', () => {
   let loading = null
 
   function load() {
-    loading ??= Promise.all([api.modules({ includeArchived: true }), api.majors()])
+    // The whole catalogue, including courses not offered in about 2 years (all: true): modules a student took
+    // years ago must still be found. The planner's search leaves those out (see search below).
+    loading ??= Promise.all([api.modules({ includeArchived: true, all: true }), api.majors()])
       .then(([mods, majorList]) => {
         mods.forEach((m) => (liveModules[m._id] = m))
         majors.value = majorList

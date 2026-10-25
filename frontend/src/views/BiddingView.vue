@@ -103,6 +103,18 @@ function onCardClick(e, s) {
   else bidding.selectedModule = bidding.selectedModule === s.module ? null : s.module
 }
 
+// Work-study electives and SMU-X projects have no fixed class time, so they can't sit on the grid: they are
+// listed under it instead, with the selected module's other timetable-free sections to swap to
+const noTime = (s) => !sectionMeetings(s).length
+const unscheduled = computed(() => {
+  const focus = bidding.selectedModule
+  const booked = bidding.bookedSections.filter((s) => s && noTime(s)).map((s) => ({ ...s, option: false }))
+  const options = focus && !bidding.isLocked(focus)
+    ? bidding.sectionsFor(focus).filter((s) => bidding.booked[focus] !== s.id && noTime(s)).map((s) => ({ ...s, option: true }))
+    : []
+  return [...booked, ...options]
+})
+
 const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-', ' ')).join(', '))
 </script>
 
@@ -187,6 +199,29 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
               </TransitionGroup>
             </template>
           </TimetableGrid>
+          <div v-if="unscheduled.length" class="mt-3 flex flex-col gap-2 rounded-lg border border-dashed border-border p-3">
+            <p class="text-overline text-muted-foreground">No fixed class time</p>
+            <div class="grid grid-cols-2 gap-2 lg:grid-cols-4">
+              <button
+                v-for="s in unscheduled"
+                :key="s.id"
+                type="button"
+                :aria-disabled="isDimmed(s)"
+                class="flex w-full"
+                @click="onCardClick($event, s)"
+              >
+                <TimetableModuleCard
+                  :code="s.module"
+                  :section="s.section"
+                  :name="moduleName(s.module)"
+                  :meta="`No fixed class time · ${s.profShort || 'Instructor not listed'}`"
+                  :variant="variantFor(s)"
+                  :class="isDimmed(s) && 'opacity-30 grayscale'"
+                />
+              </button>
+            </div>
+            <p class="text-[12px] text-muted-foreground">Work-study electives and SMU-X projects have no weekly classes, so they never clash.</p>
+          </div>
           </div>
           <p v-if="lockedFocus" class="text-[13px] leading-normal">
             <span class="font-mono font-bold">{{ lockedFocus.module }} {{ lockedFocus.sectionId.split('-')[1] }}</span> is locked because you accepted it in
