@@ -1,4 +1,5 @@
 // Shapes a Section document for the Bidding screen (frontend core/data/bidding.js). Pure functions — unit test me.
+import { EXAM_NOT_ANNOUNCED } from './sectionData.js'
 
 /**
  * "Prof. Lwin Khin Shar" → "Prof. L. Shar"
@@ -46,7 +47,7 @@ export function toSectionView(section) {
     sessions: section.sessions,
     capacity: section.capacity,
     examPeriod: section.examPeriod,
-    exam: section.exam ?? 'No final exam',
+    exam: section.exam ?? EXAM_NOT_ANNOUNCED,
     startDate: section.startDate ?? null, // teaching dates, e.g. 2027-01-11 to 2027-04-18 (null for older rows)
     endDate: section.endDate ?? null,
   }

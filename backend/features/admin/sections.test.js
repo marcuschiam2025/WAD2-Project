@@ -29,7 +29,7 @@ test('catalogue sections without meetings read with no sessions', () => {
   const read = normalizeSection({ sectionId: 'IS483-G1', module: 'IS483', term: 'AY26/27 T2', section: 'G1', meetings: [], instructors: ['KYONG JIN SHIM'] })
   assert.deepEqual(read.sessions, [])
   assert.equal(read.day, null)
-  assert.equal(read.exam, 'No final exam')
+  assert.equal(read.exam, 'Exam not yet announced') // no finalExam field: the exam isn't announced yet
 })
 test('section updates use audit transaction and loaded revision without changing legacy section links', async () => {
   const { createSectionEditor } = await import('./sections.service.js').catch(() => ({}))

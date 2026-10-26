@@ -60,6 +60,7 @@ export function toStoredSection(data) {
     capacity: data.capacity,
     meetings: data.classSlots.map(slot => ({ day: days.indexOf(slot.day), start: slot.start, end: slot.end, venue: slot.venue || null })),
     finalExam: data.finalExam,
+    examSource: 'admin', // pnpm import-exams never overwrites an exam staff entered
   }
 }
 export function sectionSnapshot(raw) {

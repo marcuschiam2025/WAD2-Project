@@ -30,3 +30,16 @@ test('rejects malformed meeting data rather than silently dropping a class',()=>
  assert.throws(()=>normalizeSection({...shared,classSlots:[{day:'BAD',start:'12:00',end:'13:30'}]}))
  assert.throws(()=>normalizeSection({...shared,classSlots:[{day:'MON',start:'14:00',end:'13:30'}]}))
 })
+
+test('exam wording: an exam time, no final exam (null), or not yet announced (missing)', async () => {
+  const { normalizeSection, NO_FINAL_EXAM, EXAM_NOT_ANNOUNCED } = await import('./sectionData.js')
+  const { findExamClashes } = await import('./clash.js')
+  const base = { sectionId: 'IS442-G1', module: 'IS442', section: 'G1', term: 'AY26/27 T2', meetings: [{ day: 2, start: '19:00', end: '22:15' }] }
+  const dated = normalizeSection({ ...base, finalExam: { date: new Date('2027-04-20T00:00:00+08:00'), start: '08:30', end: '10:30' } })
+  assert.equal(dated.exam, '2027-04-20 · 08:30 – 10:30')
+  assert.equal(normalizeSection({ ...base, finalExam: null }).exam, NO_FINAL_EXAM)
+  const a = normalizeSection(base)
+  const b = normalizeSection({ ...base, sectionId: 'IS111-G1', module: 'IS111' })
+  assert.equal(a.exam, EXAM_NOT_ANNOUNCED)
+  assert.deepEqual(findExamClashes([a, b]), []) // two unannounced exams are not a clash
+})
