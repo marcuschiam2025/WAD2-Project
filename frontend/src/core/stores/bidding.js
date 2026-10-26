@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
-import { bidHistory, sections, slots, days, weightage, MIN_BID } from '../data/bidding'
+import { bidHistory, sections, slots, days, weightage, MIN_BID, estimateHistory } from '../data/bidding'
 import { api } from '../services/api'
 import { usePlannerStore, effectiveCode } from './planner'
 import { useRoomsStore } from './rooms'
@@ -102,7 +102,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   const bids = computed(() =>
     Object.fromEntries(
       inCart.value.map((code) => {
-        const h = bidHistory[code]
+        const h = estimateHistory(bidHistory[code] ?? [], round.value.round, round.value.term)
         const median = h?.length ? h[0].median : MIN_BID
         return [code, typed.value[plan.value.id]?.[code] ?? median]
       }),

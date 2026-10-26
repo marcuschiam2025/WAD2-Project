@@ -102,10 +102,31 @@ export const weightage = reactive({
 
 export const MIN_BID = 10
 
+function termOrder(value) {
+  const match = /^(?:AY(\d{2})\/(\d{2}) T|((?:20)\d{2})-(\d{2})_T)([1-3])$/.exec(value ?? '')
+  if (!match) return null
+  const year = match[3] ? Number(match[3]) : 2000 + Number(match[1])
+  if (Number(match[4] ?? match[2]) !== (year + 1) % 100) return null
+  return year * 10 + Number(match[5])
+}
+
+// Match the reference API: one round, at most three distinct terms before the target.
+export const canEstimateBid = (round, term) => !!round && round !== 'all' && termOrder(term) !== null
+
+export function estimateHistory(history, round, term) {
+  const target = termOrder(term)
+  if (!canEstimateBid(round, term)) return []
+  const seen = new Set()
+  return history.filter(h => h.round === round && Number.isFinite(h.median) && h.median >= 0 && termOrder(h.term) !== null && termOrder(h.term) < target)
+    .sort((a, b) => termOrder(b.term) - termOrder(a.term))
+    .filter(h => { const key = termOrder(h.term); if (seen.has(key)) return false; seen.add(key); return true })
+    .slice(0, 3)
+}
+
 // Safe / Competitive / At risk against historical median ± 1 SD.
-// Kept in sync with backend/utils/referenceBid.js.
+// Same formula as backend/features/bidding/utils/referenceBid.js; select comparable history first.
 export function rateBid(amount, history) {
-  if (!history.length) return null
+  if (!Number.isFinite(amount) || !history.length || new Set(history.map(h => h.round)).size !== 1 || history.some(h => !Number.isFinite(h.median) || h.median < 0)) return null
   const medians = history.map((h) => h.median)
   const mean = medians.reduce((a, b) => a + b, 0) / medians.length
   const sd = Math.sqrt(medians.reduce((a, m) => a + (m - mean) ** 2, 0) / medians.length)

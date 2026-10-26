@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM } from '@core/stores/planner'
+import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM, MAX_PLANS } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { useCatalogueStore } from '@core/stores/catalogue'
 import { modules, moduleName, tracks, trackName } from '@core/data/catalogue'
@@ -86,8 +86,9 @@ function toggleYear(year) {
 }
 
 // --- Plans ---------------------------------------------------------------------------------
-function addPlan() {
-  if (!planner.addPlan()) showPlanLimit.value = true
+async function addPlan() {
+  if (planner.plans.length >= MAX_PLANS) { showPlanLimit.value = true; return }
+  await planner.addPlan()
 }
 
 function goToPlans() {
@@ -272,12 +273,13 @@ const onTrack = computed(() => !planner.hasAnyWarning)
     <PageHeader overline="BSc Information Systems · Class of 2027" title="What-If Planner">
       <template #actions>
         <BaseButton variant="outline" size="lg" @click="planner.addSemester({ loa: true })">Add LOA term</BaseButton>
-        <BaseButton size="lg" @click="addPlan">Add plan</BaseButton>
+        <BaseButton size="lg" :disabled="!planner.online || planner.planActionPending" @click="addPlan">Add plan</BaseButton>
       </template>
     </PageHeader>
 
     <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
       <p v-if="planner.plansSaving" role="status" class="text-sm text-muted-foreground">Saving semester changes…</p>
+      <p v-if="planner.planActionError" role="alert" class="text-sm text-destructive">Plan update failed: {{ planner.planActionError }}</p>
       <p v-if="handoffError" role="alert" class="text-sm text-destructive">{{ handoffError }}</p>
       <!-- The backend refused a save (or the plans could not be loaded) -->
       <div
@@ -513,7 +515,8 @@ const onTrack = computed(() => !planner.hasAnyWarning)
       </section>
 
       <!-- Module requirements: the checklist below, added up by area -->
-      <section v-enter="0.1" class="card flex flex-col gap-4 p-6"> <!-- motion: requirements strip fades in, 100ms delay -->
+      <p v-if="planner.curriculumNotice" role="status" class="rounded-lg border border-warning p-4 text-sm">{{ planner.curriculumNotice }}</p>
+      <section v-if="!planner.checklist.unavailable" v-enter="0.1" class="card flex flex-col gap-4 p-6"> <!-- motion: requirements strip fades in, 100ms delay -->
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
           <div class="flex items-center gap-3">

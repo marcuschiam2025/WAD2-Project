@@ -1,14 +1,17 @@
 <script setup>
 // Dashboard to-do list: add, tick off, delete and clear finished items.
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useTodosStore } from '@core/stores/todos'
+import { useUserStore } from '@core/stores/user'
 import { popEnter, popLeave } from '@/motion'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import checkWhite from '@/assets/v2/check-white-12.svg'
 import iconRemove from '@/assets/figma/icon-remove.svg'
 
 const todos = useTodosStore()
+const user = useUserStore()
 const text = ref('')
+watch(() => [user.uid, user.isSignedIn], () => { text.value = '' }, { flush: 'sync' })
 
 // Open items first, finished ones below
 const sorted = computed(() => [...todos.items.filter((i) => !i.done), ...todos.items.filter((i) => i.done)])
@@ -28,15 +31,18 @@ function add() {
       <span class="text-[13px] text-muted-foreground">{{ doneCount }} of {{ todos.items.length }} done</span>
     </div>
 
+    <p class="text-xs text-muted-foreground">Saved in this browser for your account. Tasks do not sync across devices.</p>
+
     <form class="flex gap-2" @submit.prevent="add">
       <input
         v-model="text"
+        :disabled="!user.isSignedIn"
         maxlength="120"
         placeholder="Add a to-do"
         aria-label="New to-do"
         class="min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-[9px] text-[14px] leading-normal outline-none transition-colors focus:border-ring"
       />
-      <BaseButton :disabled="!text.trim()" @click="add">Add</BaseButton>
+      <BaseButton :disabled="!user.isSignedIn || !text.trim()" @click="add">Add</BaseButton>
     </form>
 
     <!-- motion: new to-dos pop in, removed ones fade out -->

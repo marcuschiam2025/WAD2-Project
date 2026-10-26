@@ -37,11 +37,13 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     return loading
   }
 
-  // The catalogue id of a major from its name (e.g. 'Information Systems' -> 'BSC-IS_AY2025'):
-  // the newest curriculum that has graduation requirements, or the newest one at all
-  function majorIdFor(name) {
-    const matching = majors.value.filter((m) => m.name === name).sort((a, b) => b.intakeFrom - a.intakeFrom)
-    return (matching.find((m) => m.requirementsAvailable) ?? matching[0])?._id ?? null
+  // The newest curriculum covering this intake, even if its requirements are not available yet.
+  function majorIdFor(name, intakeYear) {
+    const year = Number(intakeYear)
+    if (!intakeYear || !Number.isInteger(year) || year < 2000 || year > 2100) return null
+    return majors.value
+      .filter((m) => m.name === name && m.intakeFrom <= year && (m.intakeTo == null || year <= m.intakeTo))
+      .sort((a, b) => b.intakeFrom - a.intakeFrom)[0]?._id ?? null
   }
 
   // The track course lists of a major, from GET /api/majors/:id/requirements
