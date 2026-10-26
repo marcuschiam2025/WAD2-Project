@@ -37,8 +37,8 @@ const IS_TRACK_ATTRIBUTE = /^TRCK - IS( Major|\/T4BS):/
 // Free-text requisites (min grades, CU counts, permission) — kept for display only
 const NOTE_ATTRIBUTE = /^RQ(SR|CU|GP|PL|CL|CS) - /
 
-// Requirements the planner leaves out: community service isn't planned in semesters
-const EXCLUDED_TAGS = ['CORE:COMMUNITY_SERVICE']
+// Requirements the planner leaves out (none at the moment)
+const EXCLUDED_TAGS = []
 
 // SMU records the internship as COR1001, which the courses report leaves out, so the planner adds
 // it here. Students can place it in a semester or an LOA term. It fills the "Internship" requirement.
@@ -51,6 +51,23 @@ const INTERNSHIP_MODULE = {
   description: 'Planner entry for the internship graduation requirement. Place it in a semester or an LOA term.',
   categories: [],
   fulfils: ['CORE:INTERNSHIP'],
+  prerequisites: [],
+  corequisites: [],
+  mutuallyExclusive: [],
+  termsOffered: [],
+}
+
+// Community service is recorded as COR2001, which the courses report also leaves out, so the
+// planner adds it the same way. It fills the "Community Service" requirement.
+const COMMUNITY_SERVICE_MODULE = {
+  _id: 'COR2001',
+  title: 'Community Service',
+  cu: 1,
+  schoolId: null,
+  department: null,
+  description: 'Planner entry for the community service graduation requirement (80 hours, any term or holiday).',
+  categories: [],
+  fulfils: ['CORE:COMMUNITY_SERVICE'],
   prerequisites: [],
   corequisites: [],
   mutuallyExclusive: [],
@@ -311,13 +328,16 @@ for (const mod of Object.values(seedModules)) {
 }
 
 modules[INTERNSHIP_MODULE._id] = INTERNSHIP_MODULE
+modules[COMMUNITY_SERVICE_MODULE._id] = COMMUNITY_SERVICE_MODULE
 
 // Mark courses that haven't run lately (e.g. COR-IS1702, replaced by COR-IS1704). They stay in the
 // catalogue for students who already took them, but module search hides them by default.
 let notRecent = 0
 for (const mod of Object.values(modules)) {
   mod.lastOffered = lastOffered[mod._id] ?? null
-  mod.offeredRecently = mod._id === INTERNSHIP_MODULE._id || (mod.lastOffered !== null && mod.lastOffered >= oldestRecentTerm)
+  // The internship and community service never appear in bid data, so they always count as offered
+  const alwaysOffered = mod._id === INTERNSHIP_MODULE._id || mod._id === COMMUNITY_SERVICE_MODULE._id
+  mod.offeredRecently = alwaysOffered || (mod.lastOffered !== null && mod.lastOffered >= oldestRecentTerm)
   if (!mod.offeredRecently) {
     notRecent++
   }

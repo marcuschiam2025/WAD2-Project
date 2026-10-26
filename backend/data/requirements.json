@@ -79,6 +79,18 @@
     "tag": "CORE:CULTURES_MODERN_WORLD"
   },
   {
+    "_id": "BSC-IS_AY2025_CORE_COMMUNITY_SERVICE",
+    "level": "core",
+    "ownerId": "BSC-IS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Community Service",
+    "order": 7,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:COMMUNITY_SERVICE"
+  },
+  {
     "_id": "BSC-IS_AY2025_CORE_CIVILISATIONS",
     "level": "core",
     "ownerId": "BSC-IS_AY2025",

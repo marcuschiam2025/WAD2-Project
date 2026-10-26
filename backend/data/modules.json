@@ -3891,6 +3891,24 @@
     "offeredRecently": false
   },
   {
+    "_id": "COR2001",
+    "title": "Community Service",
+    "cu": 1,
+    "schoolId": null,
+    "department": null,
+    "description": "Planner entry for the community service graduation requirement (80 hours, any term or holiday).",
+    "categories": [],
+    "fulfils": [
+      "CORE:COMMUNITY_SERVICE"
+    ],
+    "prerequisites": [],
+    "corequisites": [],
+    "mutuallyExclusive": [],
+    "termsOffered": [],
+    "lastOffered": "AY26/27 T2",
+    "offeredRecently": true
+  },
+  {
     "_id": "COR2100",
     "title": "Economics and Society",
     "cu": 1,
