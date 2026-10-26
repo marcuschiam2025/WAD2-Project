@@ -1,5 +1,15 @@
 # Collab Rooms — part 1
 
+## Current integration after the group's room API update
+
+- The group's `termKey`, `memberSections`, personal `my-section` routes, ballots, invitations and member-management flow are retained. The earlier owner-confirmation and handoff routes are not restored.
+- Joining and invitations count courses being taken in the profile's current semester as prerequisites for a later academic term. Same-term and future planned courses do not count; completion history is not changed.
+- Only the signed-in student's saved `memberSections` pick automatically appears in bidding for the matching term. Other members' picks and vote preferences cannot choose a section for that student. What-If plans remain untouched.
+- Bidding refreshes the room list every 10 seconds while visible. A shared personal pick stays locked until changed or unshared in the room. Different personal picks for the same module across rooms produce a warning and block saving until resolved.
+- Students still review amounts and explicitly save bids. The group's manual cart-selection action remains available. No migrations or shared database edits are required.
+
+The sections below record earlier integration stages and their verification.
+
 ## Agreed scope
 
 - Admin enters only party name and module code.

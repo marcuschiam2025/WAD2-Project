@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { useCatalogueStore } from '@core/stores/catalogue'
-import { modules, liveModules, moduleName, tracks, trackName } from '@core/data/catalogue'
+import { modules, moduleName, tracks, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -161,18 +161,6 @@ function cardState(code, sem) {
   if (status(sem) === 'done') return 'done'
   if (planner.hasWarning(plan.value, code, sem.id)) return 'warning'
   return 'planned'
-}
-
-// A course not run in about 2 years, planned for now or later (the backend's check warns about it too)
-function notOffered(code, sem) {
-  const mod = liveModules[effectiveCode(code)]
-  if (status(sem) === 'done' || mod?.offeredRecently !== false) return null
-  return mod.lastOffered ? `Not offered since ${mod.lastOffered}` : 'Not offered recently'
-}
-
-function warningText(code, sem) {
-  const { prereqs, coreqs } = planner.checkModule(plan.value, code, sem.id)
-  return prereqs.length ? `Prereq ${prereqs[0]} not met` : `Coreq ${coreqs[0]} needed`
 }
 
 // --- Prereq warning overlay ----------------------------------------------------------------
@@ -489,9 +477,8 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                     {{ code }}
                     <img v-if="cardState(code, col.sem) === 'warning'" :src="iconAlert" alt="" class="size-3" />
                   </span>
-                  <span v-if="cardState(code, col.sem) === 'warning'" class="text-[11px] text-destructive">{{ warningText(code, col.sem) }}</span>
+                  <button v-if="cardState(code, col.sem) === 'warning'" type="button" class="text-left text-[11px] text-destructive hover:underline" :aria-label="`Review academic warnings for ${effectiveCode(code)}`" @click.stop="warning = { code, semId: col.sem.id }">{{ planner.warningMessages(plan, code, col.sem.id).join('; ') }}</button>
                   <span v-else class="line-clamp-2 text-[11px] text-muted-foreground">{{ moduleName(effectiveCode(code)) }}</span>
-                  <span v-if="notOffered(code, col.sem)" class="text-[11px] font-medium text-warning">{{ notOffered(code, col.sem) }}</span>
                   <button
                     v-if="status(col.sem) !== 'done' && !roomDecision(code)"
                     type="button"
@@ -567,10 +554,15 @@ const onTrack = computed(() => !planner.hasAnyWarning)
       v-if="warningInfo"
       :code="warningInfo.code"
       :sem-label="warningInfo.sem.label"
-      :prev-sem-label="warningInfo.prev?.label"
+      :prev-sem-label="warningInfo.prev && planner.semStatus(plan, warningInfo.prev.id) !== 'done' ? warningInfo.prev.label : ''"
       :next-sem-label="warningInfo.next?.label"
       :prereqs="warningInfo.prereqs"
       :coreqs="warningInfo.coreqs"
+      :prereq-groups="warningInfo.prereqGroups"
+      :coreq-groups="warningInfo.coreqGroups"
+      :exclusions="warningInfo.exclusions"
+      :rules="warningInfo.rules"
+      :not-offered="warningInfo.notOffered"
       @close="warning = null"
       @add-prereq="resolveWarning('prereq', $event)"
       @add-coreq="resolveWarning('coreq', $event)"

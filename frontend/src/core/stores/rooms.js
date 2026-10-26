@@ -66,9 +66,11 @@ export const useRoomsStore = defineStore('rooms', () => {
       waiting: board.waitingIds ?? [], leaders: board.leaders ?? [], acceptedId: board.finalisedSection ?? null }
   }
 
-  // Shared decisions do not automatically edit any member's personal plans.
-  // Each member explicitly imports the confirmed section into one bidding cart.
+  // Keep degree-plan automation inactive. Only my personal section feeds bidding.
   const decided = computed(() => [])
+  const pickedForBidding = computed(() => rooms.value.flatMap(room => room.mySectionId
+    ? [{ roomId: room.id, roomName: room.name, module: room.module, term: room.term, sectionId: room.mySectionId }]
+    : []))
 
   function acceptSection(roomId, sectionId) {
     const st = roomState(getRoom(roomId))
@@ -127,7 +129,9 @@ export const useRoomsStore = defineStore('rooms', () => {
     }
     return { id: String(party._id), name: party.name, description: party.description, module: party.module,
       inviteCode: party.inviteCode, maxMembers: party.maxMembers, ownerId: memberId(party.owner),
-      admins: [], members, votes, suggestedBids: {}, term: party.termKey, summary: party.summary, updatedAt: party.updatedAt }
+      admins: [], members, votes, suggestedBids: {}, term: party.termKey, summary: party.summary, updatedAt: party.updatedAt,
+      sharedSections: Object.fromEntries((party.memberSections ?? []).map(entry => [memberId(entry.user), entry.sectionId])),
+      mySectionId: party.memberSections?.find(entry => memberId(entry.user) === ME)?.sectionId ?? null }
   }
   function upsert(party) {
     const room = normalize(party)
@@ -191,6 +195,8 @@ export const useRoomsStore = defineStore('rooms', () => {
       const room = getRoom(roomId)
       if (room) {
         room.summary = board
+        room.mySectionId = board.finalisedSection
+        room.sharedSections = Object.fromEntries(board.rows.flatMap(row => row.goingFor.map(entry => [entry._id === String(user.profile._id) ? ME : entry._id, row.section.id])))
         room.term = board.term
         if (board.ownerId) room.ownerId = board.ownerId === String(user.profile._id) ? ME : board.ownerId
         if (board.members) room.members = board.members.map(member => {
@@ -298,7 +304,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     rooms, loading, busy, online, error, load, joinRoom,
     voteBoards, voteLoading, voteSaving, voteErrors, loadVotes, saveRoomVotes,
     myVotes, confirmSection, removeMember,
-    decided,
+    decided, pickedForBidding,
     roomState,
     votersOf,
     acceptSection,

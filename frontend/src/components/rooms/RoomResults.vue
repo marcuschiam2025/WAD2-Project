@@ -54,8 +54,9 @@ async function add() {
     </ol>
     <p v-if="dirty" class="text-xs text-muted-foreground">Save your votes before picking a section.</p>
     <template v-if="confirmed">
-      <BaseButton :disabled="dirty || rooms.voteSaving[roomId] || !planner.online" @click="openImport">Add to my bidding</BaseButton>
-      <p class="text-xs text-muted-foreground">Bring {{ confirmed.section.section }} into one of your own bid carts. No one else’s plan changes.</p>
+      <BaseButton to="/bidding">Review bidding</BaseButton>
+      <p class="text-xs text-muted-foreground">Your {{ confirmed.section.section }} pick appears automatically in bidding for {{ board.term }}. Review the amount and save your bids there. Your What-If plans stay unchanged.</p>
+      <BaseButton variant="outline" :disabled="dirty || rooms.voteSaving[roomId] || !planner.online" @click="openImport">Choose a bid cart</BaseButton>
       <BaseButton variant="ghost" size="sm" :disabled="rooms.voteSaving[roomId] || rooms.busy" @click="confirm(null)">Stop sharing my section</BaseButton>
     </template>
     <p v-if="feedback" role="status" class="text-xs text-success">{{ feedback }}</p>

@@ -43,7 +43,7 @@ const sectionSchema = new mongoose.Schema({
   startDate: String, // YYYY-MM-DD
   endDate: String,
   exam: String, // free-text exam note on older rows; finalExam is the structured version
-  finalExam: { date: Date, start: String, end: String, venue: String }, // null = no final exam; missing = not announced
+  finalExam: { date: Date, start: String, end: String, venue: String, endVerified: Boolean }, // null = no exam; missing end = unconfirmed duration
   examSource: { type: String, enum: ['boss', 'admin'] }, // who set finalExam: pnpm import-exams or staff
   capacity: Number,
   archived: { type: Boolean, default: false }, // staff archive: hidden from new choices, kept for saved carts

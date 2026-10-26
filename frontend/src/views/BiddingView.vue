@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBiddingStore } from '@core/stores/bidding'
 import { usePlannerStore } from '@core/stores/planner'
@@ -33,13 +33,26 @@ watch(() => bidding.planId, id => {
 })
 const dragging = ref(null)
 
+// Refresh personal room picks made in another tab without changing ballots or membership.
+let roomTimer
+onMounted(() => {
+  rooms.load()
+  roomTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && !rooms.loading && !rooms.busy) rooms.load()
+  }, 10000)
+})
+onBeforeUnmount(() => clearInterval(roomTimer))
+
 // A module booked in the section a collab room confirmed is locked to it, and shows the whole party on its card:
 // you first (with your ring), then the people you are bidding with. If several rooms confirmed the same section,
 // everyone from all of them.
 const partyOf = (code) => {
   const d = bidding.locked[code]
   if (!d) return []
-  const ids = new Set(d.roomIds.flatMap((roomId) => rooms.getRoom(roomId)?.members ?? []))
+  const ids = new Set(d.roomIds.flatMap((roomId) => {
+    const room = rooms.getRoom(roomId)
+    return (room?.members ?? []).filter(id => room.sharedSections?.[id] === d.sectionId)
+  }))
   ids.delete('me')
   return [rooms.person('me'), ...[...ids].map(rooms.person)]
 }
@@ -52,7 +65,7 @@ const planOptions = computed(() => planner.plans.map((p) => ({ value: p.id, labe
 const semLabel = computed(() => bidding.targetSem?.label.replace('S', 'Sem ') ?? '')
 const emptyReason = computed(() => {
   const t = bidding.targetSem
-  if (bidding.bookedSections.length) return ''
+  if (bidding.bookedSections.length || bidding.unavailableSelections.length) return ''
   if (!t) return `${bidding.plan.name} has no semester after ${bidding.plan.currentSem}, so there is nothing to bid for.`
   if (bidding.notOffered.length && !bidding.bookedSections.length) return 'Your planned modules are saved. A bidding timetable will be available when section data is loaded for this term.'
   if (t.exchange) return `${t.label} is an exchange semester in ${bidding.plan.name}, so there is nothing to bid for.`
@@ -151,15 +164,37 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
           <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-l-[3px] border-success bg-secondary" /> Booked section</span>
           <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-dashed border-primary bg-primary-tint" /> Alternative section (shown after you click a card)</span>
           <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-primary" /> Selected</span>
-          <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-success bg-success-tint" /> Collab room section (locked)</span>
+          <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-success bg-success-tint" /> Your shared room section (locked)</span>
         </div>
       </div>
 
       <p v-if="!bidding.roundInfo.configured" class="text-sm text-muted-foreground">Catalogue preview: {{ round.term }}. An active bidding term and round have not been configured.</p>
       <p v-if="bidding.loadError" role="alert" class="text-sm text-destructive">{{ bidding.loadError }} <button type="button" class="underline" @click="bidding.load()">Retry</button></p>
+      <p v-if="bidding.roomConflicts.length" role="alert" class="text-sm text-destructive">You picked different sections for {{ bidding.roomConflicts.join(', ') }} in different rooms. Update or stop sharing a pick in those rooms before saving bids.</p>
       <p v-if="bidding.notOffered.length" role="status" class="text-sm text-muted-foreground">
         Section data is not available for {{ bidding.notOffered.join(', ') }} in {{ bidding.round.term }}. Your modules remain in the degree plan.
       </p>
+      <section v-if="bidding.unavailableSelections.length" class="card flex flex-col gap-4 border-destructive p-5" aria-labelledby="unavailable-sections-title">
+        <div>
+          <h2 id="unavailable-sections-title" class="font-semibold">Saved sections unavailable</h2>
+          <p role="alert" class="mt-1 text-sm text-destructive">Your saved choices have been retained. Choose replacements or remove these modules before saving bids.</p>
+        </div>
+        <div v-for="item in bidding.unavailableSelections" :key="item.module" class="flex flex-wrap items-end gap-3 border-t border-border pt-3">
+          <div class="min-w-48 flex-1 text-sm">
+            <p class="font-semibold">{{ item.module }} {{ item.section }} · Section unavailable</p>
+            <p class="text-muted-foreground">{{ moduleName(item.module) }} · Saved bid e$ {{ bidding.bids[item.module] }}</p>
+          </div>
+          <label v-if="bidding.sectionsFor(item.module).length" class="flex flex-col gap-1 text-sm">
+            Replacement section for {{ item.module }}
+            <select :value="''" class="rounded-md border border-border bg-card p-2" @change="bidding.swapSection(item.module, $event.target.value)">
+              <option value="" disabled>Choose a replacement</option>
+              <option v-for="s in bidding.sectionsFor(item.module)" :key="s.id" :value="s.id">{{ s.section }} · {{ bidding.slotLabel(s) }}</option>
+            </select>
+          </label>
+          <p v-else class="text-sm text-muted-foreground">No active alternatives available.</p>
+          <BaseButton variant="destructive-outline" size="sm" :aria-label="`Remove unavailable ${item.module} from bidding`" @click="bidding.dropModule(item.module)">Remove module</BaseButton>
+        </div>
+      </section>
       <div v-if="emptyReason" v-enter class="card flex flex-col items-start gap-3 p-6"> <!-- motion: fade + slide up on mount -->
         <p class="text-[14px] leading-normal">{{ emptyReason }}</p>
         <BaseButton variant="outline" to="/planner">Open the What-If Planner</BaseButton>
@@ -234,16 +269,15 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
           </div>
           <p v-if="lockedFocus" class="text-[13px] leading-normal">
             <span class="font-mono font-bold">{{ lockedFocus.module }} {{ lockedFocus.sectionId.split(':').pop() }}</span> is locked because
-            {{ lockedFocus.roomName }} confirmed it, and you are bidding for it with
-            {{ friendsOf(lockedFocus.module).map((f) => f.name).join(', ') || 'your room' }}. Reopen the decision in the room to swap sections.
+            you shared it in {{ lockedFocus.roomName }}<template v-if="friendsOf(lockedFocus.module).length">, alongside {{ friendsOf(lockedFocus.module).map((f) => f.name).join(', ') }}</template>. Change or stop sharing your section in the room to unlock it.
             <RouterLink :to="`/rooms/${lockedFocus.roomId}`" class="font-medium text-primary hover:underline">Open room</RouterLink>
           </p>
           <p v-if="bidding.fromRooms.length" class="text-[13px] text-muted-foreground">
-            Accepted in collab rooms:
+            Your shared room picks:
             <template v-for="(d, i) in bidding.fromRooms" :key="d.roomId"
-              ><RouterLink :to="`/rooms/${d.roomId}/votes`" class="font-medium text-primary hover:underline">{{ d.module }} {{ d.sectionId.split('-')[1] }} ({{ d.roomName }})</RouterLink
+              ><RouterLink :to="`/rooms/${d.roomId}`" class="font-medium text-primary hover:underline">{{ d.module }} {{ d.sectionId.split(':').pop() }} ({{ d.roomName }})</RouterLink
               ><span v-if="i < bidding.fromRooms.length - 1">, </span></template
-            >. Undo it in the room.
+            >. Review the amounts and save your bids. Your What-If plans stay unchanged.
           </p>
           <p v-if="bidding.notOffered.length" class="text-[13px] text-muted-foreground">
             No active sections available for {{ bidding.notOffered.join(', ') }}, so {{ bidding.notOffered.length === 1 ? 'it is' : 'they are' }} not shown here.

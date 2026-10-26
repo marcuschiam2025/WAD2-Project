@@ -36,13 +36,14 @@ export const useBiddingStore = defineStore('bidding', () => {
     if (!t || t.exchange || t.loa) return []
     return [...new Set(t.modules.map(effectiveCode))]
   })
-  // Modules decided in collab rooms are bid for whichever plan is picked
-  const roomCodes = computed(() => rooms.decided.map((d) => d.module).filter((c) => sections.some((s) => s.module === c && liveSections.has(s.id))))
+  // A member's own saved room section feeds bidding, never their What-If plans or other members' carts.
+  const roomPicks = computed(() => rooms.pickedForBidding.filter(d => d.term === round.value.term))
+  const roomConflicts = computed(() => [...new Set(roomPicks.value.map(d => d.module))].filter(code => new Set(roomPicks.value.filter(d => d.module === code).map(d => d.sectionId)).size > 1))
+  const fromRooms = computed(() => roomPicks.value.filter(d => !roomConflicts.value.includes(d.module) && sections.some(s => s.id === d.sectionId && s.module === d.module && !s.archived && liveSections.has(s.id))))
+  const roomCodes = computed(() => fromRooms.value.map(d => d.module))
   const planCodes = computed(() => [
-    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))), ...roomCodes.value, ...Object.keys(chosen.value[plan.value.id] ?? {}).filter(code => sections.some(s => s.module === code && liveSections.has(s.id)))]),
+    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))), ...roomCodes.value, ...Object.keys(chosen.value[plan.value.id] ?? {})]),
   ])
-  // Modules in the timetable only because a collab room decided on them (not in the plan's next semester)
-  const fromRooms = computed(() => rooms.decided.filter((d) => roomCodes.value.includes(d.module)))
   const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))))
 
   // Per plan: modules taken out of the cart, the section picked per module, and the e$ typed per module.
@@ -70,32 +71,28 @@ export const useBiddingStore = defineStore('bidding', () => {
   const chosen = ref({})
   const typed = ref({})
 
-  const inCart = computed(() => planCodes.value.filter((c) => !(dropped.value[plan.value.id] ?? []).includes(c)))
+  const inCart = computed(() => planCodes.value.filter((c) => roomCodes.value.includes(c) || !(dropped.value[plan.value.id] ?? []).includes(c)))
 
-  const decidedSection = (code) => rooms.decided.find((d) => d.module === code)?.sectionId
+  const decidedSection = (code) => fromRooms.value.find((d) => d.module === code)?.sectionId
 
-  // module code -> booked section id (a saved section that no longer exists falls back to the first one)
+  // Preserve saved IDs even when unavailable; only new choices default to the first active section.
   const booked = computed(() =>
     Object.fromEntries(
       inCart.value.map((code) => {
         const pick = chosen.value[plan.value.id]?.[code]
-        const valid = sections.some((s) => s.id === pick && s.module === code && liveSections.has(s.id))
-        return [code, decidedSection(code) ?? (valid ? pick : sections.find((s) => s.module === code && !s.archived && liveSections.has(s.id))?.id)]
+        return [code, decidedSection(code) ?? pick ?? sections.find((s) => s.module === code && !s.archived && liveSections.has(s.id))?.id]
       }),
     ),
   )
 
-  // A module whose booked section is the one a collab room confirmed is locked to it: it can't be swapped for
-  // another section, and the room's other members are shown as the people you bid with. Reopening the decision in the
-  // room (or the room confirming a different section) unlocks it. This follows the rooms, so it also holds after a reload.
+  // A personal room pick stays in sync with that room. Change or stop sharing the pick there to unlock it.
   // module code -> { roomId, roomName, module, sectionId, roomIds } for the first matching room
   const locked = computed(() => {
     const out = {}
-    for (const room of rooms.rooms) {
-      const confirmed = rooms.roomState(room).acceptedId
-      if (!confirmed || !inCart.value.includes(room.module) || booked.value[room.module] !== confirmed) continue
-      const entry = (out[room.module] ??= { roomId: room.id, roomName: room.name, module: room.module, sectionId: confirmed, roomIds: [] })
-      entry.roomIds.push(room.id)
+    for (const pick of fromRooms.value) {
+      if (!inCart.value.includes(pick.module) || booked.value[pick.module] !== pick.sectionId) continue
+      const entry = (out[pick.module] ??= { ...pick, roomIds: [] })
+      entry.roomIds.push(pick.roomId)
     }
     return out
   })
@@ -116,7 +113,10 @@ export const useBiddingStore = defineStore('bidding', () => {
   const savedAt = ref(null)
   watch(planId, () => (selectedModule.value = null))
 
-  const bookedSections = computed(() => Object.values(booked.value).map((id) => sections.find((s) => s.id === id)))
+  const bookedSections = computed(() => Object.entries(booked.value).map(([code, id]) => sections.find(s => s.id === id && s.module === code && liveSections.has(s.id))).filter(Boolean))
+  const unavailableSelections = computed(() => Object.entries(booked.value)
+    .filter(([code, id]) => !sections.some(s => s.id === id && s.module === code && liveSections.has(s.id)))
+    .map(([module, sectionId]) => ({ module, sectionId, section: sectionId?.includes(':') ? sectionId.split(':').pop() : sectionId?.startsWith(`${module}-`) ? sectionId.slice(module.length + 1) : sectionId ?? 'Unknown section' })))
   const archivedSelections = computed(() => bookedSections.value.filter(s => s?.archived).map(s => `${s.module} ${s.section}`))
   const allocated = computed(() => Object.values(bids.value).reduce((a, b) => a + (Number(b) || 0), 0))
 
@@ -234,11 +234,11 @@ export const useBiddingStore = defineStore('bidding', () => {
       return
     }
     if (!round.value.term) return
-    await Promise.all([fetchModules([...inTarget.value, ...rooms.decided.map((d) => d.module)]), loadCart(plan.value.id)])
+    await Promise.all([fetchModules([...inTarget.value, ...roomPicks.value.map((d) => d.module)]), loadCart(plan.value.id)])
   }
 
   // Modules that show up later (another plan picked, a room accepts a section, the plan is edited)
-  watch([inTarget, () => rooms.decided.map((d) => d.module)], ([codes, roomMods]) => {
+  watch([inTarget, () => roomPicks.value.map((d) => d.module)], ([codes, roomMods]) => {
     if (online.value) fetchModules([...codes, ...roomMods])
   })
   watch(planId, (id) => {
@@ -281,6 +281,7 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   // Take a module out of the cart (it stays in the What-If plan)
   function dropModule(code) {
+    if (isLocked(code)) return
     const id = plan.value.id
     dropped.value[id] = [...(dropped.value[id] ?? []), code]
     if (selectedModule.value === code) selectedModule.value = null
@@ -299,6 +300,8 @@ export const useBiddingStore = defineStore('bidding', () => {
       saveError.value = 'Connect to the server and select a catalogue term before saving your bids.'
       return false
     }
+    if (roomConflicts.value.length) { saveError.value = `You picked different sections for ${roomConflicts.value.join(', ')} in different rooms. Update or stop sharing a pick before saving.`; return false }
+    if (unavailableSelections.value.length) { saveError.value = 'A saved section is unavailable. Choose a replacement or remove its module before saving.'; return false }
     if (archivedSelections.value.length) { saveError.value = 'A selected section has been archived. Choose an active alternative or remove the module before saving.'; return false }
     if (clashes.value.size) { saveError.value = 'Resolve class or final-exam clashes before saving.'; return false }
     const items = Object.entries(booked.value).map(([code, sectionId]) => ({ module: code, sectionId, amount: Number(bids.value[code]) }))
@@ -352,6 +355,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     targetSem,
     notOffered,
     fromRooms,
+    roomConflicts,
     locked,
     isLocked,
     booked,
@@ -366,6 +370,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     round,
     roundInfo,
     bookedSections,
+    unavailableSelections,
     archivedSelections,
     allocated,
     clashes,
