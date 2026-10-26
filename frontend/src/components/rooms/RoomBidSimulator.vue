@@ -6,7 +6,7 @@
 // Results are per module, not per section.
 import { computed, ref, watch } from 'vue'
 import { api } from '@core/services/api'
-import { rateBid, MIN_BID } from '@core/data/bidding'
+import { rateBid, MIN_BID, estimateHistory, canEstimateBid } from '@core/data/bidding'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import SelectField from '@/components/ui/SelectField.vue'
@@ -66,7 +66,7 @@ watch(
     clearTimeout(referenceTimer)
     reference.value = null
     const request = ++referenceRequest
-    if (!r) return
+    if (!canEstimateBid(r, term)) return
     referenceTimer = setTimeout(async () => {
       try {
         // Without an amount the backend still returns the suggestion, mean and SD
@@ -82,12 +82,13 @@ watch(
 
 // The rating: the backend's when it has answered, else the same formula on the last 3 terms loaded here
 const verdict = computed(() => {
+  if (!canEstimateBid(round.value, props.term)) return null
   if (amount.value === null || tooLow.value) return null
   if (reference.value?.rating) return reference.value
-  const recent = roundHistory.value.slice(0, 3)
+  const recent = estimateHistory(history.value, round.value, props.term)
   return recent.length ? { ...rateBid(amount.value, recent), basedOn: recent.length } : null
 })
-const suggested = computed(() => (reference.value?.basedOn ? reference.value.suggested : null))
+const suggested = computed(() => (canEstimateBid(round.value, props.term) && reference.value?.basedOn ? reference.value.suggested : null))
 const pill = { safe: ['success', 'Safe'], competitive: ['warning', 'Competitive'], 'at-risk': ['destructive', 'At risk'] }
 
 // Marker on the At risk / Competitive / Safe meter (0–100%)

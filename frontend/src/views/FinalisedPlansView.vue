@@ -1,9 +1,10 @@
 <script setup>
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useBiddingStore } from '@core/stores/bidding'
 import { useUserStore } from '@core/stores/user'
 import { api } from '@core/services/api'
-import { authClient } from '@core/services/firebase'
+import { useCalendarExportStore } from '@core/stores/calendarExport'
 import { moduleName } from '@core/data/catalogue'
 import { buildIcs, downloadFile, hasTeachingDates } from '@core/utils/ics'
 import { findClashes, findExamClashes } from '@core/utils/clash'
@@ -15,9 +16,8 @@ const user = useUserStore()
 const copies = ref([])
 const loading = ref(false)
 const error = ref('')
-const exportError = ref('')
-const exportMessage = ref('')
-const adding = ref(null) // id of the saved plan being added to Google Calendar
+const calendarExport = useCalendarExportStore()
+const { error: exportError, message: exportMessage, adding } = storeToRefs(calendarExport)
 const termStart = ref('')
 const weeks = ref(13)
 let revision = 0
@@ -33,8 +33,12 @@ async function load() {
   } catch (err) { if (version === revision) error.value = err.message }
   finally { if (version === revision) loading.value = false }
 }
-watch(() => [user.uid, bidding.round.term], load, { immediate: true })
-onBeforeUnmount(() => { revision++ })
+watch(() => [user.uid, user.isSignedIn, bidding.round.term], () => {
+  termStart.value = ''
+  weeks.value = 13
+  load()
+}, { immediate: true })
+onBeforeUnmount(() => { revision++; calendarExport.cancel() })
 const modules = computed(() => [...new Set(copies.value.flatMap(copy => copy.items.map(item => item.module)))])
 const cell = (copy, code) => copy.items.find(item => item.module === code)
 const schedule = copy => copy.items.map(item => item.section).filter(Boolean)
@@ -48,28 +52,13 @@ function blocked(copy) {
   if (findClashes(schedule(copy)).length || findExamClashes(schedule(copy)).length) return 'Saved sections now clash. Review this cart before exporting.'
   return ''
 }
-function googleError(err) {
-  if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return 'Google Calendar access was cancelled.'
-  if (err.code === 'auth/popup-blocked') return 'Your browser blocked the Google popup. Allow popups for this site and try again.'
-  if (err.code === 'auth/user-mismatch') return 'Choose the Google account you signed in to BidMaxxer with.'
-  return err.message
-}
 // Adds the plan's classes straight into the student's Google Calendar, next to their other commitments
 async function addToGoogle(copy) {
   exportError.value = ''
   exportMessage.value = ''
   const reason = blocked(copy)
   if (reason) { exportError.value = reason; return }
-  adding.value = copy.id
-  try {
-    const token = await authClient.calendarAccessToken()
-    const ids = schedule(copy).map(section => section.id)
-    const { created } = await api.exportCalendar(token, ids, needsDates(copy) ? termStart.value : '', weeks.value)
-    exportMessage.value = `Added ${created} weekly class series from ${copy.name} to your Google Calendar.`
-  } catch (err) {
-    if (/not granted/.test(err.message)) authClient.forgetCalendarToken()
-    exportError.value = googleError(err)
-  } finally { adding.value = null }
+  await calendarExport.addToGoogle(copy, termStart.value, weeks.value)
 }
 function exportCopy(copy) {
   exportError.value = ''

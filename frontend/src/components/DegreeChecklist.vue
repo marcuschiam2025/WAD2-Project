@@ -361,5 +361,5 @@ const addLabel = computed(() => {
       </div>
     </div>
   </section>
-  <section v-else class="card p-6"><h2 class="text-[17px] font-semibold">Degree Requirements</h2><p class="mt-2 text-sm text-muted-foreground">Live curriculum requirements have not loaded for this plan. Reload to retry; completion is unavailable until they load.</p></section>
+  <section v-else class="card p-6"><h2 class="text-[17px] font-semibold">Degree Requirements</h2><p class="mt-2 text-sm text-muted-foreground">{{ checklist.unavailableReason }}</p></section>
 </template>

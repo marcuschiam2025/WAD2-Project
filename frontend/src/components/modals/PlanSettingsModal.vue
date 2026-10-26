@@ -36,9 +36,8 @@ const futureSems = computed(() =>
   plan.value.semesters.filter((s) => !s.loa && planner.semStatus(plan.value, s.id) !== 'done'),
 )
 
-function deletePlan() {
-  planner.deletePlan(plan.value.id)
-  emit('close')
+async function deletePlan() {
+  if (await planner.deletePlan(plan.value.id)) emit('close')
 }
 </script>
 
@@ -72,7 +71,7 @@ function deletePlan() {
     </div>
 
     <div class="flex items-center justify-between gap-2 border-t border-border pt-4">
-      <BaseButton variant="destructive-outline" size="sm" :disabled="planner.plans.length <= 1" @click="deletePlan">
+      <BaseButton variant="destructive-outline" size="sm" :disabled="!planner.online || planner.planActionPending || planner.plans.length <= 1" @click="deletePlan">
         Delete plan
       </BaseButton>
       <div class="flex gap-2">
@@ -80,5 +79,7 @@ function deletePlan() {
         <BaseButton size="sm" @click="emit('close')">Done</BaseButton>
       </div>
     </div>
+    <p v-if="planner.planActionPending" role="status" class="text-sm text-muted-foreground">Updating plans…</p>
+    <p v-if="planner.planActionError || planner.syncError" role="alert" class="text-sm text-destructive">{{ planner.planActionError || planner.syncError }}</p>
   </BaseModal>
 </template>

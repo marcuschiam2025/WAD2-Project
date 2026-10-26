@@ -63,6 +63,10 @@ export const usePlannerStore = defineStore('planner', () => {
   const catalogue = useCatalogueStore()
   const online = ref(false)
   const syncError = ref('')
+  const planActionPending = ref(false)
+  const planActionError = ref('')
+  let deletionRequest = null
+  let deletingOnServer = false
   const checks = ref({}) // plan id -> GET /api/plans/:id/check result
   const lastSaved = new Map() // plan id -> the body last sent (or loaded), so unchanged plans aren't re-sent
   let loading = null
@@ -114,7 +118,7 @@ export const usePlannerStore = defineStore('planner', () => {
   // A new student's first plan: their major, tracks, current semester and the modules from onboarding
   function firstPlan() {
     const p = user.profile
-    const majorId = catalogue.majorIdFor(p.major)
+    const majorId = catalogue.majorIdFor(p.major, p.intakeYear)
     const semesters = []
     for (let y = 1; y <= 4; y++) {
       for (let s = 1; s <= 2; s++) {
@@ -216,6 +220,10 @@ export const usePlannerStore = defineStore('planner', () => {
   let planRequest = null
   function savePlans() {
     clearTimeout(saveTimer)
+    if (deletingOnServer) {
+      const version = session
+      return deletionRequest.then(() => version === session ? savePlans() : undefined)
+    }
     if (planRequest) return planRequest
     if (!online.value || !user.isSignedIn) return Promise.reject(new Error('Connect to the server before saving your plans.'))
     const version = session
@@ -420,6 +428,10 @@ export const usePlannerStore = defineStore('planner', () => {
 
   watch(() => user.uid, () => {
     session++
+    planActionPending.value = false
+    planActionError.value = ''
+    deletionRequest = null
+    deletingOnServer = false
     clearTimeout(saveTimer)
     online.value = false
     planRequest = null
@@ -456,42 +468,73 @@ export const usePlannerStore = defineStore('planner', () => {
 
   // Online, a new plan keeps the active plan's major, tracks and completed semesters;
   // the semesters from the current one onwards start empty.
-  function addPlan() {
+  async function addPlan() {
     if (plans.value.length >= MAX_PLANS) return false
-    if (!online.value) return false
+    if (!online.value || planActionPending.value) return false
     const version = session
     const from = activePlan.value
     const now = semIndex(from, from.currentSem)
-    api
-      .createPlan({
+    planActionPending.value = true
+    planActionError.value = ''
+    try {
+      const created = await api.createPlan({
         majorId: from.majorId,
         tracks: [...from.tracks],
         currentSem: from.currentSem,
         semesters: toApi(from).semesters.map((s, i) => ({ ...s, modules: i < now ? [...s.modules] : [] })),
       })
-      .then((created) => {
-        if (version !== session) return
-        const plan = fromApi(created)
-        remember(plan)
-        plans.value.push(plan)
-        activePlanId.value = plan.id
-        refreshCheck(plan.id)
-      })
-      .catch((e) => (syncError.value = e.message))
-    return true
+      if (version !== session) return false
+      const plan = fromApi(created)
+      remember(plan)
+      plans.value.push(plan)
+      activePlanId.value = plan.id
+      refreshCheck(plan.id)
+      return true
+    } catch (error) {
+      if (version === session) planActionError.value = error.message
+      return false
+    } finally {
+      if (version === session) planActionPending.value = false
+    }
   }
 
   function deletePlan(id) {
-    if (plans.value.length <= 1) return
-    plans.value = plans.value.filter((p) => p.id !== id)
-    plans.value.forEach((p, i) => (p.name = `Plan ${i + 1}`))
-    activePlanId.value = plans.value[0].id
-    if (!online.value) return
-    // The backend renumbers the rest the same way, so the names match without another save
-    lastSaved.delete(id)
-    delete checks.value[id]
-    plans.value.forEach(remember)
-    api.deletePlan(id).catch((e) => (syncError.value = e.message))
+    if (!online.value || planActionPending.value || plans.value.length <= 1 || !plans.value.some(p => p.id === id)) return Promise.resolve(false)
+    const version = session
+    planActionPending.value = true
+    planActionError.value = ''
+    const request = Promise.resolve().then(async () => {
+      try {
+        if (version !== session) return false
+        await savePlans()
+        if (version !== session) return false
+        deletingOnServer = true
+        await api.deletePlan(id)
+        if (version !== session) return false
+        plans.value = plans.value.filter(p => p.id !== id)
+        // Update only the saved names: edits made while deletion was pending still need saving.
+        plans.value.forEach((p, i) => {
+          p.name = `Plan ${i + 1}`
+          const saved = lastSaved.get(p.id)
+          if (saved) lastSaved.set(p.id, JSON.stringify({ ...JSON.parse(saved), name: p.name }))
+        })
+        if (activePlanId.value === id) activePlanId.value = plans.value[0].id
+        lastSaved.delete(id)
+        delete checks.value[id]
+        return true
+      } catch (error) {
+        if (version === session) planActionError.value = error.message
+        return false
+      } finally {
+        if (version === session) {
+          planActionPending.value = false
+          deletingOnServer = false
+          deletionRequest = null
+        }
+      }
+    })
+    deletionRequest = request
+    return request
   }
 
   // Requirement overview: every placed module sorted into a bucket.
@@ -530,6 +573,12 @@ export const usePlannerStore = defineStore('planner', () => {
   // module catalogue (its tags, e.g. CORE:NUMERACY, and the track course lists) when it is loaded, else the sample one
   const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModulesFor(activePlan.value.majorId) : modules))
   const exempted = computed(() => user.profile.exempted ?? [])
+  const curriculumNotice = computed(() => {
+    const saved = activePlan.value.majorId
+    if (!catalogue.online || !saved || !user.profile.intakeYear) return ''
+    const expected = catalogue.majorIdFor(user.profile.major, user.profile.intakeYear)
+    return saved !== expected ? 'This plan’s saved curriculum does not match your major and intake year. Its requirements still follow the saved curriculum; review it before relying on graduation progress.' : ''
+  })
   // Online, the checklist follows the plan's curriculum from the backend (GET /api/majors/:id/requirements), so edits
   // made in the admin panel show up here. curriculumLayout.js lists it under the course-progression headings and adds
   // the recommended semesters. Offline, the fixed course-progression template (data/degree.js): 36 lines.
@@ -544,8 +593,13 @@ export const usePlannerStore = defineStore('planner', () => {
       const majorCode = catalogue.majors.find((m) => m._id === activePlan.value.majorId)?.majorCode ?? ''
       return layoutCurriculum(buildCurriculumChecklist(activePlan.value, checklistCatalogue.value, bundle, options), activePlan.value, bundle, { majorCode })
     }
-    if (catalogue.online && activePlan.value.majorId) {
-      return { live: true, unavailable: true, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
+    if (catalogue.online) {
+      const unavailableReason = !activePlan.value.majorId
+        ? 'No curriculum is selected for this plan. Your major and intake year may not be supported yet; graduation progress is unavailable.'
+        : bundle?.requirementsAvailable === false
+          ? 'Graduation requirements for this plan’s curriculum are not available yet.'
+          : 'Live curriculum requirements have not loaded for this plan. Reload to retry; completion is unavailable until they load.'
+      return { live: true, unavailable: true, unavailableReason, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
     }
     return buildChecklist(activePlan.value, checklistCatalogue.value, {
       ...options,
@@ -565,9 +619,12 @@ export const usePlannerStore = defineStore('planner', () => {
     online,
     syncError,
     plansSaving,
+    planActionPending,
+    planActionError,
     savePlans,
     activeCheck,
     checklist,
+    curriculumNotice,
     checklistCatalogue,
     exempted,
     load,

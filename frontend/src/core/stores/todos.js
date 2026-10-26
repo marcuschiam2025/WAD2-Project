@@ -1,32 +1,34 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useUserStore } from './user'
 
-const STORAGE_KEY = 'bidmaxxer:todos'
-
-// Starter items for a student who has not written any yet.
-// TODO(Backend 2): GET / POST / PATCH / DELETE /api/users/me/todos
-const sample = [
-  { id: 1, text: 'Confirm KAIST exchange mapping', done: false },
-  { id: 2, text: 'Pick sections for IS442 with the Yappers room', done: false },
-  { id: 3, text: 'Check which Year 2 prerequisites are still open', done: true },
-]
-
-function load() {
+function load(key) {
+  if (!key) return []
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY))
-    return Array.isArray(saved) ? saved : null
+    const saved = JSON.parse(localStorage.getItem(key))
+    if (!Array.isArray(saved)) return []
+    const valid = saved.every(i => i && Number.isSafeInteger(i.id) && i.id > 0 && i.id < Number.MAX_SAFE_INTEGER && typeof i.text === 'string' && typeof i.done === 'boolean')
+    return valid && new Set(saved.map(i => i.id)).size === saved.length ? saved : []
   } catch {
-    return null
+    return []
   }
 }
 
 export const useTodosStore = defineStore('todos', () => {
-  const items = ref(load() ?? structuredClone(sample))
-  let nextId = Math.max(0, ...items.value.map((i) => i.id)) + 1
+  const user = useUserStore()
+  const storageKey = computed(() => user.isSignedIn && user.uid ? `bidmaxxer:todos:${user.uid}` : null)
+  const items = ref([])
+  let nextId = 1
+  // The old shared key has no account owner, so it cannot be safely imported.
+  watch(storageKey, key => {
+    items.value = load(key)
+    nextId = items.value.reduce((max, i) => Math.max(max, i.id), 0) + 1
+  }, { immediate: true, flush: 'sync' })
 
   function add(text) {
+    if (!storageKey.value) return
     const t = text.trim()
-    if (t) items.value.push({ id: nextId++, text: t, done: false })
+    if (t) items.value.push({ id: nextId++, text: t.slice(0, 120), done: false })
   }
 
   function toggle(id) {
@@ -45,13 +47,14 @@ export const useTodosStore = defineStore('todos', () => {
   watch(
     items,
     () => {
+      if (!storageKey.value) return
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items.value))
+        localStorage.setItem(storageKey.value, JSON.stringify(items.value))
       } catch {
         // storage can be full or blocked; the list still works for this session
       }
     },
-    { deep: true },
+    { deep: true, flush: 'sync' },
   )
 
   return { items, add, toggle, remove, clearDone }

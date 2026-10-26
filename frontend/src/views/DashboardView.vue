@@ -5,8 +5,8 @@ import { useBiddingStore } from '@core/stores/bidding'
 import { usePlannerStore, effectiveCode } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { moduleName } from '@core/data/catalogue'
-import { sectionMeetings } from '@core/utils/clash'
-import { slots, bidHistory, rateBid } from '@core/data/bidding'
+import { plannedMeetings, singaporeDay } from '@core/utils/dashboardSchedule'
+import { slots, bidHistory, rateBid, estimateHistory } from '@core/data/bidding'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
@@ -20,17 +20,15 @@ const rooms = useRoomsStore()
 // The current BOSS round (GET /api/bidding/round, via the bidding store)
 const round = computed(() => bidding.roundInfo)
 
-const today = new Date()
-const dateLabel = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
-const todayIdx = (today.getDay() + 6) % 7 // Monday = 0, same as the bidding timetable
-const hhmm = (d) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-const dayName = (offset) => new Date(Date.now() + offset * 86_400_000).toLocaleDateString('en-GB', { weekday: 'short' })
-const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-const closesOffset = computed(() => round.value.closesAt ? Math.round((midnight(round.value.closesAt) - midnight(today)) / 86_400_000) : null) // days until the round closes
-const closesLabel = computed(() => round.value.closesAt ? `${round.value.closesAt.toLocaleDateString('en-GB', { weekday: 'short' })} ${hhmm(round.value.closesAt)}` : 'Deadline not configured')
+const now = ref(Date.now())
+const today = computed(() => new Date(now.value))
+const dateLabel = computed(() => today.value.toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore', weekday: 'long', day: 'numeric', month: 'long' }))
+const hhmm = (d) => d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Singapore', hour: '2-digit', minute: '2-digit' })
+const dayName = (offset) => new Date(singaporeDay(today.value).getTime() + offset * 86_400_000).toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short' })
+const closesOffset = computed(() => round.value.closesAt ? Math.round((singaporeDay(round.value.closesAt) - singaporeDay(today.value)) / 86_400_000) : null)
+const closesLabel = computed(() => round.value.closesAt ? `${round.value.closesAt.toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore', weekday: 'short' })} ${hhmm(round.value.closesAt)}` : 'Deadline not configured')
 
 // Live countdown to the round closing
-const now = ref(Date.now())
 let timer
 onMounted(() => (timer = setInterval(() => (now.value = Date.now()), 30_000)))
 onBeforeUnmount(() => clearInterval(timer))
@@ -58,9 +56,9 @@ const stats = computed(() => [
   },
   {
     label: 'Degree',
-    value: String(degree.value.cleared),
-    unit: `/ ${degree.value.required} courses cleared`,
-    sub: `${degree.value.inProgress} in progress · ${degree.value.planned} planned${degree.value.late ? ` · ${degree.value.late} behind` : ''}`,
+    value: planner.checklist.unavailable ? '—' : String(degree.value.cleared),
+    unit: planner.checklist.unavailable ? 'Requirements unavailable' : `/ ${degree.value.required} courses cleared`,
+    sub: planner.checklist.unavailable ? planner.checklist.unavailableReason : planner.curriculumNotice || `${degree.value.inProgress} in progress · ${degree.value.planned} planned${degree.value.late ? ` · ${degree.value.late} behind` : ''}`,
     subDanger: degree.value.late > 0,
     accent: 'border-t-primary!',
     to: '/planner',
@@ -69,19 +67,13 @@ const stats = computed(() => [
 
 // --- Schedule -----------------------------------------------------------------------------
 // TODO(backend): replace with GET /api/users/me/feed — assignment deadlines and quizzes.
-// offset = days from today. Classes below come from the booked sections in the bidding store.
-const deadlines = computed(() => round.value.closesAt ? [
+// The bidding cart is a planning source, not evidence of confirmed enrolment.
+const deadlines = computed(() => round.value.closesAt > now.value ? [
   { id: 'bid', kind: 'Bid', title: 'Submit bid cart', meta: `${round.value.name} closes`, offset: closesOffset.value, time: hhmm(round.value.closesAt) },
 ] : [])
 
-const classes = computed(() => bidding.bookedSections.flatMap(s => sectionMeetings(s).map(m => ({
-  id: `class-${s.id}-${m.day}-${m.start}`,
-  kind: 'Class',
-  title: `${s.module} ${moduleName(s.module)}`,
-  meta: `${s.section} · ${m.venue || s.venueShort}, to ${m.end}`,
-  offset: (m.day - todayIdx + 7) % 7,
-  time: m.start,
-}))))
+const classes = computed(() => plannedMeetings(bidding.bookedSections, today.value)
+  .map(m => ({ ...m, title: `${m.module} ${moduleName(m.module)}` })))
 
 const minutes = (t) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) : 24 * 60)
 const ordered = (list) => [...list].sort((a, b) => (a.offset ?? 99) - (b.offset ?? 99) || minutes(a.time) - minutes(b.time))
@@ -89,14 +81,14 @@ const ordered = (list) => [...list].sort((a, b) => (a.offset ?? 99) - (b.offset 
 const tab = ref('today')
 const schedule = computed(() => {
   const all = ordered([...classes.value, ...deadlines.value])
-  const items = tab.value === 'today' ? all.filter((i) => i.offset === 0) : all.filter((i) => i.offset <= 6)
+  const items = tab.value === 'today' ? all.filter((i) => i.offset === 0) : all.filter((i) => i.offset >= 0 && i.offset <= 6)
   return items.map((i) => ({
     ...i,
     when: tab.value === 'today' ? i.time : `${dayName(i.offset)} ${i.time ?? ''}`.trim(),
   }))
 })
 const kindStyle = {
-  Class: 'bg-primary-tint text-primary',
+  'Planned class': 'bg-primary-tint text-primary',
   Bid: 'bg-warning-tint text-foreground',
   Due: 'bg-secondary text-muted-foreground',
 }
@@ -106,7 +98,7 @@ const cart = computed(() =>
   Object.entries(bidding.bids)
     .map(([code, amount]) => {
       const n = Number(amount) || 0
-      return { code, name: moduleName(code), amount: n, rating: rateBid(n, bidHistory[code] ?? [])?.rating ?? null }
+      return { code, name: moduleName(code), amount: n, rating: rateBid(n, estimateHistory(bidHistory[code] ?? [], bidding.round.round, bidding.round.term))?.rating ?? null }
     })
     .sort((a, b) => b.amount - a.amount),
 )
@@ -205,7 +197,7 @@ const biddingWindows = computed(() => [
             <h2 class="text-h4">Schedule</h2>
             <div class="flex rounded-md border border-border p-0.5" role="tablist" aria-label="Schedule range">
               <button
-                v-for="t in [['today', 'Today'], ['week', 'This week']]"
+                v-for="t in [['today', 'Today'], ['week', 'Next 7 days']]"
                 :key="t[0]"
                 type="button"
                 role="tab"
@@ -216,6 +208,7 @@ const biddingWindows = computed(() => [
               >{{ t[1] }}</button>
             </div>
           </div>
+          <p class="pb-3 text-xs text-muted-foreground">Singapore time. Planned classes use your bid cart and teaching dates; they do not confirm enrolment. Sections without teaching dates are omitted.</p>
           <ul>
             <li v-for="i in schedule" :key="i.id" class="flex items-start gap-3 border-t border-border py-3">
               <span class="w-[74px] shrink-0 pt-0.5 font-mono text-[12px] leading-normal font-medium text-muted-foreground">{{ i.when }}</span>
