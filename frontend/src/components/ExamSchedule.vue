@@ -35,6 +35,7 @@ const perDay = computed(() => {
   for (const r of rows.value) if (r.exam) count[r.exam.date] = (count[r.exam.date] ?? 0) + 1
   return count
 })
+const unconfirmedEnds = computed(() => rows.value.some(row => row.exam && !row.exam.end))
 </script>
 
 <template>
@@ -56,12 +57,13 @@ const perDay = computed(() => {
           <span class="text-muted-foreground"> {{ moduleName(r.module) }}</span>
         </span>
         <span v-if="r.exam" class="font-mono" :class="r.clash && 'font-semibold text-destructive'">
-          {{ r.exam.start }}–{{ r.exam.end }}<span v-if="r.clash"> · clash</span
+          {{ r.exam.start }}<template v-if="r.exam.end">–{{ r.exam.end }}</template><span v-else class="text-warning"> · End time unconfirmed</span><span v-if="r.clash"> · clash</span
           ><span v-else-if="perDay[r.exam.date] > 1" class="text-warning"> · same day</span>
         </span>
         <span v-else class="text-muted-foreground">{{ r.note }}</span>
       </li>
     </ul>
-    <p class="text-[12px] text-muted-foreground">From the BOSS exam schedule. End times assume 2-hour exams; check BOSS for venues and changes.</p>
+    <p v-if="unconfirmedEnds" class="text-[12px] text-warning">Some exam end times are unconfirmed. Clash checks can detect definite overlaps but cannot rule out other overlaps until end times are verified. Check the official exam details.</p>
+    <p v-else class="text-[12px] text-muted-foreground">Check the official exam schedule for venues and changes.</p>
   </section>
 </template>

@@ -7,14 +7,16 @@ import { canonicalTerm } from "../bidding/utils/sectionData.js";
 import { toSectionView } from "../bidding/utils/sectionView.js";
 import { unmetGroups } from "../planning/utils/requisites.js";
 import { httpError } from "../../middleware/errorHandler.js";
+import { prerequisitesBeforeTerm } from "./utils/eligibility.js";
 
 const MEMBER_FIELDS = "name email";
 const SECTION_STATUSES = ["considering", "bidding", "enrolled"];
 
-async function missingPrereqs(user, moduleCode) {
+async function missingPrereqs(user, moduleCode, termKey) {
   const mod = await Module.findById(moduleCode).lean();
+  const available = new Set(prerequisitesBeforeTerm(user, termKey));
   const groups = unmetGroups(mod?.prerequisites, (code) =>
-    user.completedModules.includes(code),
+    available.has(code),
   );
   return groups.map((group) => group.join(" or "));
 }
@@ -62,7 +64,7 @@ function removeUserFromParty(party, userId) {
 export async function listParties(req, res) {
   const parties = await Party.find({ members: req.user._id })
     .select(
-      "name description module termKey inviteCode maxMembers members updatedAt",
+      "name description module termKey inviteCode maxMembers members memberSections updatedAt",
     )
     .populate("members", MEMBER_FIELDS)
     .sort({ updatedAt: -1 });
@@ -96,7 +98,7 @@ export async function createParty(req, res) {
   for (const invitee of invitees) {
     if (party.members.length >= party.maxMembers) break; 
 
-    const missing = await missingPrereqs(invitee, module);
+    const missing = await missingPrereqs(invitee, module, party.termKey);
 
     if (missing.length > 0) {
       blocked.push({ email: invitee.email, name: invitee.name, missing });
@@ -129,7 +131,7 @@ export async function joinParty(req, res) {
     throw httpError(409, "This party is full");
   }
 
-  const missing = await missingPrereqs(req.user, party.module);
+  const missing = await missingPrereqs(req.user, party.module, party.termKey);
   if (missing.length > 0) {
     return res
       .status(403)

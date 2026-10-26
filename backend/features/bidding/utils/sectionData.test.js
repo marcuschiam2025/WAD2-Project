@@ -43,3 +43,24 @@ test('exam wording: an exam time, no final exam (null), or not yet announced (mi
   assert.equal(a.exam, EXAM_NOT_ANNOUNCED)
   assert.deepEqual(findExamClashes([a, b]), []) // two unannounced exams are not a clash
 })
+
+test('old assumed BOSS ends and missing ends stay unconfirmed, while staff and verified import ends are retained', () => {
+  const boss = { ...shared, examSource: 'boss' }
+  const old = normalizeSection(boss)
+  assert.equal(old.examPeriod.end, null, 'old BOSS records have an assumed duration, not a verified end')
+  assert.match(old.exam, /end time unconfirmed/i)
+  const partial = normalizeSection({ ...boss, finalExam: { ...boss.finalExam, end: null, endVerified: false } })
+  assert.equal(partial.examPeriod.start, '09:00')
+  assert.equal(partial.examPeriod.end, null)
+  assert.equal(normalizeSection({ ...boss, finalExam: { ...boss.finalExam, endVerified: true } }).examPeriod.end, '11:00')
+  assert.equal(normalizeSection({ ...boss, examSource: 'admin' }).examPeriod.end, '11:00')
+  assert.equal(normalizeSection({ ...shared, finalExam: undefined }).exam, 'Exam not yet announced')
+})
+
+test('unknown exam ends flag definite overlaps without inventing a duration', () => {
+  const a = { sectionId: 'A', examPeriod: { date: '2027-04-20', start: '09:00', end: null } }
+  const b = { sectionId: 'B', examPeriod: { date: '2027-04-20', start: '10:00', end: '11:00' } }
+  assert.deepEqual(findExamClashes([a, b]), [], 'a later start is not proof of a clash when the earlier end is unknown')
+  assert.deepEqual(findExamClashes([a, { ...b, examPeriod: { ...b.examPeriod, start: '09:00', end: null } }]), [['A', 'B']], 'the same start is a definite clash even without ends')
+  assert.deepEqual(findExamClashes([a, { ...b, examPeriod: { ...b.examPeriod, start: '08:30', end: '09:30' } }]), [['A', 'B']], 'one known interval can prove overlap with another start')
+})

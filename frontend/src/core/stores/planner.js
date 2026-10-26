@@ -278,43 +278,58 @@ export const usePlannerStore = defineStore('planner', () => {
   // From the backend catalogue when it is loaded, otherwise from the sample catalogue.
   function requisites(code) {
     const live = liveModules[code]
-    if (live) return { prereqs: live.prerequisites ?? [], coreqs: live.corequisites ?? [] }
+    if (live) return { ...live, prereqs: live.prerequisites ?? [], coreqs: live.corequisites ?? [] }
     const mod = modules[code]
-    return { prereqs: (mod?.prereqs ?? []).map((c) => [c]), coreqs: (mod?.coreqs ?? []).map((c) => [c]) }
+    return { ...mod, categories: mod?.category === 'track' ? ['IS_TRACK'] : [], prereqs: (mod?.prereqs ?? []).map((c) => [c]), coreqs: (mod?.coreqs ?? []).map((c) => [c]) }
   }
 
   // The module to suggest for an unmet group: one in the basket, then one the app knows, else the first
   const suggestFrom = (group) =>
     group.find((c) => basket.value.includes(c)) ?? group.find((c) => modules[c]) ?? group[0]
 
-  // Prereqs must sit in an earlier semester; coreqs in the same semester or a completed one.
-  // Returns one suggested module per unmet group.
+  // Match the server's academic checks against the current, possibly unsaved plan.
+  // Preserve AND-of-OR groups for explanations, with one suggested course per group for add actions.
   function checkModule(plan, code, semId) {
-    const { prereqs: pre, coreqs: co } = requisites(effectiveCode(code))
+    code = effectiveCode(code)
+    const mod = requisites(code)
     const target = semIndex(plan, semId)
-    const now = semIndex(plan, plan.currentSem)
-    const placedAt = (c) =>
-      plan.semesters.findIndex((s) => s.modules.some((m) => effectiveCode(m) === c))
     const exempt = user.profile.exempted ?? []
-    const prereqMet = (c) => {
-      if (exempt.includes(c)) return true
-      const at = placedAt(c)
-      return at !== -1 && at < target
+    const empty = { prereqs: [], coreqs: [], prereqGroups: [], coreqGroups: [], exclusions: [], rules: [] }
+    if (target < semIndex(plan, plan.currentSem) || exempt.includes(code)) return empty
+    const positions = new Map(exempt.map(c => [c, -1]))
+    plan.semesters.forEach((sem, i) => sem.modules.forEach(entry => {
+      const placed = effectiveCode(entry)
+      if (!exempt.includes(placed)) positions.set(placed, i)
+    }))
+    const prereqGroups = mod.prereqs.filter(group => !group.some(c => positions.has(c) && positions.get(c) < target))
+    const coreqGroups = mod.coreqs.filter(group => !group.some(c => positions.has(c) && positions.get(c) <= target))
+    const exclusions = (mod.mutuallyExclusive ?? []).filter(c => positions.has(c))
+    const rules = (mod.prerequisiteRules ?? []).filter(rule => {
+      const count = [...positions].filter(([c, at]) => at < target && (liveModules[c] || modules[c]) &&
+        (rule.countFrom !== 'TRACK' || requisites(c).categories?.includes('IS_TRACK'))).length
+      return count < rule.n
+    }).map(rule => `${rule.n} ${rule.countFrom === 'TRACK' ? 'track courses' : 'courses'} before this one`)
+    return {
+      prereqs: prereqGroups.map(suggestFrom), coreqs: coreqGroups.map(suggestFrom), prereqGroups, coreqGroups, exclusions, rules,
+      ...(mod.offeredRecently === false ? { notOffered: { lastOffered: mod.lastOffered ?? null } } : {}),
     }
-    const coreqMet = (c) => {
-      if (exempt.includes(c)) return true
-      const at = placedAt(c)
-      return at === target || (at !== -1 && at < now)
-    }
-    const prereqs = pre.filter((g) => !g.some(prereqMet)).map(suggestFrom)
-    const coreqs = co.filter((g) => !g.some(coreqMet)).map(suggestFrom)
-    return { prereqs, coreqs }
+  }
+
+  function warningMessages(plan, code, semId) {
+    const check = checkModule(plan, code, semId)
+    return [
+      ...check.prereqGroups.map(group => `Prerequisite ${group.join(' or ')} must be taken in an earlier semester`),
+      ...check.coreqGroups.map(group => `Corequisite ${group.join(' or ')} must be taken in the same or an earlier semester`),
+      ...check.exclusions.map(c => `Exclusion with ${c} in your plan or exemptions`),
+      ...check.rules.map(rule => `Requires ${rule}`),
+      ...(check.notOffered ? [check.notOffered.lastOffered ? `Not offered since ${check.notOffered.lastOffered}` : 'Not offered recently'] : []),
+    ]
   }
 
   function hasWarning(plan, code, semId) {
     if (semStatus(plan, semId) === 'done') return false
-    const { prereqs, coreqs } = checkModule(plan, code, semId)
-    return prereqs.length > 0 || coreqs.length > 0
+    const check = checkModule(plan, code, semId)
+    return check.prereqs.length > 0 || check.coreqs.length > 0 || check.exclusions.length > 0 || check.rules.length > 0 || !!check.notOffered
   }
 
   function removeEverywhere(plan, code) {
@@ -568,6 +583,7 @@ export const usePlannerStore = defineStore('planner', () => {
     semIndex,
     semStatus,
     checkModule,
+    warningMessages,
     hasWarning,
     placeModule,
     returnToBasket,

@@ -140,6 +140,12 @@ it is safe to rerun. Do not use a blanket index synchronization against a shared
 
 The saved plans screen displays persisted bid carts for the catalogue term, not confirmed BOSS allocations. Calendar downloads use every weekly meeting and require the first teaching Monday and number of consecutive weeks. Recess weeks, holidays and exams are not added or removed automatically. The frontend downloads an `.ics` file; Firebase sign-in alone does not grant Google Calendar access.
 
+### Final exam imports
+
+`pnpm import-exams <exam-schedule.xls> --dry-run` previews validated updates without writing. Writing to a remote database additionally requires `--remote`. Required columns are `Term / Session`, `Course Code`, `Pattern`, `Exam Date` and `Start Time`; `End Time` is optional. Invalid or conflicting course rows retain existing data, and only explicit `NO EXAM` rows clear an exam.
+
+An explicit end time is stored with `finalExam.endVerified: true`. Missing ends, including the assumed two-hour ends in older BOSS imports, display as unconfirmed. Staff-entered exams stay protected, and incomplete imports do not overwrite a verified end for the same exam. Clash checks detect definite overlaps from known starts and ends; unknown ends cannot rule out further overlap. Confirm those durations from an official source or enter them in the admin section editor. No migration is needed to display older assumed ends as unconfirmed.
+
 ### Collab Rooms — first integration chunk
 
 Party creation asks only for party name and module code from the shared catalogue. The signed-in creator is the party admin (the existing backend `owner` field). Invitations use the server-issued code; existing codes remain supported. Rooms do not import What-If plans, and the former plan-sharing route is removed. Room listing, creation, joining, member refresh and leaving use `/api/parties`. Section voting now reads the shared catalogue, saves member ballots and refreshes results every 10 seconds. The first saved ballot fixes the room term. Admin acceptance and member-management controls are not connected yet.

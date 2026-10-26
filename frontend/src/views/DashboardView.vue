@@ -136,9 +136,7 @@ const alerts = computed(() => {
   plan.semesters.forEach((sem) =>
     sem.modules.forEach((entry) => {
       if (!planner.hasWarning(plan, entry, sem.id)) return
-      const { prereqs, coreqs } = planner.checkModule(plan, entry, sem.id)
-      const why = prereqs.length ? `prereq ${prereqs.join(', ')} not met` : `needs ${coreqs.join(', ')} in ${sem.label}`
-      list.push(`${effectiveCode(entry)} · ${why}`)
+      planner.warningMessages(plan, entry, sem.id).forEach(why => list.push(`${effectiveCode(entry)} · ${why}`))
     }),
   )
   planner.checklist.groups
@@ -257,7 +255,7 @@ const biddingWindows = computed(() => [
               </RouterLink>
               <StatusPill v-if="c.rating" :tone="ratingPill[c.rating][0]">{{ ratingPill[c.rating][1] }}</StatusPill>
               <span class="w-[58px] text-right font-mono text-[14px] font-bold">e$ {{ c.amount }}</span>
-              <BaseButton variant="secondary" size="sm" :aria-label="`Drop ${c.code} from the cart`" @click="bidding.dropModule(c.code)">Drop</BaseButton>
+              <BaseButton variant="secondary" size="sm" :disabled="bidding.isLocked(c.code)" :title="bidding.isLocked(c.code) ? 'Stop sharing your section in the room before dropping this module' : undefined" :aria-label="`Drop ${c.code} from the cart`" @click="bidding.dropModule(c.code)">Drop</BaseButton>
             </li>
             <li v-if="!cart.length" class="border-t border-border py-4 text-[13px] text-muted-foreground">
               Your cart is empty. Add modules in the Bidding Planner.

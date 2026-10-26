@@ -1,5 +1,5 @@
 let client
-// Lets BidMaxxer create and edit events, without reading or changing the student's other calendars
+// This scope can view/edit calendar events; BidMaxxer currently uses it to add selected class events.
 const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 let calendarToken = null
 export async function firebaseClient() {

@@ -40,11 +40,14 @@ export function normalizeSection(raw) {
  let examPeriod=null
  if ((shared || catalogue) && raw.finalExam) {
   const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Singapore',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(raw.finalExam.date))
-  meeting({day:0,start:raw.finalExam.start,end:raw.finalExam.end})
-  examPeriod={date,start:raw.finalExam.start,end:raw.finalExam.end,...(raw.finalExam.venue?{venue:raw.finalExam.venue}:{})}
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(raw.finalExam.start??'')) throw new Error('Invalid exam start time')
+  // Older BOSS imports fabricated a two-hour end. Only an explicit verified marker makes those ends usable.
+  const end=raw.finalExam.end && raw.finalExam.endVerified!==false && (raw.examSource!=='boss' || raw.finalExam.endVerified===true)?raw.finalExam.end:null
+  if (end) meeting({day:0,start:raw.finalExam.start,end})
+  examPeriod={date,start:raw.finalExam.start,end,...(raw.finalExam.venue?{venue:raw.finalExam.venue}:{})}
  }
  return {...raw,sectionId:raw.sectionId??(shared?`${term}:${module}:${section}`:raw.sectionId),module,section,term,sessions,
   day:sessions[0]?.day??null,slot:sessions[0]?.slot??null,venue:sessions[0]?.venue??null,
   prof:shared?raw.instructor:catalogue?(raw.instructors??[]).join(INSTRUCTOR_SEPARATOR):raw.prof,examPeriod,
-  exam:examPeriod?`${examPeriod.date} · ${examPeriod.start} – ${examPeriod.end}`:shared||raw.finalExam===null?NO_FINAL_EXAM:raw.exam??EXAM_NOT_ANNOUNCED}
+  exam:examPeriod?`${examPeriod.date} · ${examPeriod.start}${examPeriod.end?` – ${examPeriod.end}`:' · End time unconfirmed'}`:raw.finalExam===null?NO_FINAL_EXAM:raw.exam??EXAM_NOT_ANNOUNCED}
 }
