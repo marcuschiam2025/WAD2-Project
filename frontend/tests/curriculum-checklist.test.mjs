@@ -47,3 +47,17 @@ test('partial live requirements use a neutral progress label instead of a semest
   assert.equal(row.chip.tone, 'neutral')
   assert.equal(row.rec, null, 'no recommended semester is provided by the stored rule')
 })
+
+test('requirements met by profile exemptions alone show as exempted, mixed ones as cleared', () => {
+  const noA = { ...plan, semesters: [{ id: 'Y1S1', modules: [] }, { id: 'Y2S1', modules: [] }, { id: 'Y2S2', modules: [] }] }
+  const c = buildCurriculumChecklist(noA, mods, bundle, { exempted: ['A'] })
+  const core = c.groups.flatMap(g => g.slots).find(r => r.id === 'CORE')
+  assert.equal(core.status, 'exempted')
+  assert.equal(core.chip.text, 'Exempted')
+  assert.equal(core.chip.tone, 'exempted')
+  assert.equal(c.totals.exempted, 1)
+  // A cleared in a semester and also exempted: the exemption wins, still exempted
+  assert.equal(buildCurriculumChecklist(plan, mods, bundle, { exempted: ['A'] }).groups[0].slots[0].status, 'exempted')
+  // Not exempted: a normal cleared requirement
+  assert.equal(buildCurriculumChecklist(plan, mods, bundle).totals.exempted, 0)
+})

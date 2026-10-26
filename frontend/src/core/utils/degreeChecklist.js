@@ -2,6 +2,7 @@
 //   cleared    = module sits in a semester before the plan's current one
 //   inProgress = module sits in the current semester (being taken now)
 //   planned    = module sits in a later semester
+//   exempted   = cleared through an exemption in the student's profile
 //   todo    = nothing in the plan fills this slot yet
 import { degreeGroups, gradRequirements, globalExposure, BASKETS, HOW, SEM_IDS, ANY_TERM } from '../data/degree'
 import { effectiveCode } from './requirementChecker'
@@ -142,7 +143,7 @@ export function semTools(plan) {
   //   later -> first recommended semester (grey)   late -> last recommended semester, already passed (red)
   const recFor = (win, placedId) => ({ ids: idsIn(win), tone: toneOf(win), label: windowLabel(win), now: plan.currentSem, placed: placedId })
   const chipFor = (win, placedId, status) => {
-    if (placedId) return { text: placedId, tone: status === 'inProgress' ? 'inProgress' : 'planned' }
+    if (placedId) return { text: placedId, tone: status === 'inProgress' ? 'inProgress' : status === 'exempted' ? 'exempted' : 'planned' }
     const tone = toneOf(win)
     return { text: tone === 'now' ? plan.currentSem : tone === 'later' ? win[0] : win[1], tone }
   }
@@ -175,7 +176,7 @@ export function buildChecklist(plan, catalogue, { exempted = [], freeExempt = 0,
   allSlots
     .filter((s) => s.rule === 'free')
     .slice(0, freeExempt)
-    .forEach((s) => (s.match = { mod: null, semId: 'Exempt', status: 'cleared', note: 'Free elective exemption' }))
+    .forEach((s) => (s.match = { mod: null, semId: 'Exempt', status: 'cleared', exempt: true, note: 'Free elective exemption' }))
 
   // Lines the student marked as done themselves (Internship, Community Service)
   allSlots
@@ -210,20 +211,22 @@ export function buildChecklist(plan, catalogue, { exempted = [], freeExempt = 0,
         note: s.note ?? null,
       }
       if (s.match) {
-        const { mod, semId, status, exempt } = s.match
+        const { mod, semId, exempt } = s.match
+        const status = exempt ? 'exempted' : s.match.status
         const detail = mod ? `${mod.code} · ${mod.name}${exempt ? ' (exempted)' : ''}` : s.match.note
         return { ...base, status, urgency: null, semId, rec: recFor(s.window, semId), chip: chipFor(s.window, semId, status), detail }
       }
       return { ...base, status: 'todo', urgency: urgencyOf(s.window), semId: null, rec: recFor(s.window, null), chip: chipFor(s.window, null), detail: detailFor(s, plan) }
     })
     const count = (st) => slots.filter((s) => s.status === st).length
-    return { key: g.key, label: g.label, slots, cleared: count('cleared'), inProgress: count('inProgress'), planned: count('planned'), todo: count('todo') }
+    return { key: g.key, label: g.label, slots, cleared: count('cleared'), exempted: count('exempted'), inProgress: count('inProgress'), planned: count('planned'), todo: count('todo') }
   })
 
   const flat = out.flatMap((g) => g.slots)
   const totals = {
     required: flat.length, // TOTAL_COURSES (36) with the standard groups
     cleared: flat.filter((s) => s.status === 'cleared').length,
+    exempted: flat.filter((s) => s.status === 'exempted').length,
     inProgress: flat.filter((s) => s.status === 'inProgress').length,
     planned: flat.filter((s) => s.status === 'planned').length,
     todo: flat.filter((s) => s.status === 'todo').length,
@@ -275,7 +278,7 @@ export function buildChecklist(plan, catalogue, { exempted = [], freeExempt = 0,
  * With the backend, `catalogue` is the real module catalogue in this shape (see stores/catalogue.js).
  */
 export function candidatesFor(item, plan, catalogue, exempted = []) {
-  const where = new Map(placedModules(plan, catalogue, exempted).map((p) => [p.mod.code, { status: p.status, semId: p.semId }]))
+  const where = new Map(placedModules(plan, catalogue, exempted).map((p) => [p.mod.code, { status: p.exempt ? 'exempted' : p.status, semId: p.semId }]))
   const all = Object.values(catalogue)
 
   let list = []

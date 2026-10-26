@@ -6,7 +6,7 @@ import dotDestructive from '@/assets/v2/dot-destructive.svg'
 import dotInfo from '@/assets/v2/dot-info.svg'
 
 defineProps({
-  tone: { type: String, default: 'neutral' }, // success | warning | destructive | info | neutral
+  tone: { type: String, default: 'neutral' }, // success | warning | destructive | info | exempt | neutral
 })
 
 const tints = {
@@ -14,6 +14,7 @@ const tints = {
   warning: 'bg-warning-tint text-foreground',
   destructive: 'bg-destructive-tint text-destructive',
   info: 'bg-info-tint text-info',
+  exempt: 'bg-exempt-tint text-exempt',
   neutral: 'bg-secondary text-secondary-foreground',
 }
 const dots = { success: dotSuccess, warning: dotWarning, destructive: dotDestructive, info: dotInfo }

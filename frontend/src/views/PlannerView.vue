@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { useCatalogueStore } from '@core/stores/catalogue'
-import { modules, moduleName, tracks, trackName } from '@core/data/catalogue'
+import { modules, liveModules, moduleName, tracks, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -163,6 +163,13 @@ function cardState(code, sem) {
   return 'planned'
 }
 
+// A course not run in about 2 years, planned for now or later (the backend's check warns about it too)
+function notOffered(code, sem) {
+  const mod = liveModules[effectiveCode(code)]
+  if (status(sem) === 'done' || mod?.offeredRecently !== false) return null
+  return mod.lastOffered ? `Not offered since ${mod.lastOffered}` : 'Not offered recently'
+}
+
 function warningText(code, sem) {
   const { prereqs, coreqs } = planner.checkModule(plan.value, code, sem.id)
   return prereqs.length ? `Prereq ${prereqs[0]} not met` : `Coreq ${coreqs[0]} needed`
@@ -218,8 +225,29 @@ const searchResults = computed(() => {
 // The Outstanding Modules checklist added up by area, so both always agree: one line = one course, split into
 // cleared (before the current semester), in progress (current semester) and planned (later semesters).
 const UNI_GROUPS = ['uni-cap', 'uni-com', 'uni-civ']
+const countSlots = (b) => {
+  // The live curriculum rows carry credit counts, so an area adds up course by course (a requirement 2 of 5 met counts 2)
+  if (b.slots.length && b.slots.every((x) => x.credit)) {
+    const add = (key) => Math.round(b.slots.reduce((n, x) => n + x.credit[key], 0) * 10) / 10
+    const [cleared, exempted, inProgress, planned] = ['cleared', 'exempted', 'inProgress', 'planned'].map(add)
+    return { key: b.key, label: b.label, required: add('required'), cleared, exempted, inProgress, planned, filled: cleared + exempted + inProgress + planned }
+  }
+  const count = (status) => b.slots.filter((x) => x.status === status).length
+  const cleared = count('cleared')
+  const exempted = count('exempted')
+  const inProgress = count('inProgress')
+  const planned = count('planned')
+  return { key: b.key, label: b.label, required: b.slots.length, cleared, exempted, inProgress, planned, filled: cleared + exempted + inProgress + planned }
+}
 const requirements = computed(() => {
   const groups = planner.checklist.groups
+  // The live checklist (backend curriculum) is already grouped by area; the three University Core headings are one area
+  if (planner.checklist.live) {
+    const uni = groups.filter((g) => /^uni-|^core-/.test(g.key))
+    const rest = groups.filter((g) => g.slots.length && !uni.includes(g))
+    const merged = uni.length ? [{ key: 'uni', label: 'University core', slots: uni.flatMap((g) => g.slots) }] : []
+    return [...merged, ...rest].filter((g) => g.slots.length).map(countSlots)
+  }
   const slotsOf = (keys) => groups.filter((g) => keys.includes(g.key)).flatMap((g) => g.slots)
   const electives = slotsOf(['major-elective'])
   // Track lines from the curriculum have ids like "track-PD-1"; one area per track (two for a double track)
@@ -239,17 +267,11 @@ const requirements = computed(() => {
     { key: 'free', label: 'Free electives', slots: slotsOf(['free']) },
   ]
     .filter((b) => b.slots.length)
-    .map((b) => {
-      const count = (status) => b.slots.filter((x) => x.status === status).length
-      const cleared = count('cleared')
-      const inProgress = count('inProgress')
-      const planned = count('planned')
-      return { key: b.key, label: b.label, required: b.slots.length, cleared, inProgress, planned, filled: cleared + inProgress + planned }
-    })
+    .map(countSlots)
 })
 const inPlan = computed(() => {
   const t = planner.checklist.totals
-  return { filled: t.cleared + t.inProgress + t.planned, required: t.required }
+  return { filled: t.cleared + (t.exempted ?? 0) + t.inProgress + t.planned, required: t.required }
 })
 const pct = (n, of) => `${of ? (n / of) * 100 : 0}%`
 // Same rule as the red cards: a prerequisite or co-requisite not met somewhere in the plan
@@ -469,6 +491,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                   </span>
                   <span v-if="cardState(code, col.sem) === 'warning'" class="text-[11px] text-destructive">{{ warningText(code, col.sem) }}</span>
                   <span v-else class="line-clamp-2 text-[11px] text-muted-foreground">{{ moduleName(effectiveCode(code)) }}</span>
+                  <span v-if="notOffered(code, col.sem)" class="text-[11px] font-medium text-warning">{{ notOffered(code, col.sem) }}</span>
                   <button
                     v-if="status(col.sem) !== 'done' && !roomDecision(code)"
                     type="button"
@@ -507,7 +530,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
           <div class="flex items-center gap-3">
-            <span class="font-mono text-[13px] text-muted-foreground">{{ inPlan.filled }} / {{ inPlan.required }} courses in your plan</span>
+            <span class="font-mono text-[13px] text-muted-foreground">{{ inPlan.filled }} / {{ inPlan.required }} {{ planner.checklist.live && !planner.checklist.byCredit ? 'requirements' : 'courses' }} in your plan</span>
             <StatusPill v-if="onTrack" tone="success">On track</StatusPill>
             <StatusPill v-else tone="destructive">Prereq issues</StatusPill>
           </div>
@@ -518,19 +541,21 @@ const onTrack = computed(() => !planner.hasAnyWarning)
             <span class="font-mono text-[14px] font-bold">{{ b.filled }} / {{ b.required }}</span>
             <div class="flex h-1.5 overflow-hidden rounded-full bg-border" role="img" :aria-label="`${b.label}: ${b.cleared} cleared, ${b.inProgress} in progress, ${b.planned} planned, of ${b.required}`">
               <span class="bg-success transition-[width] duration-500" :style="{ width: pct(b.cleared, b.required) }" />
+              <span class="bg-exempt transition-[width] duration-500" :style="{ width: pct(b.exempted, b.required) }" />
               <span class="bg-warning transition-[width] duration-500" :style="{ width: pct(b.inProgress, b.required) }" />
               <span class="bg-primary transition-[width] duration-500" :style="{ width: pct(b.planned, b.required) }" />
             </div>
             <span class="text-[11.5px] text-muted-foreground">
-              {{ b.filled === b.required && b.cleared === b.required ? 'Done' : `${b.cleared} cleared${b.inProgress ? ` · ${b.inProgress} in progress` : ''}${b.planned ? ` · ${b.planned} planned` : ''}` }}
+              {{ b.filled === b.required && b.cleared + b.exempted === b.required ? 'Done' : `${b.cleared} cleared${b.exempted ? ` · ${b.exempted} exempted` : ''}${b.inProgress ? ` · ${b.inProgress} in progress` : ''}${b.planned ? ` · ${b.planned} planned` : ''}` }}
             </span>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground">
           <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-success" /> Cleared</span>
+          <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-exempt" /> Exempted</span>
           <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-warning" /> In progress</span>
           <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-primary" /> Planned</span>
-          <span>One course = one line in Outstanding Modules below.</span>
+          <span>{{ planner.checklist.live && !planner.checklist.byCredit ? 'One requirement' : 'Counted in courses' }}: a requirement part met still counts the courses it has.</span>
         </div>
       </section>
 

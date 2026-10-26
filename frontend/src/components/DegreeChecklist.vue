@@ -23,6 +23,8 @@ const catalogue = useCatalogueStore()
 const plan = computed(() => planner.activePlan)
 const checklist = computed(() => planner.checklist)
 const totals = computed(() => checklist.value.totals)
+// With the live curriculum the totals are courses (credits) once the layout has added them up; before that, requirements
+const unit = computed(() => (checklist.value.live && !checklist.value.byCredit ? 'requirements' : 'courses'))
 const pct = (n) => `${totals.value.required ? (n / totals.value.required) * 100 : 0}%`
 
 // Optional filters, remembered in this browser: hide the lines being taken this semester, and the ones planned
@@ -53,7 +55,7 @@ const filters = [
 
 // Cleared lines are hidden; in progress and planned ones only if their filter is on
 const shown = (s) =>
-  s.status !== 'cleared' && !(hideInProgress.value && s.status === 'inProgress') && !(hidePlanned.value && s.status === 'planned')
+  s.status !== 'cleared' && s.status !== 'exempted' && !(hideInProgress.value && s.status === 'inProgress') && !(hidePlanned.value && s.status === 'planned')
 const sections = computed(() =>
   [
     ...checklist.value.groups.map((g) => ({ key: g.key, label: g.label, items: g.slots.filter(shown) })),
@@ -145,6 +147,7 @@ const placementPill = (p) =>
     ? ['neutral', 'Not in your plan']
     : {
         cleared: ['success', `Cleared · ${p.semId}`],
+        exempted: ['exempt', 'Exempted'],
         inProgress: ['warning', `In progress · ${p.semId}`],
         planned: ['info', `Planned · ${p.semId}`],
       }[p.status]
@@ -180,21 +183,23 @@ const addLabel = computed(() => {
     <div class="flex flex-col gap-0.5">
       <h2 class="text-[17px] font-semibold">Outstanding Modules</h2>
       <p class="text-[13px] text-muted-foreground">
-        {{ plan.name }} · {{ left }} of {{ totals.required }} {{ checklist.live ? 'requirements' : 'courses' }} still to clear. Pick one to see what you can take for it.
+        {{ plan.name }} · {{ left }} of {{ totals.required }} {{ unit }} still to clear. Pick one to see what you can take for it.
       </p>
     </div>
 
     <div class="flex flex-col gap-3">
       <div class="flex h-2 overflow-hidden rounded-full bg-border">
         <span class="bg-success transition-[width] duration-500" :style="{ width: pct(totals.cleared) }" />
+        <span class="bg-exempt transition-[width] duration-500" :style="{ width: pct(totals.exempted ?? 0) }" />
         <span class="bg-warning transition-[width] duration-500" :style="{ width: pct(totals.inProgress) }" />
         <span class="bg-primary transition-[width] duration-500" :style="{ width: pct(totals.planned) }" />
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <StatusPill tone="success">{{ totals.cleared }} cleared</StatusPill>
+        <StatusPill v-if="totals.exempted" tone="exempt">{{ totals.exempted }} exempted</StatusPill>
         <StatusPill tone="warning">{{ totals.inProgress }} in progress</StatusPill>
         <StatusPill tone="info">{{ totals.planned }} planned</StatusPill>
-        <StatusPill tone="neutral">{{ totals.todo }} {{ checklist.live ? 'still incomplete' : 'not in your plan yet' }}</StatusPill>
+        <StatusPill tone="neutral">{{ totals.todo }} {{ unit === 'requirements' ? 'still incomplete' : 'not in your plan yet' }}</StatusPill>
         <StatusPill v-if="totals.late" tone="destructive">{{ totals.late }} behind the recommended term</StatusPill>
         <div class="ml-auto flex flex-wrap items-center gap-2">
           <button
@@ -214,7 +219,7 @@ const addLabel = computed(() => {
           </button>
         </div>
       </div>
-      <p v-if="checklist.live" class="text-[12px] text-muted-foreground">Partial requirements include some courses but still need more. No semester recommendations are specified for these requirements.</p>
+      <p v-if="checklist.live && !checklist.hasRecommendations" class="text-[12px] text-muted-foreground">Partial requirements include some courses but still need more. No semester recommendations are specified for these requirements.</p>
       <div v-else class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-muted-foreground">
         <span class="font-medium text-foreground">Semester tags</span>
         <span v-for="(label, tone) in semesterToneLabel" :key="tone" class="flex items-center gap-1.5">
@@ -226,7 +231,7 @@ const addLabel = computed(() => {
 
     <p v-if="!sections.length" class="rounded-md bg-success-tint px-4 py-3 text-[13px] font-medium">
       <template v-if="left">Nothing to show: everything left is hidden by "Hide in progress" or "Hide planned". Turn a filter off to see it.</template>
-      <template v-else>All {{ totals.required }} {{ checklist.live ? 'requirements' : 'courses' }} are cleared.</template>
+      <template v-else>All {{ totals.required }} {{ unit }} are cleared.</template>
     </p>
 
     <div v-else class="flex h-[560px] overflow-hidden rounded-lg border border-border">
@@ -284,7 +289,7 @@ const addLabel = computed(() => {
                 <span
                   v-if="m.placement"
                   class="shrink-0 rounded-full px-1.5 text-[10.5px] font-semibold"
-                  :class="{ cleared: 'bg-success-tint text-foreground', inProgress: 'bg-warning-tint text-warning', planned: 'bg-primary-tint text-primary' }[m.placement.status]"
+                  :class="{ cleared: 'bg-success-tint text-foreground', exempted: 'bg-exempt-tint text-exempt', inProgress: 'bg-warning-tint text-warning', planned: 'bg-primary-tint text-primary' }[m.placement.status]"
                 >{{ m.placement.semId }}</span>
               </button>
             </li>

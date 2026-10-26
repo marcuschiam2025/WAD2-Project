@@ -8,6 +8,7 @@
  * Status meaning (do not use decoratively):
  *   success = safe / on track     urgent = countdowns, "Competitive" bids
  *   danger  = at risk / prereq not met / destructive actions
+ *   exempt  = cleared through an exemption in the student's profile
  */
 :root {
   --primary: #2563eb;
@@ -19,6 +20,8 @@
   --success-tint: #dcfce7;
   --danger: #dc2626;
   --danger-tint: #fee2e2;
+  --exempt: #7c3aed;
+  --exempt-tint: #ede9fe;
   --text: #0f172a;
   --text-muted: #475569;
   --border: #e2e8f0;
@@ -48,6 +51,8 @@
   --color-warning-tint: var(--urgent-tint);
   --color-destructive: var(--danger);
   --color-destructive-tint: var(--danger-tint);
+  --color-exempt: var(--exempt);
+  --color-exempt-tint: var(--exempt-tint);
 }
 
 @theme {

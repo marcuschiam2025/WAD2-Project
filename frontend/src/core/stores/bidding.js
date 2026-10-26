@@ -74,12 +74,6 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   const decidedSection = (code) => rooms.decided.find((d) => d.module === code)?.sectionId
 
-  // Sections accepted in a collab room are locked: they can't be swapped until the accept is undone in the room
-  const locked = computed(() =>
-    Object.fromEntries(rooms.decided.filter((d) => inCart.value.includes(d.module)).map((d) => [d.module, d])),
-  )
-  const isLocked = (code) => code in locked.value
-
   // module code -> booked section id (a saved section that no longer exists falls back to the first one)
   const booked = computed(() =>
     Object.fromEntries(
@@ -90,6 +84,22 @@ export const useBiddingStore = defineStore('bidding', () => {
       }),
     ),
   )
+
+  // A module whose booked section is the one a collab room confirmed is locked to it: it can't be swapped for
+  // another section, and the room's other members are shown as the people you bid with. Reopening the decision in the
+  // room (or the room confirming a different section) unlocks it. This follows the rooms, so it also holds after a reload.
+  // module code -> { roomId, roomName, module, sectionId, roomIds } for the first matching room
+  const locked = computed(() => {
+    const out = {}
+    for (const room of rooms.rooms) {
+      const confirmed = rooms.roomState(room).acceptedId
+      if (!confirmed || !inCart.value.includes(room.module) || booked.value[room.module] !== confirmed) continue
+      const entry = (out[room.module] ??= { roomId: room.id, roomName: room.name, module: room.module, sectionId: confirmed, roomIds: [] })
+      entry.roomIds.push(room.id)
+    }
+    return out
+  })
+  const isLocked = (code) => code in locked.value
 
   // module code -> e$ bid
   const bids = computed(() =>
@@ -329,8 +339,11 @@ export const useBiddingStore = defineStore('bidding', () => {
     liveSections.clear()
   }, { flush: 'sync' })
 
+  // "Monday 08:15–11:30 · Thursday 08:15–11:30"; work-study and SMU-X sections have no weekly classes
   function slotLabel(s) {
-    return sectionMeetings(s).map(meeting => `${days[meeting.day]} ${meeting.start}–${meeting.end}`).join(' · ')
+    const list = sectionMeetings(s)
+    if (!list.length) return 'No fixed class time'
+    return list.map(meeting => `${days[meeting.day]} ${meeting.start}–${meeting.end}`).join(' · ')
   }
 
   return {

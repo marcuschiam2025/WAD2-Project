@@ -33,11 +33,18 @@ watch(() => bidding.planId, id => {
 })
 const dragging = ref(null)
 
-// Modules whose section was accepted in a collab room are locked, and show the room's friends
-const friendsOf = (code) => {
+// A module booked in the section a collab room confirmed is locked to it, and shows the whole party on its card:
+// you first (with your ring), then the people you are bidding with. If several rooms confirmed the same section,
+// everyone from all of them.
+const partyOf = (code) => {
   const d = bidding.locked[code]
-  return d ? rooms.getRoom(d.roomId).members.filter((id) => id !== 'me').map(rooms.person) : []
+  if (!d) return []
+  const ids = new Set(d.roomIds.flatMap((roomId) => rooms.getRoom(roomId)?.members ?? []))
+  ids.delete('me')
+  return [rooms.person('me'), ...[...ids].map(rooms.person)]
 }
+// Just the others, for the sentence under the calendar
+const friendsOf = (code) => partyOf(code).filter((p) => !p.you)
 const lockedFocus = computed(() => (bidding.selectedModule ? (bidding.locked[bidding.selectedModule] ?? null) : null))
 
 // The timetable is the next semester of whichever What-If plan is picked here
@@ -103,6 +110,18 @@ function onCardClick(e, s) {
   if (s.option) bidding.swapSection(s.module, s.id)
   else bidding.selectedModule = bidding.selectedModule === s.module ? null : s.module
 }
+
+// Work-study electives and SMU-X projects have no fixed class time, so they can't sit on the grid: they are
+// listed under it instead, with the selected module's other timetable-free sections to swap to
+const noTime = (s) => !sectionMeetings(s).length
+const unscheduled = computed(() => {
+  const focus = bidding.selectedModule
+  const booked = bidding.bookedSections.filter((s) => s && noTime(s)).map((s) => ({ ...s, option: false }))
+  const options = focus && !bidding.isLocked(focus)
+    ? bidding.sectionsFor(focus).filter((s) => bidding.booked[focus] !== s.id && noTime(s)).map((s) => ({ ...s, option: true }))
+    : []
+  return [...booked, ...options]
+})
 
 const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-', ' ')).join(', '))
 </script>
@@ -173,12 +192,13 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
                   :variant="variantFor(s)"
                   :class="[isDimmed(s) && 'opacity-30 grayscale', bidding.isLocked(s.module) && bidding.selectedModule === s.module && 'ring-2 ring-success ring-offset-2']"
                 >
-                  <span v-if="friendsOf(s.module).length" class="mt-1 flex">
+                  <span v-if="partyOf(s.module).length" class="mt-1 flex">
                     <UserAvatar
-                      v-for="(f, i) in friendsOf(s.module)"
+                      v-for="(f, i) in partyOf(s.module)"
                       :key="f.id"
                       :initials="f.initials"
-                      :title="f.name"
+                      :title="f.you ? 'You' : f.name"
+                      :you="f.you"
                       class="ring-2 ring-success-tint"
                       :class="i > 0 && '-ml-1'"
                     />
@@ -188,10 +208,34 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
               </TransitionGroup>
             </template>
           </TimetableGrid>
+          <div v-if="unscheduled.length" class="mt-3 flex flex-col gap-2 rounded-lg border border-dashed border-border p-3">
+            <p class="text-overline text-muted-foreground">No fixed class time</p>
+            <div class="grid grid-cols-2 gap-2 lg:grid-cols-4">
+              <button
+                v-for="s in unscheduled"
+                :key="s.id"
+                type="button"
+                :aria-disabled="isDimmed(s)"
+                class="flex w-full"
+                @click="onCardClick($event, s)"
+              >
+                <TimetableModuleCard
+                  :code="s.module"
+                  :section="s.section"
+                  :name="moduleName(s.module)"
+                  :meta="`No fixed class time · ${s.profShort || 'Instructor not listed'}`"
+                  :variant="variantFor(s)"
+                  :class="isDimmed(s) && 'opacity-30 grayscale'"
+                />
+              </button>
+            </div>
+            <p class="text-[12px] text-muted-foreground">Work-study electives and SMU-X projects have no weekly classes, so they never clash.</p>
+          </div>
           </div>
           <p v-if="lockedFocus" class="text-[13px] leading-normal">
-            <span class="font-mono font-bold">{{ lockedFocus.module }} {{ lockedFocus.sectionId.split('-')[1] }}</span> is locked because you accepted it in
-            {{ lockedFocus.roomName }}. Undo the accept in the room to swap sections.
+            <span class="font-mono font-bold">{{ lockedFocus.module }} {{ lockedFocus.sectionId.split(':').pop() }}</span> is locked because
+            {{ lockedFocus.roomName }} confirmed it, and you are bidding for it with
+            {{ friendsOf(lockedFocus.module).map((f) => f.name).join(', ') || 'your room' }}. Reopen the decision in the room to swap sections.
             <RouterLink :to="`/rooms/${lockedFocus.roomId}`" class="font-medium text-primary hover:underline">Open room</RouterLink>
           </p>
           <p v-if="bidding.fromRooms.length" class="text-[13px] text-muted-foreground">

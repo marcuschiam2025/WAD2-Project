@@ -318,6 +318,7 @@ export async function checkPlan(req, res) {
     requirements: majorRequirements,
     tracks: tracks,
     catalogue: catalogue,
+    exempted: req.user.exempted ?? [], // from the student's profile; counted as cleared
   })
   res.json(result)
 }

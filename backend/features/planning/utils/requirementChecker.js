@@ -150,18 +150,30 @@ function outstandingFor(requirement, cuLeft, placed, catalogue) {
  *   tracks:       [{ trackCode, requirements }] in the plan's order — the first is the track that counts,
  *                 any second one is an optional extra whose courses still count as electives,
  *   catalogue:    modules by code,
+ *   exempted:     course codes the student is exempted from (their profile); they count as cleared
  * }
  */
-export function checkPlan(plan, { major, requirements, tracks = [], catalogue }) {
+export function checkPlan(plan, { major, requirements, tracks = [], catalogue, exempted = [] }) {
   // Leave-of-absence terms are included: they can hold an internship
   const semesters = plan.semesters
   const currentIndex = semesters.findIndex((semester) => semester.id === plan.currentSem)
 
   // ----- 1. Every placed course, and where it sits -----
   const placements = []
+
+  // Exemptions come first and count as cleared before the first semester, so they meet prerequisites
+  // of anything in the plan. The profile wins: a plan entry of an exempted course isn't counted again.
+  const exemptedCodes = [...new Set(exempted)]
+  for (const code of exemptedCodes) {
+    placements.push({ code, at: -1, semester: 'Exempted', status: 'done', exempted: true })
+  }
+
   for (let i = 0; i < semesters.length; i++) {
     const semester = semesters[i]
     for (const entry of semester.modules) {
+      if (exemptedCodes.includes(effectiveCode(entry))) {
+        continue
+      }
       placements.push({
         code: effectiveCode(entry),
         at: i, // position of the semester in the plan
@@ -311,7 +323,9 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue })
 
     const modules = []
     for (const placement of taken) {
-      modules.push({ ...brief(catalogue[placement.code]), status: placement.status, semester: placement.semester })
+      // status is "exempted" for a course from the profile's exemptions, so the UI can colour it apart
+      const shownStatus = placement.exempted ? 'exempted' : placement.status
+      modules.push({ ...brief(catalogue[placement.code]), status: shownStatus, semester: placement.semester })
     }
 
     return {
@@ -392,6 +406,7 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue })
     warnings: warnings,
     unallocated: unallocated.map((placement) => placement.code),
     unknownModules: unknownModules,
+    exempted: exemptedCodes, // the profile exemptions that were counted
     onTrack: warnings.length === 0,
   }
 }
