@@ -36,3 +36,15 @@ test('calendar export uses each section\'s own teaching dates and only needs a M
   assert.ok(buildIcs([dated,undated],'2027-01-11',13).includes('COUNT=13'))
  } finally {await server.close()}
 })
+
+test('exam clash check ignores sections whose exam is unannounced or that have no final exam',async()=>{
+ const server=await createServer({configFile:false,server:{middlewareMode:true,hmr:false,ws:false},optimizeDeps:{noDiscovery:true,include:[]},appType:'custom'})
+ try {
+  const {findExamClashes}=await server.ssrLoadModule('/src/core/utils/clash.js')
+  const row=(id,exam,examPeriod=null)=>({id,module:id,section:'G1',exam,examPeriod,sessions:[]})
+  assert.deepEqual(findExamClashes([row('A','Exam not yet announced'),row('B','Exam not yet announced')]),[])
+  assert.deepEqual(findExamClashes([row('A','No final exam'),row('B','No final exam')]),[])
+  const exam={date:'2027-04-20',start:'13:00',end:'15:00'}
+  assert.equal(findExamClashes([row('A','x',exam),row('B','y',{...exam,start:'14:30',end:'16:30'})]).length,1)
+ } finally {await server.close()}
+})

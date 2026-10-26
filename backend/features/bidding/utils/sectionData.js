@@ -1,4 +1,7 @@
 const DAYS = ['MON','TUE','WED','THU','FRI','SAT','SUN']
+// finalExam null means the section has no final exam; a missing finalExam means it isn't announced yet
+export const NO_FINAL_EXAM = 'No final exam'
+export const EXAM_NOT_ANNOUNCED = 'Exam not yet announced'
 // Joins a co-taught section's instructors into one prof string. Not a comma: BOSS names can contain one ("LEE, YUN").
 export const INSTRUCTOR_SEPARATOR = '; '
 const SLOTS = [{start:'08:15',end:'11:30'},{start:'12:00',end:'15:15'},{start:'15:30',end:'18:45'},{start:'19:00',end:'22:15'}]
@@ -43,5 +46,5 @@ export function normalizeSection(raw) {
  return {...raw,sectionId:raw.sectionId??(shared?`${term}:${module}:${section}`:raw.sectionId),module,section,term,sessions,
   day:sessions[0]?.day??null,slot:sessions[0]?.slot??null,venue:sessions[0]?.venue??null,
   prof:shared?raw.instructor:catalogue?(raw.instructors??[]).join(INSTRUCTOR_SEPARATOR):raw.prof,examPeriod,
-  exam:examPeriod?`${examPeriod.date} · ${examPeriod.start} – ${examPeriod.end}`:shared?'No final exam':raw.exam??'No final exam'}
+  exam:examPeriod?`${examPeriod.date} · ${examPeriod.start} – ${examPeriod.end}`:shared||raw.finalExam===null?NO_FINAL_EXAM:raw.exam??EXAM_NOT_ANNOUNCED}
 }

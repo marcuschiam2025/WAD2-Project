@@ -16,6 +16,7 @@ import UserAvatar from '@/components/ui/UserAvatar.vue'
 import TimetableGrid from '@/components/TimetableGrid.vue'
 import TimetableModuleCard from '@/components/TimetableModuleCard.vue'
 import BidSidebar from '@/components/BidSidebar.vue'
+import ExamSchedule from '@/components/ExamSchedule.vue'
 import { popEnter, popLeave } from '@/motion'
 
 // Booked sections, bids and alternatives come from the bidding store (backend data, live section catalogue)
@@ -251,6 +252,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
           <p v-if="bidding.clashes.size" class="text-[13px] text-destructive">
             Class or exam clash: {{ clashList }} overlap. Click one and pick an alternative section.
           </p>
+          <ExamSchedule :sections="bidding.bookedSections" />
         </div>
 
         <BidSidebar :code="bidding.selectedModule" @close="bidding.selectedModule = null" />
