@@ -21,8 +21,8 @@ for (const module of JSON.parse(readFileSync(MODULES_FILE, 'utf8'))) {
   catalogue.add(module._id)
 }
 
-// Courses the planner leaves out (community service isn't bid for)
-const EXCLUDED_COURSES = ['COR2001']
+// Courses the planner leaves out (none at the moment)
+const EXCLUDED_COURSES = []
 
 const DAYS = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 }
 

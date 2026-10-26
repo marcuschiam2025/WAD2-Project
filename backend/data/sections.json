@@ -6525,6 +6525,20 @@
     "endDate": "2027-04-18"
   },
   {
+    "sectionId": "COR2001-G1",
+    "module": "COR2001",
+    "section": "G1",
+    "term": "AY26/27 T2",
+    "session": "1",
+    "title": "Community Service",
+    "topic": null,
+    "classNumber": "1542",
+    "instructors": [],
+    "meetings": [],
+    "startDate": null,
+    "endDate": null
+  },
+  {
     "sectionId": "COR2100-G1",
     "module": "COR2100",
     "section": "G1",
