@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 import { createPinia, setActivePinia } from 'pinia'
 
-test('room confirmation/removal/transfer use persisted revisions without automatically changing personal plans', async () => {
+test('each member picks their own section and the owner removes members, without changing personal plans', async () => {
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }
   const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' })
   try {
@@ -13,24 +13,29 @@ test('room confirmation/removal/transfer use persisted revisions without automat
     setActivePinia(createPinia())
     const user = useUserStore(); user.uid = 'a'; user.isSignedIn = true; user.profile = { _id: 'a', email: 'a@smu.edu.sg' }
     const rooms = useRoomsStore()
-    assert.equal(typeof rooms.confirmSection, 'function', 'persistent room decisions are required')
     rooms.rooms = [{ id: 'r', members: ['me', 'b'], ownerId: 'me', admins: [], module: 'IS216' }]
-    let revision = 2, confirmed = null, owner = 'a'
-    api.roomVotes = async () => ({ term: '2026-27_T1', revision, ownerId: owner, members: [{ _id: 'a', name: 'A' }, { _id: 'b', name: 'B' }], rows: [], mySectionIds: [], finalisedSection: confirmed, status: confirmed ? 'confirmed' : 'ready', votedCount: 2, memberCount: 2, waitingIds: [] })
+    let members = [{ _id: 'a', name: 'A' }, { _id: 'b', name: 'B' }], mine = null
+    api.room = async () => ({ _id: 'r', termKey: '2026-27_T1', owner: 'a', members, votes: [], memberSections: mine ? [{ user: { _id: 'a', name: 'A' }, sectionId: mine, status: 'considering' }] : [] })
+    api.roomSections = async () => [{ section: { id: 'g1', section: 'G1' }, voteCount: 0, voters: [], goingFor: mine ? [{ user: { _id: 'a', name: 'A' }, status: 'considering' }] : [] }]
     await rooms.loadVotes('r')
-    api.confirmRoom = async (id, sectionId, expected) => { assert.equal(id, 'r'); assert.equal(expected, revision); revision++; confirmed = sectionId }
+    // PUT /parties/:id/my-section
+    api.setMySection = async (id, sectionId) => { assert.equal(id, 'r'); mine = sectionId }
     assert.equal(await rooms.confirmSection('r', 'g1'), true)
     assert.equal(rooms.voteBoards.r.finalisedSection, 'g1')
-    assert.deepEqual([...rooms.decided], [], 'shared confirmation must not auto-edit every personal plan')
-    api.removeRoomMember = async (id, target, expected) => { assert.equal(target, 'b'); assert.equal(expected, revision); revision++; confirmed = null }
+    assert.equal(rooms.voteBoards.r.rows[0].goingFor[0].name, 'A')
+    assert.deepEqual([...rooms.decided], [], 'a room section must not auto-edit personal plans')
+    // DELETE /parties/:id/my-section
+    api.clearMySection = async () => { mine = null }
+    assert.equal(await rooms.confirmSection('r', null), true)
+    assert.equal(rooms.voteBoards.r.finalisedSection, null)
+    // POST /parties/:id/ban removes the member
+    api.banRoomMember = async (id, target) => { assert.equal(target, 'b'); members = members.filter(m => m._id !== 'b') }
     assert.equal(await rooms.removeMember('r', 'b'), true)
-    api.transferRoom = async (id, target, expected) => { assert.equal(target, 'b'); assert.equal(expected, revision); revision++; owner = 'b' }
-    assert.equal(await rooms.transferOwner('r', 'b'), true)
-    assert.equal(rooms.getRoom('r').ownerId, 'b')
-    api.confirmRoom = async () => { throw Error('Room changed') }
+    assert.deepEqual([...rooms.getRoom('r').members], ['me'])
+    api.setMySection = async () => { throw Error('That section does not belong to IS216') }
     assert.equal(await rooms.confirmSection('r', 'g2'), false)
-    assert.equal(rooms.voteErrors.r, 'Room changed')
-    api.roomVotes = async () => { throw Object.assign(Error('Removed'), { status: 403 }) }
+    assert.match(rooms.voteErrors.r, /does not belong/)
+    api.room = async () => { throw Object.assign(Error('Removed'), { status: 403 }) }
     await rooms.loadVotes('r')
     assert.equal(rooms.voteBoards.r, undefined)
     assert.equal(rooms.getRoom('r'), undefined)

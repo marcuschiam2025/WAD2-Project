@@ -99,15 +99,22 @@ export const api = {
   // Frontend rooms map to the backend's parties resource.
   rooms: () => request('GET', '/parties'),
   room: (id) => request('GET', `/parties/${id}`),
+  // { name, module, termKey: "2026-27_T2", maxMembers?, memberEmails? } -> { party, blocked }
   createRoom: (room) => request('POST', '/parties', room),
   joinRoom: (inviteCode) => request('POST', '/parties/join', { inviteCode }),
   leaveRoom: (id) => request('DELETE', `/parties/${id}/members/me`),
-  vote: (id, sectionIds, term) => request('PUT', `/parties/${id}/votes`, { sectionIds, term }),
-  confirmRoom: (id, sectionId, revision) => request('POST', `/parties/${id}/finalise`, { sectionId, revision }),
-  removeRoomMember: (id, memberId, revision) => request('DELETE', `/parties/${id}/members/${memberId}`, { revision }),
-  transferRoom: (id, userId, revision) => request('POST', `/parties/${id}/owner`, { userId, revision }),
-  roomHandoff: (id, data) => request('POST', `/parties/${id}/handoff`, data),
-  roomVotes: (id) => request('GET', `/parties/${id}/votes`),
+  deleteRoom: (id) => request('DELETE', `/parties/${id}`),
+  // The sections I'd be happy with (replaces my old vote) -> every member's votes
+  vote: (id, sectionIds) => request('PUT', `/parties/${id}/votes`, { sectionIds }),
+  clearVotes: (id) => request('DELETE', `/parties/${id}/votes`),
+  // The one section I'm going for; status: considering | bidding | enrolled
+  setMySection: (id, sectionId, status = 'considering') => request('PUT', `/parties/${id}/my-section`, { sectionId, status }),
+  clearMySection: (id) => request('DELETE', `/parties/${id}/my-section`),
+  // Every section of the room's module: [{ section, voteCount, voters, goingFor }]
+  roomSections: (id) => request('GET', `/parties/${id}/sections`),
+  // Owner only: remove a member and stop them rejoining (unban lets them back in)
+  banRoomMember: (id, userId) => request('POST', `/parties/${id}/ban`, { userId }),
+  unbanRoomMember: (id, userId) => request('DELETE', `/parties/${id}/ban/${userId}`),
   roomUpdates: (id, since) => request('GET', `/parties/${id}/updates?since=${since}`),
 
   // BOSS bidding

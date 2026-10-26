@@ -4,6 +4,7 @@ import { api } from '../services/api'
 import { classmates, roomPrereqs } from '../data/rooms'
 import { useUserStore } from './user'
 import { sections } from '../data/bidding'
+import { buildRoomBoard } from '../utils/roomBoard'
 
 export const MAX_ROOM_SIZE = 8
 const ME = 'me'
@@ -126,7 +127,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     }
     return { id: String(party._id), name: party.name, description: party.description, module: party.module,
       inviteCode: party.inviteCode, maxMembers: party.maxMembers, ownerId: memberId(party.owner),
-      admins: [], members, votes, suggestedBids: {}, term: party.term, summary: party.summary, revision: party.revision ?? 0, updatedAt: party.updatedAt }
+      admins: [], members, votes, suggestedBids: {}, term: party.termKey, summary: party.summary, updatedAt: party.updatedAt }
   }
   function upsert(party) {
     const room = normalize(party)
@@ -156,8 +157,13 @@ export const useRoomsStore = defineStore('rooms', () => {
     } catch (failure) { if (version === revision) error.value = failure.message; throw failure }
     finally { if (version === revision) busy.value = false }
   }
+  // A room is for one module in one term: the term BOSS is currently bidding for
   async function createRoom({ name, module }) {
-    return mutate(async () => (await api.createRoom({ name, module })).party)
+    return mutate(async () => {
+      const { term } = await api.round()
+      if (!term) throw new Error('No bidding term is set yet, so a room cannot be created.')
+      return (await api.createRoom({ name, module, termKey: term })).party
+    })
   }
   async function joinRoom(code) {
     return mutate(() => api.joinRoom(code.trim().toUpperCase()))
@@ -177,14 +183,14 @@ export const useRoomsStore = defineStore('rooms', () => {
     voteLoading.value[roomId] = true
     if (!quiet) voteErrors.value[roomId] = ''
     try {
-      const board = await api.roomVotes(roomId)
+      const [party, summary] = await Promise.all([api.room(roomId), api.roomSections(roomId)])
+      const board = buildRoomBoard(party, summary, String(user.profile._id ?? ''))
       if (version !== revision || request !== voteRequests.get(roomId)) return
       voteBoards.value[roomId] = board
       myVotes.value[roomId] = board.mySectionIds
       const room = getRoom(roomId)
       if (room) {
         room.summary = board
-        room.revision = board.revision ?? room.revision
         room.term = board.term
         if (board.ownerId) room.ownerId = board.ownerId === String(user.profile._id) ? ME : board.ownerId
         if (board.members) room.members = board.members.map(member => {
@@ -207,15 +213,14 @@ export const useRoomsStore = defineStore('rooms', () => {
   async function saveRoomVotes(roomId, ids) {
     if (voteSaving.value[roomId] || !voteBoards.value[roomId]) return false
     const version = revision
-    const term = voteBoards.value[roomId].term
     voteRequests.set(roomId, (voteRequests.get(roomId) ?? 0) + 1)
     voteLoading.value[roomId] = false
     voteSaving.value[roomId] = true; voteErrors.value[roomId] = ''
     try {
-      const saved = await api.vote(roomId, [...ids], term)
+      await api.vote(roomId, [...ids])
       if (version !== revision) return false
-      voteBoards.value[roomId] = { ...voteBoards.value[roomId], mySectionIds: saved.sectionIds }
-      myVotes.value[roomId] = saved.sectionIds
+      voteBoards.value[roomId] = { ...voteBoards.value[roomId], mySectionIds: [...ids] }
+      myVotes.value[roomId] = [...ids]
       delete accepted.value[roomId]
       await loadVotes(roomId)
       return version === revision
@@ -231,7 +236,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     voteRequests.set(roomId, (voteRequests.get(roomId) ?? 0) + 1)
     voteLoading.value[roomId] = false
     try {
-      await action(voteBoards.value[roomId].revision)
+      await action()
       if (version !== revision) return false
       await loadVotes(roomId)
       return version === revision
@@ -243,9 +248,11 @@ export const useRoomsStore = defineStore('rooms', () => {
       return false
     } finally { if (version === revision) { busy.value = false; voteSaving.value[roomId] = false } }
   }
-  const confirmSection = (roomId, sectionId) => roomAction(roomId, revision => api.confirmRoom(roomId, sectionId, revision))
-  const removeMember = (roomId, memberId) => roomAction(roomId, revision => api.removeRoomMember(roomId, memberId, revision))
-  const transferOwner = (roomId, memberId) => roomAction(roomId, revision => api.transferRoom(roomId, memberId, revision))
+  // My section for the room (each member picks their own); null stops sharing it
+  const confirmSection = (roomId, sectionId) =>
+    roomAction(roomId, () => (sectionId ? api.setMySection(roomId, sectionId) : api.clearMySection(roomId)))
+  // Owner only: removes the member and stops them rejoining with the code
+  const removeMember = (roomId, memberId) => roomAction(roomId, () => api.banRoomMember(roomId, memberId))
 
   function setMyVotes(roomId, sectionIds) {
     myVotes.value[roomId] = sectionIds
@@ -253,11 +260,12 @@ export const useRoomsStore = defineStore('rooms', () => {
   }
 
   // Take the signed-in student's picks back (and the bids they suggested for those sections)
-  // TODO(Backend 2): DELETE /api/rooms/:id/votes/me
-  function clearMyVotes(roomId) {
+  async function clearMyVotes(roomId) {
+    await api.clearVotes(roomId)
     myVotes.value[roomId] = []
     delete accepted.value[roomId]
-    Object.values(getRoom(roomId).suggestedBids).forEach((bids) => delete bids[ME])
+    Object.values(getRoom(roomId)?.suggestedBids ?? {}).forEach((bids) => delete bids[ME])
+    await loadVotes(roomId)
   }
 
   // The signed-in student's suggested e$ for one section of the room's module
@@ -289,7 +297,7 @@ export const useRoomsStore = defineStore('rooms', () => {
   return {
     rooms, loading, busy, online, error, load, joinRoom,
     voteBoards, voteLoading, voteSaving, voteErrors, loadVotes, saveRoomVotes,
-    myVotes, confirmSection, removeMember, transferOwner,
+    myVotes, confirmSection, removeMember,
     decided,
     roomState,
     votersOf,

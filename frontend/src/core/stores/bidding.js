@@ -243,7 +243,14 @@ export const useBiddingStore = defineStore('bidding', () => {
     if (!online.value || !round.value.term) throw new Error('Connect the bidding planner before adding this section.')
     if (!loadedCarts.has(targetPlanId)) throw new Error(loadError.value || 'Your saved cart could not be loaded. Try again.')
     const term = round.value.term
-    const prepared = await api.roomHandoff(roomId, { sectionId, planId: targetPlanId, term })
+    // The room's section, looked up in the bidding term (prerequisites are checked on the bidding page)
+    const room = rooms.getRoom(roomId)
+    if (!room) throw new Error('This room is no longer available.')
+    if (room.term && room.term !== term) throw new Error(`This room is for ${room.term}, but bidding is for ${term}.`)
+    const offered = await api.sections([room.module], term)
+    const found = offered.find(s => s.id === sectionId)
+    if (!found) throw new Error('This section is not available in the bidding term.')
+    const prepared = { section: found, term, notes: [] }
     if (version !== session) throw new Error('Your account changed. Please try again.')
     await fetchModules([prepared.section.module])
     if (version !== session || term !== round.value.term || targetPlanId !== plan.value.id) throw new Error('Your bidding context changed. Please try again.')

@@ -11,6 +11,7 @@ test('explicit room handoff selects one cart and saved extra modules survive rel
     const { usePlannerStore } = await server.ssrLoadModule('/src/core/stores/planner.js')
     const { useBiddingStore } = await server.ssrLoadModule('/src/core/stores/bidding.js')
     const { api } = await server.ssrLoadModule('/src/core/services/api.js')
+    const { useRoomsStore } = await server.ssrLoadModule('/src/core/stores/rooms.js')
     setActivePinia(createPinia())
     const user = useUserStore(); user.uid = 'a'; user.isSignedIn = true
     const planner = usePlannerStore(); planner.plans = ['p1','p2'].map(id => ({ id, name: id, currentSem: 'Y1S1', semesters: [{ id: 'Y1S1', modules: [] }, { id: 'Y1S2', modules: [] }] })); planner.activePlanId = 'p1'; planner.online = true
@@ -22,7 +23,8 @@ test('explicit room handoff selects one cart and saved extra modules survive rel
     let releaseCart
     const cartGate = new Promise(resolve => { releaseCart = resolve })
     api.cart = async id => { if (id === 'p1') await cartGate; return { items: id === 'p1' ? items : [] } }
-    api.roomHandoff = async (id, data) => { assert.equal(id, 'r'); assert.equal(data.planId, 'p1'); return { term: '2026-27_T1', section, notes: [] } }
+    // The room's section is looked up in the bidding term (no handoff endpoint)
+    useRoomsStore().rooms = [{ id: 'r', module: 'IS216', term: '2026-27_T1', members: ['me'], admins: [], votes: {}, suggestedBids: {} }]
     const bidding = useBiddingStore()
     assert.equal(typeof bidding.addRoomSection, 'function', 'explicit room-to-bidding action is required')
     const loading = bidding.load()

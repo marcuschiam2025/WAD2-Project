@@ -11,7 +11,9 @@ const partySchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     description: String,
     module: { type: String, required: true ,uppercase: true}, // module the party is bidding for
-    termKey: { type: String, required: true },
+    // Required for new parties. Older parties saved before this field have none: they keep working,
+    // and their votes and section list cover every term on file.
+    termKey: { type: String, required: function () { return this.isNew; } },
     inviteCode: { type: String, required: true, unique: true, uppercase: true },
     owner: { type: ObjectId, ref: "User", required: true },
     maxMembers: { type: Number, min: 2, max: MAX_PARTY_SIZE, default: 6 },
