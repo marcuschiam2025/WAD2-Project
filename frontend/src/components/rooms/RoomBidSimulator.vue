@@ -135,11 +135,11 @@ const verdictText = computed(() => {
     <p v-else-if="!history.length" class="rounded-md bg-muted p-4 text-[13px]">No BOSS results are recorded for {{ module }} yet.</p>
 
     <template v-else>
-      <div class="grid grid-cols-2 gap-3">
-        <label class="flex flex-col gap-2">
-          <span class="text-[13px] text-muted-foreground">Bid amount</span>
+      <div class="grid grid-cols-2 items-start gap-3">
+        <label class="flex flex-col gap-1.5">
+          <span class="text-[13px] font-medium">Bid amount</span>
           <span
-            class="flex items-center gap-2 rounded-md border-2 px-3 py-2 text-[16px] transition-colors"
+            class="flex items-center gap-2 rounded-md border-2 px-3 py-[9px] text-[14px] leading-normal transition-colors"
             :class="tooLow ? 'border-destructive' : 'border-primary'"
           >
             <span class="text-muted-foreground">e$</span>
