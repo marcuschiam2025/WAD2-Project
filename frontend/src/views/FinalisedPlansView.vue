@@ -121,6 +121,7 @@ async function confirmDelete() {
             <p v-if="copy.updatedAt" class="text-xs text-muted-foreground">Saved {{ new Date(copy.updatedAt).toLocaleString() }}</p>
             <p v-if="blocked(copy)" class="text-sm text-destructive">{{ blocked(copy) }}</p>
             <BaseButton :disabled="!!blocked(copy) || (needsDates(copy) && !termStart) || adding !== null" @click="addToGoogle(copy)">{{ adding === copy.id ? 'Adding to Google Calendar…' : 'Add to Google Calendar' }}</BaseButton>
+            <BaseButton v-if="adding === copy.id" variant="ghost" size="sm" @click="calendarExport.cancel()">Cancel</BaseButton>
             <BaseButton variant="outline" :disabled="!!blocked(copy) || (needsDates(copy) && !termStart)" @click="exportCopy(copy)">Download calendar (.ics)</BaseButton>
             <BaseButton variant="outline" :to="`/bidding?plan=${copy.planId}`">Edit bids</BaseButton>
             <BaseButton variant="destructive-outline" :disabled="!planner.online || planner.planActionPending || planner.plans.length <= 1" :title="planner.plans.length <= 1 ? 'You need at least one plan' : undefined" @click="planToDelete = copy">Delete plan</BaseButton>

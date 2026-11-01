@@ -13,6 +13,10 @@ function googleError(error) {
   return error.message
 }
 
+// If Google's popup is closed in a way the browser doesn't report, the sign-in promise never settles. Give up after
+// this long so the button is released and the student can try again.
+const POPUP_TIMEOUT_MS = 120_000
+
 export const useCalendarExportStore = defineStore('calendarExport', () => {
   const user = useUserStore(), bidding = useBiddingStore()
   const adding = ref(null), error = ref(''), message = ref('')
@@ -35,6 +39,12 @@ export const useCalendarExportStore = defineStore('calendarExport', () => {
     const version = revision
     const name = copy.name
     adding.value = copy.id
+    const giveUp = setTimeout(() => {
+      if (version !== revision) return
+      revision++ // whatever Google answers later is ignored
+      adding.value = null
+      error.value = 'Google did not respond. Close any Google window that is still open, then try again.'
+    }, POPUP_TIMEOUT_MS)
     try {
       const sections = copy.items.map(item => item.section).filter(Boolean)
       // Validate the same calendar data as the download before requesting Google permission.
@@ -53,6 +63,7 @@ export const useCalendarExportStore = defineStore('calendarExport', () => {
       error.value = googleError(failure)
       return false
     } finally {
+      clearTimeout(giveUp)
       if (version === revision) adding.value = null
     }
   }
