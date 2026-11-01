@@ -177,12 +177,12 @@ const biddingWindows = computed(() => [
           v-for="s in stats"
           :key="s.label"
           :to="s.to"
-          class="card flex flex-col gap-1.5 border-t-[3px]! p-5 leading-normal"
+          class="card flex min-w-0 flex-col gap-1.5 border-t-[3px]! p-5 leading-normal"
           :class="[s.accent, s.to && 'transition-shadow hover:shadow-md']"
         >
           <span class="text-overline text-muted-foreground">{{ s.label }}</span>
-          <span class="flex items-baseline gap-2">
-            <span class="font-mono text-[28px] leading-none font-bold" :class="s.danger && 'text-destructive'">{{ s.value }}</span>
+          <span class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span class="max-w-full font-mono text-[22px] leading-none font-bold break-words xl:text-[28px]" :class="s.danger && 'text-destructive'">{{ s.value }}</span>
             <span v-if="s.unit" class="text-[13px] text-muted-foreground">{{ s.unit }}</span>
           </span>
           <span class="text-[13px]" :class="s.danger || s.subDanger ? 'font-medium text-destructive' : 'text-muted-foreground'">{{ s.sub }}</span>
