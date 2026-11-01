@@ -291,9 +291,9 @@ const biddingWindows = computed(() => [
         <div class="flex flex-col gap-2.5 p-5">
           <h2 class="text-overline text-muted-foreground">Bidding windows</h2>
           <ul class="flex flex-col gap-2 text-[13px] leading-normal">
-            <li v-for="w in biddingWindows" :key="w.id" class="flex items-baseline justify-between gap-3">
+            <li v-for="w in biddingWindows" :key="w.id" class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
               <span class="font-semibold">{{ w.name }}</span>
-              <span class="shrink-0" :class="w.open ? 'font-medium text-foreground' : 'text-muted-foreground'">{{ w.when }}</span>
+              <span class="min-w-0" :class="w.open ? 'font-medium text-foreground' : 'text-muted-foreground'">{{ w.when }}</span>
             </li>
           </ul>
         </div>
