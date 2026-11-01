@@ -14,7 +14,8 @@ const dayLabel = (date) =>
   new Date(`${date}T00:00:00Z`).toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
 const rows = computed(() => {
-  const booked = props.sections.filter(Boolean)
+  // Sections with no final exam have nothing to show here; ones whose exam is not announced yet stay listed
+  const booked = props.sections.filter((s) => s && (s.examPeriod || s.exam !== 'No final exam'))
   const clashing = new Set(findExamClashes(booked).flat())
   const result = booked.map((s) => ({
     id: s.id,
@@ -24,8 +25,8 @@ const rows = computed(() => {
     note: s.exam,
     clash: clashing.has(s.id),
   }))
-  // Dated exams first by date and time, then "No final exam", then "Exam not yet announced"
-  const order = (r) => (r.exam ? `0 ${r.exam.date} ${r.exam.start}` : r.note === 'No final exam' ? '1' : '2')
+  // Dated exams first by date and time, then "Exam not yet announced"
+  const order = (r) => (r.exam ? `0 ${r.exam.date} ${r.exam.start}` : '1')
   return result.sort((a, b) => order(a).localeCompare(order(b)) || a.module.localeCompare(b.module))
 })
 
