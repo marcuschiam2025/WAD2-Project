@@ -140,6 +140,11 @@ export const usePlannerStore = defineStore('planner', () => {
 
   async function refreshCheck(id) {
     const version = session
+    const plan = plans.value.find(p => p.id === id)
+    if (!plan?.majorId || catalogue.majors.find(m => m._id === plan.majorId)?.requirementsAvailable === false) {
+      delete checks.value[id]
+      return
+    }
     try {
       const check = await api.checkPlan(id)
       if (version !== session) return
@@ -160,8 +165,18 @@ export const usePlannerStore = defineStore('planner', () => {
       let list = await api.plans()
       if (version !== session) return
       const isNew = !list.length
+      if (isNew && !catalogue.online) throw new Error('Could not load the curriculum catalogue. Retry before creating your first plan.')
       if (isNew) list = [await api.createPlan(firstPlan())]
       if (version !== session) return
+      // Repair only missing curricula; never replace a plan's saved intake or semester choices.
+      const majorId = catalogue.online ? catalogue.majorIdFor(user.profile.major, user.profile.intakeYear) : null
+      if (majorId) {
+        for (let i = 0; i < list.length; i++) {
+          if (list[i].majorId) continue
+          list[i] = await api.updatePlan(list[i]._id, { majorId })
+          if (version !== session) return
+        }
+      }
       online.value = false
       basket.value = [...(user.profile.basket ?? [])]
       savedBasket = JSON.stringify(basket.value)
