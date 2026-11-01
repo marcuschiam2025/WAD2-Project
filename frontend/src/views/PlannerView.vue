@@ -380,10 +380,6 @@ const onTrack = computed(() => !planner.hasAnyWarning)
             Your basket is empty. Save modules from your track matches, or drag one back here.
           </p>
           <p v-else class="text-[12px] text-muted-foreground">Drag a module onto a semester.</p>
-
-          <div class="mt-auto border-t border-border pt-3">
-            <BaseButton variant="ghost" @click="router.push('/rooms')">Import basket to Collab Room</BaseButton>
-          </div>
         </aside>
 
         <!-- Plans -->
