@@ -12,6 +12,7 @@ import StatusPill from '@/components/ui/StatusPill.vue'
 import DegreeChecklist from '@/components/DegreeChecklist.vue'
 import PrereqWarningModal from '@/components/modals/PrereqWarningModal.vue'
 import PlanLimitModal from '@/components/modals/PlanLimitModal.vue'
+import DeletePlanModal from '@/components/modals/DeletePlanModal.vue'
 import PlanSettingsModal from '@/components/modals/PlanSettingsModal.vue'
 import SemesterFullModal from '@/components/modals/SemesterFullModal.vue'
 import iconSearch from '@/assets/v2/search.svg'
@@ -86,6 +87,10 @@ function toggleYear(year) {
 }
 
 // --- Plans ---------------------------------------------------------------------------------
+const planToDelete = ref(null)
+async function confirmDelete() {
+  if (await planner.deletePlan(planToDelete.value.id)) planToDelete.value = null
+}
 async function addPlan() {
   if (planner.plans.length >= MAX_PLANS) { showPlanLimit.value = true; return }
   await planner.addPlan()
@@ -384,21 +389,26 @@ const onTrack = computed(() => !planner.hasAnyWarning)
         <!-- Plans -->
         <div class="flex min-w-0 flex-1 flex-col gap-3 p-4">
           <div ref="tabsRef" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border">
-            <div class="flex min-w-0 gap-5 overflow-x-auto">
-              <button
-                v-for="p in planner.plans"
-                :key="p.id"
-                type="button"
-                class="-mb-px border-b-2 pb-2.5 text-[14px] whitespace-nowrap transition-colors"
-                :class="
-                  p.id === planner.activePlanId
-                    ? 'border-foreground font-semibold'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                "
-                @click="planner.activePlanId = p.id"
-              >
-                {{ planLabel(p) }}
-              </button>
+            <div class="flex min-w-0 flex-wrap gap-x-5">
+              <span v-for="p in planner.plans" :key="p.id" class="-mb-px flex items-start gap-1.5 border-b-2 pb-2.5 transition-colors" :class="p.id === planner.activePlanId ? 'border-foreground' : 'border-transparent'">
+                <button
+                  type="button"
+                  class="text-[14px] whitespace-nowrap transition-colors"
+                  :class="p.id === planner.activePlanId ? 'font-semibold' : 'text-muted-foreground hover:text-foreground'"
+                  @click="planner.activePlanId = p.id"
+                >
+                  {{ planLabel(p) }}
+                </button>
+                <button
+                  v-if="planner.plans.length > 1"
+                  type="button"
+                  :aria-label="`Delete ${p.name}`"
+                  :title="`Delete ${p.name}`"
+                  :disabled="!planner.online || planner.planActionPending"
+                  class="rounded-sm px-1 text-[12px] leading-5 text-muted-foreground hover:bg-muted hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+                  @click="planToDelete = p"
+                >✕</button>
+              </span>
             </div>
             <div class="flex gap-2 pb-2">
               <BaseButton variant="outline" size="sm" @click="showSettings = true">Plan settings</BaseButton>
@@ -572,6 +582,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
       @move-next="resolveWarning('move')"
     />
     <SemesterFullModal v-if="fullSem" :sem-label="fullSem.label" :max="MAX_MODULES_PER_SEM" @close="fullSem = null" />
+    <DeletePlanModal v-if="planToDelete" :plan-name="planToDelete.name" @close="planToDelete = null" @confirm="confirmDelete" />
     <PlanLimitModal v-if="showPlanLimit" @close="showPlanLimit = false" @go-to-plans="goToPlans" />
     <PlanSettingsModal v-if="showSettings" @close="showSettings = false" />
   </div>
