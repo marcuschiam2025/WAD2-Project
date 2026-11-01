@@ -119,7 +119,7 @@ watch(currentSem, () => {
 })
 
 const eValue = computed(() => Number(eCredits.value))
-const eValid = computed(() => eCredits.value !== '' && Number.isInteger(eValue.value) && eValue.value >= 0)
+const eValid = computed(() => eCredits.value !== '' && Number.isFinite(eValue.value) && /^\d+(?:\.\d{1,2})?$/.test(String(eValue.value)))
 
 // Every section is required. Tracks can be "undecided", which sends you to the quiz.
 const sections = [
@@ -411,13 +411,13 @@ const badge = (n) => [
             v-model="eCredits"
             type="number"
             min="0"
-            step="1"
+            step="0.01"
             placeholder="e.g. 1200"
             aria-label="E-credit amount in e$"
             class="min-w-0 flex-1 bg-transparent font-mono text-[14px] font-medium outline-none"
           />
         </label>
-        <p class="text-[12px] text-muted-foreground">Your current e-credit (e$) balance. We use it to budget your bids.</p>
+        <p class="text-[12px] text-muted-foreground">Your current e-credit (e$) balance, with up to 2 decimal places. We use it to budget your bids.</p>
       </section>
     </div>
 

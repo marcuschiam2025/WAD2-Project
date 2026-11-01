@@ -21,7 +21,7 @@ export function profileUpdate(body, current = {}) {
     }
   }
   if (body.balance !== undefined) {
-    if (typeof body.balance !== 'number' || !Number.isFinite(body.balance) || body.balance < 0) throw new Error('Invalid balance')
+    if (typeof body.balance !== 'number' || !Number.isFinite(body.balance) || !/^\d+(?:\.\d{1,2})?$/.test(String(body.balance))) throw new Error('Balance must be a non-negative number with up to 2 decimal places')
     result.balance = body.balance
   }
   if (body.onboarded !== undefined) {

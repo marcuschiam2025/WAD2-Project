@@ -7,6 +7,12 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 const quiz = useQuizStore()
 const router = useRouter()
 onMounted(() => quiz.initialize())
+function alignmentLabel(attempt) {
+  if (attempt.rankingBasis === 'scenario-provisional') return 'Provisional exploration'
+  if (attempt.rubricVersion === 'legacy-v1') return 'Earlier quiz format'
+  const score = attempt.results[0]?.alignmentIndex
+  return Number.isFinite(score) ? `${Math.round(score)}% alignment` : 'Alignment unavailable'
+}
 function start() {
   if (quiz.hasDraft && !window.confirm('Replace your unfinished quiz with a new attempt?')) return
   quiz.start()
@@ -28,7 +34,7 @@ function start() {
         <div class="flex flex-wrap gap-3"><BaseButton :disabled="quiz.loading || !quiz.questions.length || !!quiz.error" @click="start">{{ quiz.attempts.length ? 'Start new attempt' : 'Start quiz' }}</BaseButton><BaseButton v-if="quiz.hasDraft" variant="outline" to="/quiz/attempt">Resume unfinished quiz</BaseButton></div>
       </section>
       <section v-if="quiz.attempts.length" class="card flex flex-col gap-3 p-6"><h2 class="text-h4">Latest results</h2>
-        <RouterLink v-for="attempt in quiz.attempts" :key="attempt.id" :to="`/quiz/results?attempt=${attempt.id}`" class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-4 hover:border-primary"><div><p class="font-medium">{{ new Date(attempt.createdAt).toLocaleString() }}</p><p class="text-sm text-muted-foreground">{{ attempt.rankingBasis === 'scenario-provisional' ? 'Provisional exploration' : attempt.rubricVersion === 'legacy-v1' ? 'Earlier quiz format' : 'Rating alignment' }} · {{ quizTrackNames[attempt.results[0]?.track] ?? 'Track results' }}</p></div><span class="text-sm text-primary">View results →</span></RouterLink>
+        <RouterLink v-for="attempt in quiz.attempts" :key="attempt.id" :to="`/quiz/results?attempt=${attempt.id}`" class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-4 hover:border-primary"><div><p class="font-medium">{{ new Date(attempt.createdAt).toLocaleString() }}</p><p class="text-sm text-muted-foreground">{{ alignmentLabel(attempt) }} · {{ quizTrackNames[attempt.results[0]?.track] ?? 'Track results' }}</p></div><span class="text-sm text-primary">View results →</span></RouterLink>
       </section>
     </main>
   </div>

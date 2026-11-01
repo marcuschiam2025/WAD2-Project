@@ -73,7 +73,7 @@ const features = [
         </div>
       </section>
 
-      <div v-stagger="0.2" class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:flex"> <!-- motion: feature cards stagger in 200ms apart -->
+      <div v-stagger="0.2" class="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:flex"> <!-- motion: feature cards stagger in 200ms apart -->
         <article
           v-for="f in features"
           :key="f.title"
