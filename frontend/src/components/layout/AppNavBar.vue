@@ -30,9 +30,14 @@ const navOpen = ref(false) // hamburger drawer below xl
 const allLinks = computed(() => [...links, ...(user.profile.role === 'admin' ? [{ key: 'admin', label: 'Admin', to: '/admin' }] : [])])
 watch(() => route.fullPath, () => (navOpen.value = false))
 const menuRef = ref(null)
+const notifOpen = ref(false)
+const notifRef = ref(null)
+// TODO(backend): notifications come from the backend (no endpoint yet); until then there is never anything unread
+const notifications = computed(() => [])
 
 function onDocClick(e) {
   if (menuRef.value && !menuRef.value.contains(e.target)) menuOpen.value = false
+  if (notifRef.value && !notifRef.value.contains(e.target)) notifOpen.value = false
 }
 onMounted(() => document.addEventListener('click', onDocClick))
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
@@ -89,16 +94,37 @@ async function logOut() {
         <span class="font-mono text-[12.5px] font-bold">e$ {{ user.balance.toLocaleString() }}</span>
         <span class="hidden text-[12px] text-muted-foreground sm:inline">left</span>
       </div>
-      <button type="button" aria-label="Notifications" class="size-8 rounded-full hover:bg-muted">
-        <img :src="iconBell" alt="" class="size-8" />
-      </button>
+      <div ref="notifRef" class="relative">
+        <button
+          type="button"
+          aria-label="Notifications"
+          :aria-expanded="notifOpen"
+          class="relative block size-8 rounded-full hover:bg-muted"
+          @click="notifOpen = !notifOpen; menuOpen = false"
+        >
+          <img :src="iconBell" alt="" class="size-8" />
+          <span v-if="notifications.length" class="absolute top-[5px] right-[5px] size-2 rounded-full border border-white bg-destructive" />
+        </button>
+        <Transition :css="false" @enter="popEnter" @leave="popLeave">
+          <div
+            v-if="notifOpen"
+            class="absolute top-11 right-0 z-50 flex w-72 max-w-[calc(100vw-2rem)] origin-top-right flex-col gap-2 rounded-lg border border-border bg-card p-4 shadow-md"
+          >
+            <p class="text-overline text-muted-foreground">Notifications</p>
+            <ul v-if="notifications.length" class="flex flex-col gap-2">
+              <li v-for="n in notifications" :key="n.id" class="text-[13px]">{{ n.text }}</li>
+            </ul>
+            <p v-else class="text-[13px] text-muted-foreground">You're all caught up. Nothing new right now.</p>
+          </div>
+        </Transition>
+      </div>
       <div ref="menuRef" class="relative">
         <button
           type="button"
           aria-label="Account menu"
           :aria-expanded="menuOpen"
           class="block rounded-full"
-          @click="menuOpen = !menuOpen"
+          @click="menuOpen = !menuOpen; notifOpen = false"
         >
           <UserAvatar :initials="user.profile.initials" :size="32" you />
         </button>
