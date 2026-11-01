@@ -248,7 +248,7 @@ const biddingWindows = computed(() => [
               </RouterLink>
               <StatusPill v-if="c.rating" :tone="ratingPill[c.rating][0]">{{ ratingPill[c.rating][1] }}</StatusPill>
               <span class="w-[58px] text-right font-mono text-[14px] font-bold">e$ {{ c.amount }}</span>
-              <BaseButton variant="secondary" size="sm" :disabled="bidding.isLocked(c.code)" :title="bidding.isLocked(c.code) ? 'Stop sharing your section in the room before dropping this module' : undefined" :aria-label="`Drop ${c.code} from the cart`" @click="bidding.dropModule(c.code)">Drop</BaseButton>
+              <BaseButton variant="secondary" size="sm" :disabled="bidding.isLocked(c.code)" :title="bidding.isLocked(c.code) ? 'This module is locked to your collab room section' : undefined" :aria-label="`Drop ${c.code} from the cart`" @click="bidding.dropModule(c.code)">Drop</BaseButton>
             </li>
             <li v-if="!cart.length" class="border-t border-border py-4 text-[13px] text-muted-foreground">
               Your cart is empty. Add modules in the Bidding Planner.

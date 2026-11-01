@@ -85,7 +85,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     ),
   )
 
-  // A personal room pick stays in sync with that room. Change or stop sharing the pick there to unlock it.
+  // A personal room pick stays in sync with that room. Change the pick there to update it.
   // module code -> { roomId, roomName, module, sectionId, roomIds } for the first matching room
   const locked = computed(() => {
     const out = {}
@@ -300,7 +300,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       saveError.value = 'Connect to the server and select a catalogue term before saving your bids.'
       return false
     }
-    if (roomConflicts.value.length) { saveError.value = `You picked different sections for ${roomConflicts.value.join(', ')} in different rooms. Update or stop sharing a pick before saving.`; return false }
+    if (roomConflicts.value.length) { saveError.value = `You picked different sections for ${roomConflicts.value.join(', ')} in different rooms. Change your pick in those rooms before saving.`; return false }
     if (unavailableSelections.value.length) { saveError.value = 'A saved section is unavailable. Choose a replacement or remove its module before saving.'; return false }
     if (archivedSelections.value.length) { saveError.value = 'A selected section has been archived. Choose an active alternative or remove the module before saving.'; return false }
     if (clashes.value.size) { saveError.value = 'Resolve class or final-exam clashes before saving.'; return false }

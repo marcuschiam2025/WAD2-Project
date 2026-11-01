@@ -3,11 +3,13 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM, MAX_PLANS } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
+import { useBiddingStore } from '@core/stores/bidding'
 import { useCatalogueStore } from '@core/stores/catalogue'
 import { modules, moduleName, tracks, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import UserAvatar from '@/components/ui/UserAvatar.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import DegreeChecklist from '@/components/DegreeChecklist.vue'
 import PrereqWarningModal from '@/components/modals/PrereqWarningModal.vue'
@@ -43,12 +45,39 @@ async function retryBasket() {
 const router = useRouter()
 const planner = usePlannerStore()
 const rooms = useRoomsStore()
+const bidding = useBiddingStore()
 const catalogue = useCatalogueStore()
 
-// Modules whose section was accepted in a collab room get their own colour
-const roomDecision = (code) => rooms.decided.find((d) => d.module === effectiveCode(code))
+// Modules whose section was accepted in a collab room are locked and get their own colour. This only reads the student's
+// accepted section; it never edits the plan (rooms.decided stays empty on purpose).
+// -> { roomId, roomName, module, sectionId, party: [you, ...the members who picked the same section] }
+function roomDecision(code) {
+  const module = effectiveCode(code)
+  const picks = rooms.pickedForBidding.filter((d) => d.module === module && (!bidding.round.term || d.term === bidding.round.term))
+  if (!picks.length) return undefined
+  const pick = picks[0]
+  const others = new Set(picks.filter((d) => d.sectionId === pick.sectionId).flatMap((d) => {
+    const room = rooms.getRoom(d.roomId)
+    return (room?.members ?? []).filter((id) => room.sharedSections?.[id] === pick.sectionId)
+  }))
+  others.delete('me')
+  return { ...pick, party: [rooms.person('me'), ...[...others].map(rooms.person)] }
+}
 // Plans come from the authenticated backend through the planner store.
 const plan = computed(() => planner.activePlan)
+// Modules accepted in a room that are not placed in any semester of this plan yet. They appear, locked, in the next
+// semester (the one being bid for) without being added to the plan; the room, not the plan, decides them.
+const nextSemId = computed(() => {
+  const sems = plan.value.semesters
+  return sems[sems.findIndex((sem) => sem.id === plan.value.currentSem) + 1]?.id ?? null
+})
+const roomOnly = computed(() => {
+  const placed = new Set(plan.value.semesters.flatMap((sem) => sem.modules.map(effectiveCode)))
+  const seen = new Set()
+  return rooms.pickedForBidding
+    .filter((d) => (!bidding.round.term || d.term === bidding.round.term) && !placed.has(d.module) && !seen.has(d.module) && seen.add(d.module))
+    .map((d) => roomDecision(d.module))
+})
 
 const tabsRef = ref(null)
 const showPlanLimit = ref(false)
@@ -332,9 +361,10 @@ const onTrack = computed(() => !planner.hasAnyWarning)
             <li
               v-for="m in basket"
               :key="m.code"
-              draggable="true"
-              class="group flex cursor-grab items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-[opacity,border-color] active:cursor-grabbing"
-              :class="dragging === m.code ? 'border-primary opacity-50' : 'border-border hover:border-primary/50'"
+              :draggable="!roomDecision(m.code)"
+              :title="roomDecision(m.code) ? `Accepted in ${roomDecision(m.code).roomName}. Undo it in the room to move it.` : undefined"
+              class="group flex items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-[opacity,border-color]"
+              :class="[roomDecision(m.code) ? 'border-2 border-success bg-success-tint' : 'cursor-grab border-border hover:border-primary/50 active:cursor-grabbing', dragging === m.code && 'border-primary opacity-50']"
               @dragstart="onDragStart($event, m.code)"
               @dragend="onDragEnd"
             >
@@ -342,7 +372,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
               <div class="flex min-w-0 flex-1 flex-col leading-normal">
                 <span class="font-mono text-[13px] font-bold">{{ m.code }}</span>
                 <span class="truncate text-[12px] text-muted-foreground">{{ m.name }}</span>
-                <select :aria-label="`Place ${m.code} in semester`" class="mt-2 w-full rounded border border-border bg-card p-1 text-xs" @change="placeFromSelect(m.code, $event)" @mousedown.stop draggable="false">
+                <select :aria-label="`Place ${m.code} in semester`" :disabled="!!roomDecision(m.code)" class="mt-2 w-full rounded border border-border bg-card p-1 text-xs" @change="placeFromSelect(m.code, $event)" @mousedown.stop draggable="false">
                   <option value="">Place in semester…</option>
                   <option v-for="semester in plan.semesters.filter(canDrop)" :key="semester.id" :value="semester.id" :disabled="isFull(semester)">{{ semester.label }}{{ isFull(semester) ? ' (full)' : '' }}</option>
                 </select>
@@ -466,7 +496,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                 <div
                   v-for="code in col.sem.modules"
                   :key="code"
-                  :draggable="status(col.sem) !== 'done'"
+                  :draggable="status(col.sem) !== 'done' && !roomDecision(code)"
                   :title="roomDecision(code) ? `Accepted in ${roomDecision(code).roomName}. Undo it in the room to remove it.` : undefined"
                   class="group relative flex flex-col rounded-sm px-2 py-1.5 leading-normal transition-opacity"
                   :class="[
@@ -475,7 +505,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                       : cardState(code, col.sem) === 'warning'
                         ? 'border border-destructive bg-destructive-tint'
                         : 'bg-secondary',
-                    status(col.sem) !== 'done' && 'cursor-grab',
+                    status(col.sem) !== 'done' && !roomDecision(code) && 'cursor-grab',
                     dragging === code && 'opacity-40',
                   ]"
                   @dragstart="onDragStart($event, code)"
@@ -487,6 +517,17 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                   </span>
                   <button v-if="cardState(code, col.sem) === 'warning'" type="button" class="text-left text-[11px] text-destructive hover:underline" :aria-label="`Review academic warnings for ${effectiveCode(code)}`" @click.stop="warning = { code, semId: col.sem.id }">{{ planner.warningMessages(plan, code, col.sem.id).join('; ') }}</button>
                   <span v-else class="line-clamp-2 text-[11px] text-muted-foreground">{{ moduleName(effectiveCode(code)) }}</span>
+                  <span v-if="roomDecision(code)" class="mt-1 flex items-center">
+                    <UserAvatar
+                      v-for="(f, i) in roomDecision(code).party"
+                      :key="f.id"
+                      :initials="f.initials"
+                      :title="f.you ? 'You' : f.name"
+                      :you="f.you"
+                      class="ring-2 ring-success-tint"
+                      :class="i > 0 && '-ml-1'"
+                    />
+                  </span>
                   <button
                     v-if="status(col.sem) !== 'done' && !roomDecision(code)"
                     type="button"
@@ -497,6 +538,21 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                     ✕
                   </button>
                 </div>
+
+                <template v-if="col.sem.id === nextSemId && !col.sem.loa">
+                  <div
+                    v-for="d in roomOnly"
+                    :key="`room-${d.module}`"
+                    :title="`Accepted in ${d.roomName}. Undo it in the room to change it.`"
+                    class="flex flex-col rounded-sm border-2 border-success bg-success-tint px-2 py-1.5 leading-normal"
+                  >
+                    <span class="font-mono text-[12px] font-bold">{{ d.module }}</span>
+                    <span class="line-clamp-2 text-[11px] text-muted-foreground">{{ moduleName(d.module) }}</span>
+                    <span class="mt-1 flex items-center">
+                      <UserAvatar v-for="(f, i) in d.party" :key="f.id" :initials="f.initials" :title="f.you ? 'You' : f.name" :you="f.you" class="ring-2 ring-success-tint" :class="i > 0 && '-ml-1'" />
+                    </span>
+                  </div>
+                </template>
 
                 <div
                   v-if="dragging && dragOver === col.sem.id && !col.sem.modules.includes(dragging)"

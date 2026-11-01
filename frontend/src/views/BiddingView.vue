@@ -170,7 +170,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
 
       <p v-if="!bidding.roundInfo.configured" class="text-sm text-muted-foreground">Catalogue preview: {{ round.term }}. An active bidding term and round have not been configured.</p>
       <p v-if="bidding.loadError" role="alert" class="text-sm text-destructive">{{ bidding.loadError }} <button type="button" class="underline" @click="bidding.load()">Retry</button></p>
-      <p v-if="bidding.roomConflicts.length" role="alert" class="text-sm text-destructive">You picked different sections for {{ bidding.roomConflicts.join(', ') }} in different rooms. Update or stop sharing a pick in those rooms before saving bids.</p>
+      <p v-if="bidding.roomConflicts.length" role="alert" class="text-sm text-destructive">You picked different sections for {{ bidding.roomConflicts.join(', ') }} in different rooms. Change your pick in those rooms before saving bids.</p>
       <p v-if="bidding.notOffered.length" role="status" class="text-sm text-muted-foreground">
         Section data is not available for {{ bidding.notOffered.join(', ') }} in {{ bidding.round.term }}. Your modules remain in the degree plan.
       </p>
@@ -269,7 +269,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
           </div>
           <p v-if="lockedFocus" class="text-[13px] leading-normal">
             <span class="font-mono font-bold">{{ lockedFocus.module }} {{ lockedFocus.sectionId.split(':').pop() }}</span> is locked because
-            you shared it in {{ lockedFocus.roomName }}<template v-if="friendsOf(lockedFocus.module).length">, alongside {{ friendsOf(lockedFocus.module).map((f) => f.name).join(', ') }}</template>. Change or stop sharing your section in the room to unlock it.
+            you shared it in {{ lockedFocus.roomName }}<template v-if="friendsOf(lockedFocus.module).length">, alongside {{ friendsOf(lockedFocus.module).map((f) => f.name).join(', ') }}</template>. Change your section in the room to update it.
             <RouterLink :to="`/rooms/${lockedFocus.roomId}`" class="font-medium text-primary hover:underline">Open room</RouterLink>
           </p>
           <p v-if="bidding.fromRooms.length" class="text-[13px] text-muted-foreground">
