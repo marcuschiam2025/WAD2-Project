@@ -3,6 +3,7 @@ import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useBiddingStore } from '@core/stores/bidding'
 import { useUserStore } from '@core/stores/user'
+import { usePlannerStore } from '@core/stores/planner'
 import { api } from '@core/services/api'
 import { useCalendarExportStore } from '@core/stores/calendarExport'
 import { moduleName } from '@core/data/catalogue'
@@ -11,9 +12,11 @@ import { findClashes, findExamClashes } from '@core/utils/clash'
 import { fmtE } from '@core/utils/money'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import DeletePlanModal from '@/components/modals/DeletePlanModal.vue'
 
 const bidding = useBiddingStore()
 const user = useUserStore()
+const planner = usePlannerStore()
 const copies = ref([])
 const loading = ref(false)
 const error = ref('')
@@ -71,6 +74,14 @@ function exportCopy(copy) {
     downloadFile(`bidmaxxer-${copy.planId}-${copy.term}.ics`, calendar)
   } catch (err) { exportError.value = err.message }
 }
+
+// Deleting a saved plan deletes the plan itself (What-If plan and its saved bids); the backend always keeps at least one plan
+const planToDelete = ref(null)
+async function confirmDelete() {
+  if (!(await planner.deletePlan(planToDelete.value.planId))) return
+  planToDelete.value = null
+  await load()
+}
 </script>
 
 <template>
@@ -112,6 +123,7 @@ function exportCopy(copy) {
             <BaseButton :disabled="!!blocked(copy) || (needsDates(copy) && !termStart) || adding !== null" @click="addToGoogle(copy)">{{ adding === copy.id ? 'Adding to Google Calendar…' : 'Add to Google Calendar' }}</BaseButton>
             <BaseButton variant="outline" :disabled="!!blocked(copy) || (needsDates(copy) && !termStart)" @click="exportCopy(copy)">Download calendar (.ics)</BaseButton>
             <BaseButton variant="outline" :to="`/bidding?plan=${copy.planId}`">Edit bids</BaseButton>
+            <BaseButton variant="destructive-outline" :disabled="!planner.online || planner.planActionPending || planner.plans.length <= 1" :title="planner.plans.length <= 1 ? 'You need at least one plan' : undefined" @click="planToDelete = copy">Delete plan</BaseButton>
           </article>
         </div>
         <section class="card overflow-x-auto" aria-label="Saved section comparison">
@@ -128,5 +140,6 @@ function exportCopy(copy) {
         </section>
       </template>
     </main>
+    <DeletePlanModal v-if="planToDelete" :plan-name="planToDelete.name" detail="from the What-If Planner, along with its saved bids" @close="planToDelete = null" @confirm="confirmDelete" />
   </div>
 </template>
