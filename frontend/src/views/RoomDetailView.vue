@@ -78,16 +78,16 @@ async function leave() {
       <template #leading><BackButton to="/rooms" /></template>
     </PageHeader>
 
-    <main class="flex flex-col gap-4 px-16 pt-8 pb-12">
+    <main class="flex flex-col gap-4 px-5 md:px-8 lg:px-16 pt-8 pb-12">
       <section v-if="!room" class="card flex flex-col items-start gap-3 p-5">
         <p class="text-[14px]">This room is unavailable, or you are no longer a member.</p>
         <BaseButton variant="outline" @click="rooms.load">Refresh rooms</BaseButton>
       </section>
 
       <template v-else>
-        <div v-enter class="card flex items-stretch overflow-hidden"> <!-- motion: fade + slide up on mount -->
+        <div v-enter class="card flex flex-col items-stretch overflow-hidden lg:flex-row"> <!-- motion: fade + slide up on mount -->
           <!-- Room sidebar -->
-          <aside class="flex w-[300px] shrink-0 flex-col gap-4 border-r border-border p-5">
+          <aside class="flex w-full shrink-0 flex-col gap-4 border-b border-border p-5 lg:w-[300px] lg:border-r lg:border-b-0">
             <div class="flex flex-col gap-1.5 leading-normal">
               <h2 class="text-[18px] font-semibold">{{ room.name }}</h2>
               <p class="flex items-center gap-2 text-[13px] text-muted-foreground">

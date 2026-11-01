@@ -277,7 +277,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
       </template>
     </PageHeader>
 
-    <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
+    <main class="flex flex-col gap-6 px-5 md:px-8 lg:px-16 pt-8 pb-12">
       <p v-if="planner.plansSaving" role="status" class="text-sm text-muted-foreground">Saving semester changes…</p>
       <p v-if="planner.planActionError" role="alert" class="text-sm text-destructive">Plan update failed: {{ planner.planActionError }}</p>
       <p v-if="handoffError" role="alert" class="text-sm text-destructive">{{ handoffError }}</p>
@@ -289,10 +289,10 @@ const onTrack = computed(() => !planner.hasAnyWarning)
         <span><span class="font-semibold">Not saved:</span> {{ planner.syncError }}</span>
         <BaseButton variant="outline" size="sm" :disabled="planner.plansSaving" @click="retryPlans">Retry saving plans</BaseButton>
       </div>
-      <section v-enter class="card flex items-stretch overflow-hidden"> <!-- motion: fade + slide up on mount -->
+      <section v-enter class="card flex flex-col items-stretch overflow-hidden lg:flex-row"> <!-- motion: fade + slide up on mount -->
         <!-- Module basket -->
         <aside
-          class="flex w-[260px] shrink-0 flex-col gap-3 border-r border-border p-4 transition-colors"
+          class="flex w-full shrink-0 flex-col gap-3 border-b border-border p-4 transition-colors lg:w-[260px] lg:border-r lg:border-b-0"
           :class="dragging && !planner.basket.includes(dragging) && 'bg-primary-tint'"
           @dragover.prevent
           @drop.prevent="dropOnBasket"
@@ -383,8 +383,8 @@ const onTrack = computed(() => !planner.hasAnyWarning)
 
         <!-- Plans -->
         <div class="flex min-w-0 flex-1 flex-col gap-3 p-4">
-          <div ref="tabsRef" class="flex items-center justify-between gap-3 border-b border-border">
-            <div class="flex min-w-0 gap-5">
+          <div ref="tabsRef" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border">
+            <div class="flex min-w-0 gap-5 overflow-x-auto">
               <button
                 v-for="p in planner.plans"
                 :key="p.id"
@@ -516,7 +516,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
 
       <!-- Module requirements: the checklist below, added up by area -->
       <p v-if="planner.curriculumNotice" role="status" class="rounded-lg border border-warning p-4 text-sm">{{ planner.curriculumNotice }}</p>
-      <section v-if="!planner.checklist.unavailable" v-enter="0.1" class="card flex flex-col gap-4 p-6"> <!-- motion: requirements strip fades in, 100ms delay -->
+      <section v-if="!planner.checklist.unavailable" v-enter="0.1" class="card flex flex-col gap-4 p-4 md:p-6"> <!-- motion: requirements strip fades in, 100ms delay -->
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
           <div class="flex items-center gap-3">
@@ -525,7 +525,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
             <StatusPill v-else tone="destructive">Prereq issues</StatusPill>
           </div>
         </div>
-        <div class="grid gap-x-10 gap-y-5" :style="{ gridTemplateColumns: `repeat(${requirements.length}, minmax(0, 1fr))` }">
+        <div class="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-3 lg:gap-x-10 lg:[grid-template-columns:repeat(var(--n),minmax(0,1fr))]" :style="{ '--n': requirements.length }">
           <div v-for="b in requirements" :key="b.key" class="flex flex-col gap-1.5">
             <span class="truncate text-[13px] text-muted-foreground" :title="b.label">{{ b.label }}</span>
             <span class="font-mono text-[14px] font-bold">{{ b.filled }} / {{ b.required }}</span>

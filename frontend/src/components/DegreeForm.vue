@@ -190,7 +190,7 @@ const badge = (n) => [
           <span :class="badge(2)">{{ sectionDone[1] ? '✓' : 2 }}</span>
           <h2 class="text-h4">Which tracks are you taking?</h2>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             v-for="t in tracks"
             :key="t.code"
@@ -231,7 +231,7 @@ const badge = (n) => [
           <span :class="badge(3)">{{ sectionDone[2] ? '✓' : 3 }}</span>
           <h2 class="text-h4">Which semester are you in now?</h2>
         </div>
-        <div class="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Current semester">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Current semester">
           <button
             v-for="id in SEM_IDS"
             :key="id"
@@ -289,7 +289,7 @@ const badge = (n) => [
           </div>
 
           <!-- Done semesters and the current one: drop modules here -->
-          <div class="grid grid-cols-4 gap-2.5">
+          <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             <div
               v-for="id in openSems"
               :key="id"

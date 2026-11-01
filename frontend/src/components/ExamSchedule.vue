@@ -48,7 +48,7 @@ const unconfirmedEnds = computed(() => rows.value.some(row => row.exam && !row.e
       <li
         v-for="r in rows"
         :key="r.id"
-        class="grid grid-cols-[110px_1fr_auto] items-center gap-3 border-t border-border py-2 text-[13px] first:border-t-0"
+        class="grid grid-cols-[88px_1fr_auto] sm:grid-cols-[110px_1fr_auto] items-center gap-3 border-t border-border py-2 text-[13px] first:border-t-0"
       >
         <span v-if="r.exam" class="font-medium">{{ dayLabel(r.exam.date) }}</span>
         <span v-else class="text-muted-foreground">—</span>

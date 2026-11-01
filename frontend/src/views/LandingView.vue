@@ -24,23 +24,23 @@ const features = [
 
 <template>
   <div class="flex min-h-screen flex-col">
-    <header class="flex items-center justify-between border-b border-border bg-card px-16 py-4">
+    <header class="flex items-center justify-between border-b border-border bg-card px-5 py-4 md:px-8 lg:px-16">
       <BrandLogo />
       <BaseButton to="/signin" variant="link">Log in with Google →</BaseButton>
     </header>
 
-    <main class="flex flex-1 flex-col gap-4 px-16 pt-12 pb-8">
-      <section v-enter class="card flex items-center gap-10 rounded-xl p-10"> <!-- motion: hero section fades in on mount -->
-        <div class="flex w-[540px] shrink-0 flex-col items-start gap-3">
+    <main class="flex flex-1 flex-col gap-4 px-5 pt-8 pb-8 md:px-8 md:pt-12 lg:px-16">
+      <section v-enter class="card flex flex-col gap-6 rounded-xl p-6 md:p-8 lg:flex-row lg:items-center lg:gap-10 lg:p-10"> <!-- motion: hero section fades in on mount -->
+        <div class="flex w-full shrink-0 flex-col items-start gap-3 lg:w-[540px]">
           <p class="text-[13px] font-semibold text-primary">Built for SMU students</p>
-          <h1 class="text-[48px] leading-[54px] font-extrabold tracking-[-0.96px]">
+          <h1 class="text-[36px] leading-[42px] font-extrabold tracking-[-0.96px] md:text-[48px] md:leading-[54px]">
             Plan your degree.<br />Win your bids.
           </h1>
-          <p class="w-[460px] text-[16px] leading-6 text-muted-foreground">
+          <p class="max-w-[460px] text-[16px] leading-6 text-muted-foreground">
             Map all eight semesters, check prerequisites as you go, and test your BOSS bids against three semesters of
             medians before the round opens.
           </p>
-          <div class="flex items-center gap-3">
+          <div class="flex flex-wrap items-center gap-3">
             <BaseButton to="/signin" size="lg">Get started</BaseButton>
             <BaseButton to="/signin" variant="ghost" size="lg">See how bidding works</BaseButton>
           </div>
@@ -73,7 +73,7 @@ const features = [
         </div>
       </section>
 
-      <div v-stagger="0.2" class="flex items-start gap-3"> <!-- motion: feature cards stagger in 200ms apart -->
+      <div v-stagger="0.2" class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:flex"> <!-- motion: feature cards stagger in 200ms apart -->
         <article
           v-for="f in features"
           :key="f.title"
@@ -88,7 +88,7 @@ const features = [
       </div>
     </main>
 
-    <footer class="border-t border-border bg-card px-16 py-6">
+    <footer class="border-t border-border bg-card px-5 py-6 md:px-8 lg:px-16">
       <p class="text-[13px] text-muted-foreground">
         © 2025 BidMaxxer · Built for SMU students · Not affiliated with BOSS or SMU
       </p>

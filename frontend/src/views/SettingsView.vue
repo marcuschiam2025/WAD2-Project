@@ -8,7 +8,7 @@ import StatusPill from '@/components/ui/StatusPill.vue'
   <div>
     <PageHeader overline="Account · Calendar access" title="Settings" />
 
-    <main class="flex flex-col gap-6 px-5 pt-8 pb-12 lg:px-16">
+    <main class="flex flex-col gap-6 px-5 pt-8 pb-12 md:px-8 lg:px-16">
       <div v-enter class="flex flex-col gap-1">
         <h2 class="text-h3">Calendar export</h2>
         <p class="text-[14px] text-muted-foreground">Manage how you add your saved classes to a calendar.</p>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@core/stores/user'
 import { popEnter, popLeave } from '@/motion'
@@ -26,6 +26,9 @@ const links = [
 const activeKey = computed(() => route.meta.nav ?? (route.path.startsWith('/quiz') ? 'quiz' : null))
 
 const menuOpen = ref(false)
+const navOpen = ref(false) // hamburger drawer below lg
+const allLinks = computed(() => [...links, ...(user.profile.role === 'admin' ? [{ key: 'admin', label: 'Admin', to: '/admin' }] : [])])
+watch(() => route.fullPath, () => (navOpen.value = false))
 const menuRef = ref(null)
 
 function onDocClick(e) {
@@ -47,12 +50,25 @@ async function logOut() {
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card px-6">
-    <div class="flex items-center gap-8">
+  <header class="sticky top-0 z-40 border-b border-border bg-card">
+   <div class="flex h-16 items-center justify-between px-4 md:px-6">
+    <div class="flex items-center gap-3 lg:gap-8">
+      <button
+        type="button"
+        class="flex size-9 items-center justify-center rounded-md hover:bg-muted lg:hidden"
+        :aria-label="navOpen ? 'Close menu' : 'Open menu'"
+        :aria-expanded="navOpen"
+        @click.stop="navOpen = !navOpen"
+      >
+        <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path v-if="navOpen" d="M6 6l12 12M18 6L6 18" />
+          <path v-else d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+      </button>
       <BrandLogo to="/dashboard" />
-      <nav class="flex items-start gap-6">
+      <nav class="hidden items-start gap-6 lg:flex">
         <RouterLink
-          v-for="link in [...links, ...(user.profile.role === 'admin' ? [{ key: 'admin', label: 'Admin', to: '/admin' }] : [])]"
+          v-for="link in allLinks"
           :key="link.key"
           :to="link.to"
           class="relative border-b-2 pt-[22px] pb-5 text-[14px] leading-normal whitespace-nowrap transition-colors"
@@ -67,11 +83,11 @@ async function logOut() {
       </nav>
     </div>
 
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-2 md:gap-4">
       <!-- TODO(backend): balance comes from the user store; wire it to GET /api/users/me -->
       <div class="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 leading-normal whitespace-nowrap">
         <span class="font-mono text-[12.5px] font-bold">e$ {{ user.balance.toLocaleString() }}</span>
-        <span class="text-[12px] text-muted-foreground">left</span>
+        <span class="hidden text-[12px] text-muted-foreground sm:inline">left</span>
       </div>
       <button type="button" aria-label="Notifications" class="size-8 rounded-full hover:bg-muted">
         <img :src="iconBell" alt="" class="size-8" />
@@ -118,5 +134,16 @@ async function logOut() {
         </Transition>
       </div>
     </div>
+   </div>
+    <!-- Mobile / tablet nav drawer -->
+    <nav v-if="navOpen" class="flex flex-col border-t border-border px-4 py-2 md:px-6 lg:hidden" aria-label="Main">
+      <RouterLink
+        v-for="link in allLinks"
+        :key="link.key"
+        :to="link.to"
+        class="rounded-md px-3 py-3 text-[14px]"
+        :class="activeKey === link.key ? 'bg-primary-tint font-medium text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'"
+      >{{ link.label }}</RouterLink>
+    </nav>
   </header>
 </template>

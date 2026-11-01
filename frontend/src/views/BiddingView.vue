@@ -146,13 +146,13 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
         <StatusPill tone="warning">{{ round.closesIn ? (round.closesIn === 'Closed' ? 'Round closed' : `Closes in ${round.closesIn}`) : 'Deadline not configured' }}</StatusPill>
       </template>
       <template #actions>
-        <SelectField v-model="bidding.planId" :options="planOptions" width="w-[270px]" />
+        <SelectField v-model="bidding.planId" :options="planOptions" width="w-full sm:w-[270px]" />
         <BaseButton variant="ghost" size="lg" href="https://boss.intranet.smu.edu.sg/">Go to BOSS</BaseButton>
         <BaseButton variant="outline" size="lg" to="/bidding/finalised">Go to Plans</BaseButton>
       </template>
     </PageHeader>
 
-    <main class="flex flex-col gap-4 px-5 lg:px-16 pt-8 pb-12">
+    <main class="flex flex-col gap-4 px-5 md:px-8 lg:px-16 pt-8 pb-12">
       <div class="flex flex-col items-start justify-between gap-6 xl:flex-row xl:items-end">
         <div class="flex flex-col gap-0.5">
           <h2 class="text-[17px] font-semibold">{{ semLabel }} timetable, imported from {{ bidding.plan.name }} in the What-If Planner</h2>

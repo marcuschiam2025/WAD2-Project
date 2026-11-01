@@ -234,7 +234,7 @@ const addLabel = computed(() => {
       <template v-else>All {{ totals.required }} {{ unit }} are cleared.</template>
     </p>
 
-    <div v-else class="flex h-[560px] overflow-hidden rounded-lg border border-border">
+    <div v-else class="flex h-[560px] overflow-x-auto overflow-y-hidden rounded-lg border border-border">
       <!-- 1. Courses still to clear -->
       <div class="w-[340px] shrink-0 overflow-y-auto border-r border-border">
         <div v-for="s in sections" :key="s.key">

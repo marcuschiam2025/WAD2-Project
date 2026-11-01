@@ -77,7 +77,7 @@ function exportCopy(copy) {
     <PageHeader :overline="bidding.roundInfo.term" title="Saved bidding plans" subtitle="Compare your saved section choices and download a calendar file.">
       <template #actions><BaseButton variant="outline" :to="`/bidding?plan=${bidding.planId || ''}`">Back to bidding</BaseButton></template>
     </PageHeader>
-    <main class="flex flex-col gap-6 px-5 py-8 lg:px-16">
+    <main class="flex flex-col gap-6 px-5 py-8 md:px-8 lg:px-16">
       <p class="rounded-lg border border-primary bg-primary-tint p-4 text-sm">These are your last saved bids for this catalogue term. They do not confirm course allocation in BOSS. Save changes in the bidding planner before returning here.</p>
       <p v-if="loading" role="status">Loading saved plans…</p>
       <div v-else-if="error" role="alert" class="card p-5"><p>{{ error }}</p><BaseButton class="mt-3" variant="outline" @click="load">Retry</BaseButton></div>

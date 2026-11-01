@@ -26,7 +26,7 @@ async function join() {
     <PageHeader overline="Collaborative plan rooms" title="Collab Rooms">
       <template #actions><BaseButton variant="outline" @click="joining = true">Join with code</BaseButton><BaseButton to="/rooms/new">Create room</BaseButton></template>
     </PageHeader>
-    <main class="flex flex-col gap-4 px-5 py-8 lg:px-16">
+    <main class="flex flex-col gap-4 px-5 py-8 md:px-8 lg:px-16">
       <p class="text-sm text-muted-foreground">Plan a module with friends. Create a room and share its invite code.</p>
       <p v-if="rooms.loading" role="status">Loading your rooms…</p>
       <div v-if="rooms.error && !joining" role="alert" class="card p-4"><p>{{ rooms.error }}</p><BaseButton class="mt-2" variant="outline" @click="rooms.load">Retry</BaseButton></div>

@@ -54,9 +54,9 @@ const select = (r) => (selectedId.value = selectedId.value === r.section.id ? nu
 
 <template>
   <div v-if="room">
-    <section class="flex flex-col gap-2 border-b border-border bg-card px-16 py-6">
+    <section class="flex flex-col gap-2 border-b border-border bg-card px-5 py-6 md:px-8 lg:px-16">
       <p class="text-overline text-muted-foreground">Collab rooms / room #{{ room.id }} / slot votes</p>
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-3">
           <BackButton :to="`/rooms/${room.id}`" />
           <h1 class="text-page-title leading-normal">{{ room.name }}</h1>
@@ -65,9 +65,9 @@ const select = (r) => (selectedId.value = selectedId.value === r.section.id ? nu
       </div>
     </section>
 
-    <main class="px-16 pt-8 pb-12">
-      <div v-enter class="card flex items-stretch overflow-hidden">
-        <aside class="flex w-[280px] shrink-0 flex-col gap-4 border-r border-border p-5">
+    <main class="px-5 pt-8 pb-12 md:px-8 lg:px-16">
+      <div v-enter class="card flex flex-col items-stretch overflow-hidden lg:flex-row">
+        <aside class="flex w-full shrink-0 flex-col gap-4 border-b border-border p-5 lg:w-[280px] lg:border-r lg:border-b-0">
           <div class="flex flex-col gap-1.5 leading-normal">
             <h2 class="text-[18px] font-semibold">{{ room.name }}</h2>
             <p class="flex items-center gap-2 text-[13px] text-muted-foreground">

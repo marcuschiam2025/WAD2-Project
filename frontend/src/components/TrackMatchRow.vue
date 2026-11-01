@@ -6,7 +6,7 @@ defineProps({
   rank: { type: Number, required: true },
   track: { type: String, required: true },
   pct: { type: Number, required: true },
-  barWidth: { type: String, default: 'w-[240px]' },
+  barWidth: { type: String, default: 'w-20 sm:w-[240px]' },
   bordered: { type: Boolean, default: true },
 })
 </script>

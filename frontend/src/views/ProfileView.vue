@@ -40,7 +40,7 @@ const degree = computed(() => {
   <div>
     <PageHeader overline="Account" title="Profile" />
 
-    <main class="flex flex-col gap-6 px-16 pt-8 pb-12">
+    <main class="flex flex-col gap-6 px-5 md:px-8 lg:px-16 pt-8 pb-12">
       <section v-enter class="card flex items-center gap-4 p-6"> <!-- motion: profile header fades in on mount -->
         <UserAvatar :initials="user.profile.initials" :size="64" />
         <div class="flex flex-col gap-1 leading-normal">
@@ -64,7 +64,7 @@ const degree = computed(() => {
           <BaseButton v-else-if="!editingDegree" variant="outline" @click="editingDegree = true">Edit</BaseButton>
         </div>
         <DegreeForm v-if="editingDegree" mode="edit" @saved="degreeSaved" @cancel="editingDegree = false" />
-        <dl v-else class="grid grid-cols-[160px_1fr] gap-x-6 gap-y-3 text-[14px] leading-normal">
+        <dl v-else class="grid grid-cols-[110px_1fr] gap-x-4 sm:grid-cols-[160px_1fr] sm:gap-x-6 gap-y-3 text-[14px] leading-normal">
           <dt class="text-muted-foreground">Current semester</dt>
           <dd class="font-mono font-bold">{{ degree.sem }}</dd>
           <dt class="text-muted-foreground">Tracks</dt>

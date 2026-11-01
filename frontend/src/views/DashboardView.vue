@@ -155,12 +155,12 @@ const biddingWindows = computed(() => [
       </template>
     </PageHeader>
 
-    <main class="flex flex-col gap-4 px-16 pt-8 pb-12">
+    <main class="flex flex-col gap-4 px-5 md:px-8 lg:px-16 pt-8 pb-12">
       <!-- Undecided about a track -->
       <section
         v-if="!user.profile.tracks.length"
         v-enter
-        class="flex items-center justify-between gap-4 rounded-lg border border-primary bg-primary-tint px-4 py-3"
+        class="flex flex-col gap-3 rounded-lg border border-primary bg-primary-tint px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
       >
         <!-- motion: fade + slide up on mount -->
         <div class="flex flex-col gap-0.5 leading-normal">
@@ -171,7 +171,7 @@ const biddingWindows = computed(() => [
       </section>
 
       <!-- Stat cards -->
-      <div v-stagger="0.05" class="grid grid-cols-4 gap-4"> <!-- motion: stat cards stagger in -->
+      <div v-stagger="0.05" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"> <!-- motion: stat cards stagger in -->
         <component
           :is="s.to ? 'RouterLink' : 'div'"
           v-for="s in stats"
@@ -189,7 +189,7 @@ const biddingWindows = computed(() => [
         </component>
       </div>
 
-      <div class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-4">
+      <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div class="flex flex-col gap-4">
         <!-- Schedule -->
         <section v-enter="0.1" class="card flex flex-col p-5"> <!-- motion: schedule fades in, 100ms delay -->
@@ -261,7 +261,7 @@ const biddingWindows = computed(() => [
       </div>
 
       <!-- Rooms, plan alerts, coming up -->
-      <section v-enter="0.2" class="card grid grid-cols-3 divide-x divide-border"> <!-- motion: bottom strip fades in, 200ms delay -->
+      <section v-enter="0.2" class="card grid grid-cols-1 divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0"> <!-- motion: bottom strip fades in, 200ms delay -->
         <div class="flex flex-col gap-2.5 p-5">
           <h2 class="text-overline text-muted-foreground">Collab rooms</h2>
           <ul class="flex flex-col gap-2.5">

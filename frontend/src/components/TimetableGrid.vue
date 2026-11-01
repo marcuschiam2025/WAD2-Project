@@ -11,7 +11,8 @@ defineEmits(['cell-drop', 'cell-dragover'])
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-lg border border-border bg-card">
+  <div class="overflow-x-auto rounded-lg border border-border bg-card">
+   <div class="min-w-[720px]">
     <div class="flex bg-muted">
       <div class="w-[68px] shrink-0 px-2.5 py-2.5 text-overline text-muted-foreground">Time</div>
       <div v-for="d in days" :key="d" class="min-w-0 flex-1 border-l border-border px-2.5 py-2.5 text-[13px] font-semibold">
@@ -33,5 +34,6 @@ defineEmits(['cell-drop', 'cell-dragover'])
         <slot name="cell" :day="di" :slot="si" />
       </div>
     </div>
+   </div>
   </div>
 </template>
