@@ -133,14 +133,14 @@ test('a course that counts for two requirements (an additional track and an IS e
   const result = layoutCurriculum(built2, p, two, { majorCode: 'BSC-IS' })
   // ...but the totals count the one course once: planned 1, not 2
   assert.equal(result.totals.planned, 1)
-  const credited = result.groups.flatMap((g) => g.slots).filter((r) => r.credit?.planned)
+  const credited = result.groups.flatMap((g) => g.slots).filter((r) => r.credit?.planned && !r.extra)
   assert.equal(credited.length, 1)
-  assert.equal(credited[0].id, 'FT_COMP', 'the specific (track) requirement claims it before "any IS course"')
+  assert.equal(credited[0].id, 'IS_ELECT', 'an additional track claims nothing: the course counts once, as an IS elective')
 })
 
-test("a second track's courses stay in that track's rows instead of showing under 'Any IS course' and the free electives", () => {
-  // BA is the main track; Product Development (PD) is the additional one. The builder only fills the MAIN track's rows, so
-  // PD courses P1-P3 first land in the "Any IS course" and free elective rows. They belong to the PD requirements.
+test("a second track's courses count once toward the electives, and its rows add nothing to the total", () => {
+  // BA is the main track; Product Development (PD) is the additional one. Its rows show progress, but the degree total
+  // stays the same: its courses fill the "Any IS course" and free elective rows.
   const cat = { ...catalogue, ...Object.fromEntries([mod('P1', [], ['IS']), mod('P2', [], ['IS']), mod('P3', [], [])]) }
   const withPd = { ...bundle, tracks: [
     bundle.tracks[0],
@@ -152,22 +152,18 @@ test("a second track's courses stay in that track's rows instead of showing unde
   const p = { ...plan, tracks: ['BA', 'PD'], semesters: [sem('Y1S1', []), sem('Y1S2', []), sem('Y2S1', ['P1']), sem('Y2S2', ['P2', 'P3']), sem('Y3S1', [])] }
   const built3 = buildCurriculumChecklist(p, cat, withPd)
   const raw = built3.groups.flatMap((g) => g.slots)
-  // the builder's own placement (the leak): P1 fills the IS elective row, P2 and P3 the free electives
-  assert.deepEqual(raw.find((r) => r.id === 'IS_ELECT').taken.map((t) => t.code), ['P1'])
-  assert.deepEqual(raw.find((r) => r.id === 'FREE').taken.map((t) => t.code).sort(), ['P2', 'P3'])
   const result = layoutCurriculum(built3, p, withPd, { majorCode: 'BSC-IS' })
   const laid3 = result.groups.flatMap((g) => g.slots)
   const get = (id) => laid3.find((r) => r.id === id)
   assert.match(get('PD_PICK').detail, /2 \/ 2 CU included.*P2, P3/)
   assert.equal(get('PD_PICK').status, 'planned')
   assert.equal(get('PD_COMP').status, 'inProgress')
-  // ...and the generic rows no longer list them or count them as filled
-  assert.doesNotMatch(get('IS_ELECT').detail, /P\d/)
-  assert.doesNotMatch(get('FREE').detail, /P\d/)
-  assert.equal(get('IS_ELECT').status, 'todo')
-  assert.equal(get('FREE').status, 'todo')
-  assert.equal(get('FREE').credit.todo, 2)
-  // the 3 PD courses are counted once: 1 in progress + 2 planned
-  assert.equal(result.totals.inProgress, 1)
-  assert.equal(result.totals.planned, 2)
+  // the PD rows still show their own progress
+  // ...and the generic rows hold the same courses, so each course is counted once in the totals
+  assert.match(get('IS_ELECT').detail, /P1/)
+  assert.match(get('FREE').detail, /P2, P3/)
+  assert.equal(get('IS_ELECT').status, 'inProgress')
+  const base = layoutCurriculum(buildCurriculumChecklist({ ...p, tracks: ['BA'] }, cat, { ...withPd, tracks: [withPd.tracks[0]] }), { ...p, tracks: ['BA'] }, { ...withPd, tracks: [withPd.tracks[0]] }, { majorCode: 'BSC-IS' })
+  assert.equal(result.totals.required, base.totals.required, 'a second track does not raise the number of courses required')
+  assert.equal(result.totals.inProgress + result.totals.planned + result.totals.cleared + result.totals.todo, result.totals.required)
 })

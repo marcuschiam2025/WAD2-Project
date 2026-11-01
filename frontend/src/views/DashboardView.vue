@@ -255,7 +255,7 @@ const biddingWindows = computed(() => [
             </li>
           </ul>
           <div class="flex gap-2 border-t border-border pt-3">
-            <BaseButton to="/bidding">Review in Bidding Planner</BaseButton>
+            <BaseButton to="/bidding" class="w-full sm:w-auto">Review in Bidding Planner</BaseButton>
           </div>
         </section>
       </div>

@@ -6,4 +6,5 @@ const tags = { BA: 'BA', SMCT: 'Smart-City', FT: 'Fintech', PD: 'Product Dev' }
 
 export const trackTag = (code) => tags[code] ?? tracks.find((t) => t.code === code)?.short ?? code
 
-export const planLabel = (plan) => `${plan.name} · ${plan.tracks.map(trackTag).join(' + ')}`
+// A plan with no track yet is just its name, with no trailing separator
+export const planLabel = (plan) => (plan.tracks?.length ? `${plan.name} · ${plan.tracks.map(trackTag).join(' + ')}` : plan.name)

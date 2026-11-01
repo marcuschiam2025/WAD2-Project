@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuizStore, quizTrackNames, sectionLabels } from '@core/stores/quiz'
+import { useQuizStore, quizTrackNames } from '@core/stores/quiz'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import TrackScoreChart from '@/components/TrackScoreChart.vue'
 import { api } from '@core/services/api'
 import { usePlannerStore } from '@core/stores/planner'
 import { useUserStore } from '@core/stores/user'
@@ -157,12 +158,10 @@ onMounted(async () => { await quiz.initialize(); loading.value = false })
                 </div>
               </dl>
             </section>
-            <details v-for="result in attempt.results" :key="result.track" class="border-t border-border pt-3">
-              <summary class="cursor-pointer text-sm">{{ result.track }} scenario preferences · {{ display(result.scenarioPreferenceIndex) }} /100</summary>
-              <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <div v-for="(value, section) in result.sectionPreferenceIndices" :key="section"><dt class="text-muted-foreground">{{ sectionLabels[section] }}</dt><dd>{{ display(value) }} /100</dd></div>
-              </dl>
-            </details>
+            <section>
+              <h3 class="text-sm font-semibold">Scenario preferences by track</h3>
+              <div class="mt-3"><TrackScoreChart :results="attempt.results" /></div>
+            </section>
             <p class="text-xs text-muted-foreground">Scenario indices compare your choices with the options offered; they are separate from rating alignment.</p>
           </div>
         </details>

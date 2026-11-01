@@ -61,7 +61,9 @@ function groupFor(r, abbr) {
 // Credits per status for each requirement, counting every course ONCE across the whole checklist. The curriculum
 // builder lets a course count for several requirements (an additional track's courses "may also count elsewhere"),
 // which is right for ticking requirements off but would count that course twice in a total.
-// Specific requirements claim courses before the "any course" ones, the main track before additional tracks.
+// Specific requirements claim courses before the "any course" ones. An additional track claims nothing: its rows only
+// show progress, and its courses count once through the IS electives and free electives, so the degree stays at its
+// own total (e.g. 36 courses) however many tracks the student takes.
 const PASS = { all: 0, chooseN: 1, basket: 2, anyFromCategory: 3 }
 // 0 cleared, 1 exempted, 2 in progress, 3 planned: the order a course is preferred in, and its slot in the credit counts
 const RANK = (t) => (t.exempt ? 1 : { cleared: 0, inProgress: 2, planned: 3 }[t.status] ?? 3)
@@ -73,7 +75,8 @@ function creditFor(rows) {
   const claimOrder = rows
     .map((row, i) => ({ row, i }))
     .filter(({ row }) => row.requirement.rule !== 'flag')
-    .sort((a, b) => (PASS[a.row.requirement.rule] ?? 3) - (PASS[b.row.requirement.rule] ?? 3) || Number(a.row.extra) - Number(b.row.extra) || a.i - b.i)
+    .sort((a, b) => (PASS[a.row.requirement.rule] ?? 3) - (PASS[b.row.requirement.rule] ?? 3) || a.i - b.i)
+    .sort((a, b) => Number(!!a.row.extra) - Number(!!b.row.extra))
   for (const { row } of claimOrder) {
     const required = row.requirement.cuRequired ?? 0
     const used = [0, 0, 0, 0]
@@ -83,7 +86,7 @@ function creditFor(rows) {
       used[0] = left // marked as done by the student: no course needed
       left = 0
     } else {
-      const avail = row.taken.filter((t) => !claimed.has(t.code)).sort((a, b) => RANK(a) - RANK(b))
+      const avail = (row.extra ? row.taken : row.taken.filter((t) => !claimed.has(t.code))).sort((a, b) => RANK(a) - RANK(b))
       let freeDone = false
       const useFree = () => {
         freeDone = true
@@ -97,7 +100,7 @@ function creditFor(rows) {
         const v = Math.min(t.cu, left)
         used[RANK(t)] += v
         left -= v
-        claimed.add(t.code)
+        if (!row.extra) claimed.add(t.code)
         heldNow.push({ code: t.code, semId: t.semId })
       }
       if (!freeDone) useFree()
@@ -186,7 +189,8 @@ export function layoutCurriculum(result, plan, bundle, { majorCode = '' } = {}) 
   // counted as cleared / in progress / planned, each course once, and what is left is "not in your plan yet".
   // Flags carry no credit.
   for (const g of ordered) for (const s of g.slots) s.credit = credits.get(s.id) ?? null
-  const rows = ordered.flatMap((g) => g.slots)
+  // Additional-track rows only show progress; they are not extra courses on top of the degree
+  const rows = ordered.flatMap((g) => g.slots).filter((r) => !r.extra)
   const add = (key) => round(rows.reduce((n, r) => n + (r.credit?.[key] ?? 0), 0))
   const late = round(rows.filter((r) => r.urgency === 'late').reduce((n, r) => n + (r.credit?.todo ?? 0), 0))
   return {
