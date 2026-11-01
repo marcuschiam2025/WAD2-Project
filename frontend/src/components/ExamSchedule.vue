@@ -53,7 +53,7 @@ const perDay = computed(() => {
         <span v-else class="text-muted-foreground">—</span>
         <span class="min-w-0 truncate">
           <span class="font-mono font-bold">{{ r.module }}</span>
-          <span class="text-muted-foreground"> {{ moduleName(r.module) }}</span>
+          <span class="ml-2 text-muted-foreground">{{ moduleName(r.module) }}</span>
         </span>
         <span v-if="r.exam" class="font-mono" :class="r.clash && 'font-semibold text-destructive'">
           {{ r.exam.start }}<span v-if="r.clash"> · clash</span
