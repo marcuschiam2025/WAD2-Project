@@ -247,7 +247,7 @@ watch(
 
     <div class="flex items-center justify-between gap-3 border-t border-border px-5 py-3.5">
       <p class="flex items-baseline gap-1.5 leading-normal">
-        <span class="font-mono text-[15px] font-bold">e$ {{ bidding.allocated }}</span>
+        <span class="font-mono text-[15px] font-bold">e$ {{ bidding.allocated.toFixed(2) }}</span>
         <span class="text-[12px] text-muted-foreground">of e$ {{ user.balance.toLocaleString() }} allocated</span>
       </p>
       <BaseButton size="sm" :disabled="bidding.saving || !bidding.online" @click="bidding.save()">{{ bidding.saving ? 'Saving…' : 'Save plan' }}</BaseButton>

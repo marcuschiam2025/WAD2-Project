@@ -23,14 +23,18 @@ test('frontend and backend agree on definite clashes without assuming unknown ex
   } finally { await server.close() }
 })
 
-test('the exam schedule shows known starts and clearly marks unconfirmed ends', async () => {
+test('the exam schedule shows dates and start times without end-time warnings', async () => {
   const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' })
   try {
     const { default: Schedule } = await server.ssrLoadModule('/src/components/ExamSchedule.vue')
-    const html = await renderToString(createSSRApp(Schedule, { sections: [toSectionView(normalizeSection(raw))] }))
+    const section = toSectionView(normalizeSection(raw))
+    const html = await renderToString(createSSRApp(Schedule, { sections: [section, { ...section, id: 'afternoon', module: 'IS213', examPeriod: { ...section.examPeriod, start: '13:00', end: '15:00' } }] }))
     assert.match(html, /09:00/)
-    assert.match(html, /End time unconfirmed/i)
-    assert.match(html, /cannot rule out/i)
-    assert.doesNotMatch(html, /assume 2-hour|09:00–11:00|09:00–null/)
+    assert.match(html, /13:00/)
+    assert.match(html, /same day/)
+    assert.match(html, /Check the official exam schedule/)
+    assert.doesNotMatch(html, /End time unconfirmed|cannot rule out|15:00|09:00–null|· clash/)
+    const clashing = await renderToString(createSSRApp(Schedule, { sections: [section, { ...section, id: 'simultaneous', module: 'IS213' }] }))
+    assert.match(clashing, /· clash/, 'simultaneous exams must still be flagged')
   } finally { await server.close() }
 })
