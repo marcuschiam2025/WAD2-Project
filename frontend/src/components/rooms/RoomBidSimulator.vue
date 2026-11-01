@@ -53,6 +53,12 @@ const roundHistory = computed(() =>
 
 // --- Simulate a bid -------------------------------------------------------------------------
 const bid = ref('')
+// e$ amounts go up to 2 decimal places: anything typed or pasted beyond that is cut off
+function onBidInput(event) {
+  const trimmed = event.target.value.replace(/(\.\d{2})\d+/, '$1')
+  if (trimmed !== event.target.value) event.target.value = trimmed
+  bid.value = trimmed
+}
 const amount = computed(() => (bid.value === '' ? null : Number(bid.value)))
 const tooLow = computed(() => amount.value !== null && amount.value < MIN_BID)
 
@@ -137,7 +143,7 @@ const verdictText = computed(() => {
             :class="tooLow ? 'border-destructive' : 'border-primary'"
           >
             <span class="text-muted-foreground">e$</span>
-            <input v-model="bid" type="number" :min="MIN_BID" placeholder="e.g. 30" aria-label="Bid amount in e$" class="min-w-0 flex-1 bg-transparent font-medium outline-none" />
+            <input :value="bid" type="number" :min="MIN_BID" step="0.01" inputmode="decimal" placeholder="e.g. 30" @input="onBidInput" aria-label="Bid amount in e$" class="min-w-0 flex-1 bg-transparent font-medium outline-none" />
           </span>
           <span v-if="tooLow" class="text-[12px] text-destructive">Minimum bid is e$ {{ MIN_BID }}.</span>
         </label>
