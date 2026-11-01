@@ -8,6 +8,7 @@ import { useCalendarExportStore } from '@core/stores/calendarExport'
 import { moduleName } from '@core/data/catalogue'
 import { buildIcs, downloadFile, hasTeachingDates } from '@core/utils/ics'
 import { findClashes, findExamClashes } from '@core/utils/clash'
+import { fmtE } from '@core/utils/money'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
@@ -104,7 +105,7 @@ function exportCopy(copy) {
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <article v-for="copy in copies" :key="copy.id" class="card flex flex-col gap-3 p-5">
             <h2 class="text-lg font-semibold">{{ copy.name }}</h2>
-            <p class="font-mono text-xl font-semibold">e$ {{ copy.allocated }} <span class="text-sm font-normal">saved bids</span></p>
+            <p class="font-mono text-xl font-semibold">e$ {{ fmtE(copy.allocated) }} <span class="text-sm font-normal">saved bids</span></p>
             <p class="text-sm text-muted-foreground">{{ copy.items.length }} modules · {{ copy.term }}</p>
             <p v-if="copy.updatedAt" class="text-xs text-muted-foreground">Saved {{ new Date(copy.updatedAt).toLocaleString() }}</p>
             <p v-if="blocked(copy)" class="text-sm text-destructive">{{ blocked(copy) }}</p>

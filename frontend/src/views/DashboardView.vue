@@ -5,6 +5,7 @@ import { useBiddingStore } from '@core/stores/bidding'
 import { usePlannerStore, effectiveCode } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { moduleName } from '@core/data/catalogue'
+import { fmtE } from '@core/utils/money'
 import { plannedMeetings, singaporeDay } from '@core/utils/dashboardSchedule'
 import { slots, bidHistory, rateBid, estimateHistory } from '@core/data/bidding'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -49,8 +50,8 @@ const stats = computed(() => [
   { label: 'Balance', value: `e$ ${user.balance.toLocaleString()}`, sub: 'Available to bid', accent: 'border-t-primary!' },
   {
     label: 'Cart total',
-    value: `e$ ${bidding.allocated.toLocaleString()}`,
-    sub: over.value ? `e$ ${(-left.value).toLocaleString()} over balance` : `e$ ${left.value.toLocaleString()} left after the round`,
+    value: `e$ ${fmtE(bidding.allocated)}`,
+    sub: over.value ? `e$ ${fmtE(-left.value)} over balance` : `e$ ${fmtE(left.value)} left after the round`,
     danger: over.value,
     accent: over.value ? 'border-t-destructive!' : 'border-t-success!',
   },
@@ -231,7 +232,7 @@ const biddingWindows = computed(() => [
           <div class="flex items-center justify-between">
             <h2 class="text-h4">Bid cart</h2>
             <span class="text-[13px]" :class="over ? 'font-semibold text-destructive' : 'text-muted-foreground'">
-              {{ over ? `e$ ${(-left).toLocaleString()} over` : `e$ ${left.toLocaleString()} left` }}
+              {{ over ? `e$ ${fmtE(-left)} over` : `e$ ${fmtE(left)} left` }}
             </span>
           </div>
           <div class="flex h-2 overflow-hidden rounded-full bg-border">
@@ -247,7 +248,7 @@ const biddingWindows = computed(() => [
                 <span class="font-mono font-bold">{{ c.code }}</span> <span class="text-muted-foreground">{{ c.name }}</span>
               </RouterLink>
               <StatusPill v-if="c.rating" :tone="ratingPill[c.rating][0]">{{ ratingPill[c.rating][1] }}</StatusPill>
-              <span class="w-[58px] text-right font-mono text-[14px] font-bold">e$ {{ c.amount }}</span>
+              <span class="w-[58px] text-right font-mono text-[14px] font-bold">e$ {{ fmtE(c.amount) }}</span>
               <BaseButton variant="secondary" size="sm" :disabled="bidding.isLocked(c.code)" :title="bidding.isLocked(c.code) ? 'This module is locked to your collab room section' : undefined" :aria-label="`Drop ${c.code} from the cart`" @click="bidding.dropModule(c.code)">Drop</BaseButton>
             </li>
             <li v-if="!cart.length" class="border-t border-border py-4 text-[13px] text-muted-foreground">
