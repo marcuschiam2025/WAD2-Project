@@ -3,9 +3,11 @@ import { loadSections, roundSettings } from './section.repository.js'
 import { canonicalTerm, termLabel } from './utils/sectionData.js'
 import { validateCartItems } from './utils/cartValidation.js'
 import BidHistory from './models/BidHistory.js'
+import SectionBidResult from './models/SectionBidResult.js'
 import BidCart from './models/BidCart.js'
 import Party from '../parties/models/Party.js'
 import { referenceBid } from './utils/referenceBid.js'
+import { instructorKey, matchHistory, slotKey } from './utils/bidMatch.js'
 import { findClashes, findExamClashes } from './utils/clash.js'
 import { toSectionView } from './utils/sectionView.js'
 import { WEIGHTAGE } from './utils/weightage.js'
@@ -94,12 +96,7 @@ export async function getHistory(req, res) {
 // term as strings, so either term format is turned into a label first.
 export async function getReferenceBid(req, res) {
   if (!req.query.round) throw httpError(400, 'round is required')
-
-  let amount
-  if (req.query.amount !== undefined) {
-    amount = Number(req.query.amount)
-    if (req.query.amount === '' || Number.isNaN(amount)) throw httpError(400, 'amount must be a number')
-  }
+  const amount = parseAmount(req.query.amount)
 
   const filter = { module: req.params.module.toUpperCase(), round: req.query.round }
   if (req.query.term) {
@@ -109,6 +106,60 @@ export async function getReferenceBid(req, res) {
   }
   const history = await BidHistory.find(filter).sort({ term: -1 }).limit(HISTORY_TERMS)
   res.json({ ...referenceBid(history, amount), history })
+}
+
+// ?amount= as a number, undefined when it is left out
+function parseAmount(value) {
+  if (value === undefined) return undefined
+  const amount = Number(value)
+  if (value === '' || Number.isNaN(amount)) throw httpError(400, 'amount must be a number')
+  return amount
+}
+
+// The instructor names of a section in any of the three section formats (utils/sectionData.js)
+function sectionInstructors(section) {
+  if (Array.isArray(section.instructors)) return section.instructors
+  if (section.instructor) return [section.instructor]
+  if (section.prof) return [section.prof]
+  return []
+}
+
+// GET /api/bidding/reference-bid?sectionId=IS212-G3&round=1A&amount=42&term=AY26/27 T2
+// The reference bid for one section: past results with the same module, the same set of instructors,
+// the same class times and the same round, falling back to the same instructors at any time, then to
+// the whole module (matchLevel says which). Only the HISTORY_TERMS terms before term count.
+export async function getSectionReferenceBid(req, res) {
+  if (!req.query.sectionId) throw httpError(400, 'sectionId is required')
+  if (!req.query.round) throw httpError(400, 'round is required')
+  const amount = parseAmount(req.query.amount)
+  const term = await selectedTerm(req.query.term)
+
+  let found
+  try {
+    found = await loadSections({ term, ids: [String(req.query.sectionId)] })
+  } catch {
+    throw httpError(400, 'Invalid sectionId')
+  }
+  const section = found[0]
+  if (!section) throw httpError(404, 'Section not found')
+
+  const target = {
+    instructorKey: instructorKey(sectionInstructors(section)),
+    slotKey: slotKey(section.sessions),
+  }
+  const rows = await SectionBidResult.find({
+    module: section.module,
+    round: req.query.round,
+    term: { $lt: termLabel(term) },
+  }).lean()
+  const { matchLevel, history } = matchHistory(rows, target, HISTORY_TERMS)
+
+  res.json({
+    ...referenceBid(history, amount),
+    matchLevel,
+    history,
+    section: { sectionId: section.sectionId, module: section.module, section: section.section, instructors: sectionInstructors(section), slotKey: target.slotKey },
+  })
 }
 
 // GET /api/bidding/weightage/:module — assessment breakdown, [] when none is recorded
