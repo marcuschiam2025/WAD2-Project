@@ -46,30 +46,67 @@ const roundOptions = computed(() => [
   { value: 'all', label: 'All rounds' },
 ])
 const filtered = computed(() => estimateHistory(history.value, round.value, bidding.round.term))
-// The backend's reference bid (GET /api/bidding/reference): the rating, suggested bid, mean and SD of this
-// module's medians in the chosen round over the last terms before the one being bid for. It is asked for a
-// moment after the bid or round changes. The browser fallback uses the same round and past-term window.
+// The backend's reference bid for the booked section (GET /api/bidding/reference-bid): past results with the
+// same instructors, class times and round, falling back to the same instructors at any time, then to the whole
+// module (matchLevel says which). If the section isn't on the server, the module's (GET /api/bidding/reference).
+// It is asked for a moment after the bid, round or section changes. The browser fallback uses the same round
+// and past-term window.
 const reference = ref(null)
 let referenceTimer
 let referenceRequest = 0
 watch(
-  [() => props.code, bid, round, () => bidding.online, () => bidding.round.term],
-  ([code, amount, r, online, term]) => {
+  [() => props.code, () => section.value?.id, bid, round, () => bidding.online, () => bidding.round.term],
+  ([code, sectionId, amount, r, online, term]) => {
     clearTimeout(referenceTimer)
     reference.value = null
     const request = ++referenceRequest
     if (!code || !online || !canEstimateBid(r, term) || amount === '' || amount < MIN_BID) return
     referenceTimer = setTimeout(async () => {
+      let result = null
       try {
-        const result = await api.referenceBid(code, amount, r, term)
-        if (request === referenceRequest) reference.value = result
+        if (sectionId) result = await api.sectionReferenceBid(sectionId, amount, r, term)
+      } catch {
+        // not on the server: try the module's reference bid
+      }
+      try {
+        if (!result) result = await api.referenceBid(code, amount, r, term)
       } catch {
         // keep the in-browser estimate
       }
+      if (result && request === referenceRequest) reference.value = result
     }, 300)
   },
   { immediate: true },
 )
+
+// "1-15:30|3-12:00" → "Tue 3:30pm, Thu 12pm"
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+function slotText(key) {
+  if (!key) return 'no fixed class time'
+  return key
+    .split('|')
+    .map((slot) => {
+      const [day, time] = slot.split('-')
+      const [hour, minute] = time.split(':').map(Number)
+      const clock = `${hour % 12 || 12}${minute ? `:${String(minute).padStart(2, '0')}` : ''}${hour < 12 ? 'am' : 'pm'}`
+      return `${DAY_NAMES[day]} ${clock}`
+    })
+    .join(', ')
+}
+
+// What the reference bid was matched on, so a loose match doesn't read as a confident one
+const matchNote = computed(() => {
+  const r = reference.value
+  if (!r?.matchLevel || !r.history?.length) return ''
+  const names = (r.section?.instructors ?? []).join(' & ') || 'this instructor'
+  const terms = r.history.map((h) => `${h.term} ${h.sections.join('/')}`).join(', ')
+  let note = ''
+  if (r.matchLevel === 'prof-slot') note = `Based on ${names}'s ${slotText(r.section.slotKey)} class (${terms}).`
+  else if (r.matchLevel === 'prof') note = `Based on ${names}'s past classes (${terms}). Class time not matched: it may have been a different time or section.`
+  else note = `Based on all ${props.code} sections (${r.history.map((h) => h.term).join(', ')}). No past results for ${names}.`
+  if (r.history.length === 1) note += ' Only 1 term of data.'
+  return note
+})
 const verdict = computed(() => {
   if (!canEstimateBid(round.value, bidding.round.term)) return null
   if (reference.value?.rating) return { ...reference.value, live: true }
@@ -84,8 +121,9 @@ function useSuggested() {
 const markerPct = computed(() => {
   const v = verdict.value
   if (!v) return null
-  const lo = v.mean - v.sd
-  const hi = v.mean + v.sd
+  // The backend sends the band (with 1 term it is that term's min to median); the browser estimate is mean ± SD
+  const lo = v.low ?? v.mean - v.sd
+  const hi = v.high ?? v.mean + v.sd
   const amount = bid.value
   if (amount < lo) return (amount / lo) * 33
   if (amount < hi) return 34 + ((amount - lo) / (hi - lo || 1)) * 32
@@ -97,6 +135,12 @@ const verdictText = computed(() => {
   if (!v) return ''
   const median = `e$ ${+v.mean.toFixed(1)}`
   const label = round.value === 'all' ? '' : ` Round ${round.value}`
+  // One term: the band is that term's min to median
+  if (v.basedOn === 1 && v.low !== undefined) {
+    if (v.rating === 'safe') return `At or above last term's${label} median (${median}).`
+    if (v.rating === 'competitive') return `Between last term's min (e$ ${+v.low.toFixed(1)}) and median (${median}). You may still be outbid.`
+    return `Below last term's lowest successful bid (e$ ${+v.low.toFixed(1)}).`
+  }
   if (v.rating === 'safe') return `Above the last ${v.basedOn}${label} medians (${median}).`
   if (v.rating === 'competitive') return `Within 1 SD of the ${median} median. You may still be outbid.`
   return `More than 1 SD below the ${median} median.`
@@ -220,6 +264,8 @@ watch(
               </p>
               <BaseButton v-if="Number(bid) !== reference.suggested" size="sm" variant="outline" @click="useSuggested">Use</BaseButton>
             </div>
+
+            <p v-if="canEstimateBid(round, bidding.round.term) && matchNote" class="text-[12px] leading-[17px] text-muted-foreground">{{ matchNote }}</p>
 
             <SelectField v-model="round" label="BOSS round" :options="roundOptions" />
             <p v-if="round === 'all'" class="text-[12px] text-muted-foreground">Choose a single round for a bid estimate. All rounds remain available in History.</p>
