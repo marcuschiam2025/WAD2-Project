@@ -73,6 +73,14 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   const inCart = computed(() => planCodes.value.filter((c) => roomCodes.value.includes(c) || !(dropped.value[plan.value.id] ?? []).includes(c)))
 
+  // Modules of this plan's bidding semester that were taken out of the cart (they stay in the What-If plan)
+  const droppedModules = computed(() => planCodes.value.filter((c) => !inCart.value.includes(c)))
+  function restoreModule(code) {
+    const id = plan.value.id
+    dropped.value[id] = (dropped.value[id] ?? []).filter((c) => c !== code)
+    savedAt.value = null
+  }
+
   const decidedSection = (code) => fromRooms.value.find((d) => d.module === code)?.sectionId
 
   // Preserve saved IDs even when unavailable; only new choices default to the first active section.
@@ -354,6 +362,8 @@ export const useBiddingStore = defineStore('bidding', () => {
     plan,
     targetSem,
     notOffered,
+    droppedModules,
+    restoreModule,
     fromRooms,
     roomConflicts,
     locked,
