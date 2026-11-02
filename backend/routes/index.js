@@ -10,6 +10,8 @@ import partiesRouter from '../features/parties/parties.routes.js'
 import calendarRouter from '../features/calendar/calendar.routes.js'
 import adminRouter from '../features/admin/admin.routes.js'
 import { requireAuth } from '../middleware/auth.js'
+import notificationsRouter from '../features/notifications/notifications.routes.js'
+
 
 const router = Router()
 
@@ -29,5 +31,6 @@ router.use('/quiz', quizRouter)
 router.use('/bidding', biddingRouter)
 router.use('/parties', partiesRouter)
 router.use('/calendar', calendarRouter)
+router.use('/notifications', notificationsRouter)
 
 export default router
