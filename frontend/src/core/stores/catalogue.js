@@ -18,7 +18,6 @@ export const useCatalogueStore = defineStore('catalogue', () => {
   const majors = ref([])
   const details = reactive({}) // code -> GET /api/modules/:code (the list leaves descriptions out)
   const curricula = reactive({}) // curriculum id -> complete backend requirement bundle
-  const trackRequirementsFor = majorId => curricula[majorId]?.trackRequirements ?? {}
   const loadedMajors = new Set()
   let loading = null
 
@@ -54,18 +53,10 @@ export const useCatalogueStore = defineStore('catalogue', () => {
       const bundle = await api.majorRequirements(majorId)
       const { tracks } = bundle
       const lists = {}
-      const reqs = {}
       tracks.forEach((t) => {
         lists[t.trackCode] = [...new Set(t.requirements.flatMap((r) => r.modules ?? []))]
-        reqs[t.trackCode] = {
-          name: t.name,
-          reqs: [...t.requirements]
-            // the compulsory course first, then the list to pick from
-            .sort((a, b) => /compulsory/i.test(b.label) - /compulsory/i.test(a.label) || (a.order ?? 0) - (b.order ?? 0))
-            .map((r) => ({ id: r._id, label: r.label, codes: r.modules ?? [], count: r.rule === 'all' ? (r.modules ?? []).length : (r.n ?? r.cuRequired ?? 1) })),
-        }
       })
-      curricula[majorId] = { ...bundle, trackModules: lists, trackRequirements: reqs }
+      curricula[majorId] = { ...bundle, trackModules: lists }
     } catch {
       loadedMajors.delete(majorId)
     }
@@ -122,7 +113,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     return mods.map((m) => ({ code: m._id, name: m.title }))
   }
 
-  return { online, majors, details, curricula, trackRequirementsFor, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
+  return { online, majors, details, curricula, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
 })
 
 // Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store

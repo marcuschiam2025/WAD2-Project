@@ -5,7 +5,7 @@ import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM, MAX_PLANS
 import { useRoomsStore } from '@core/stores/rooms'
 import { useBiddingStore } from '@core/stores/bidding'
 import { useCatalogueStore } from '@core/stores/catalogue'
-import { moduleName, tracks, trackName } from '@core/data/catalogue'
+import { moduleName, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -89,7 +89,6 @@ const dragOver = ref(null) // semester id under the cursor while dragging
 const query = ref('')
 const expandedYears = ref([])
 
-const shortTrack = (c) => tracks.find((t) => t.code === c)?.short ?? c
 const status = (sem) => planner.semStatus(plan.value, sem.id)
 const nowSem = computed(() => plan.value.semesters.find((s) => s.id === plan.value.currentSem))
 
@@ -246,7 +245,6 @@ const searchResults = computed(() => {
 // --- Requirements strip --------------------------------------------------------------------
 // The Outstanding Modules checklist added up by area, so both always agree: one line = one course, split into
 // cleared (before the current semester), in progress (current semester) and planned (later semesters).
-const UNI_GROUPS = ['uni-cap', 'uni-com', 'uni-civ']
 const countSlots = (b) => {
   // The live curriculum rows carry credit counts, so an area adds up course by course (a requirement 2 of 5 met counts 2)
   if (b.slots.length && b.slots.every((x) => x.credit)) {
@@ -263,33 +261,11 @@ const countSlots = (b) => {
 }
 const requirements = computed(() => {
   const groups = planner.checklist.groups
-  // The live checklist (backend curriculum) is already grouped by area; the three University Core headings are one area
-  if (planner.checklist.live) {
-    const uni = groups.filter((g) => /^uni-|^core-/.test(g.key))
-    const rest = groups.filter((g) => g.slots.length && !uni.includes(g))
-    const merged = uni.length ? [{ key: 'uni', label: 'University core', slots: uni.flatMap((g) => g.slots) }] : []
-    return [...merged, ...rest].filter((g) => g.slots.length).map(countSlots)
-  }
-  const slotsOf = (keys) => groups.filter((g) => keys.includes(g.key)).flatMap((g) => g.slots)
-  const electives = slotsOf(['major-elective'])
-  // Track lines from the curriculum have ids like "track-PD-1"; one area per track (two for a double track)
-  const trackCodes = [...new Set(electives.filter((s) => s.rule === 'trackList').map((s) => s.id.split('-')[1]))]
-  const trackAreas = trackCodes.length
-    ? trackCodes.map((code, i) => ({
-        key: `track-${code}`,
-        label: `Track${trackCodes.length > 1 ? ` ${i + 1}` : ''} · ${shortTrack(code)}`,
-        slots: electives.filter((s) => s.id.startsWith(`track-${code}-`)),
-      }))
-    : [{ key: 'track', label: plan.value.tracks[0] ? `Track · ${shortTrack(plan.value.tracks[0])}` : 'Track (undecided)', slots: electives.filter((s) => s.rule === 'track') }]
-  return [
-    { key: 'uni', label: 'University core', slots: slotsOf(UNI_GROUPS) },
-    { key: 'major', label: 'IS core', slots: slotsOf(['major-core']) },
-    ...trackAreas,
-    { key: 'is-electives', label: 'IS electives', slots: electives.filter((s) => s.rule === 'anyIs') },
-    { key: 'free', label: 'Free electives', slots: slotsOf(['free']) },
-  ]
-    .filter((b) => b.slots.length)
-    .map(countSlots)
+  // Already grouped by area; the three University Core headings are one area
+  const uni = groups.filter((g) => /^uni-|^core-/.test(g.key))
+  const rest = groups.filter((g) => g.slots.length && !uni.includes(g))
+  const merged = uni.length ? [{ key: 'uni', label: 'University core', slots: uni.flatMap((g) => g.slots) }] : []
+  return [...merged, ...rest].filter((g) => g.slots.length).map(countSlots)
 })
 const inPlan = computed(() => {
   const t = planner.checklist.totals

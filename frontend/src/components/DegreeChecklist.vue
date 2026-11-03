@@ -1,15 +1,13 @@
 <script setup>
 // What-If Planner / Degree checklist: only the courses still to clear (cleared = in a semester before the current one).
 // Click a course on the left -> a second column lists the modules you could take for it -> click one for its details.
-// The 36 lines follow the course progression; with the backend, the modules come from its catalogue
-// (e.g. Numeracy = any CORE:NUMERACY course, Managing Elective 2 = any CORE:MANAGING course).
+// The lines and the modules that fill them come from the backend's curriculum and catalogue.
 import { computed, ref, watch } from 'vue'
 import { usePlannerStore } from '@core/stores/planner'
 import { useUserStore } from '@core/stores/user'
 import { useCatalogueStore } from '@core/stores/catalogue'
-import { moduleName } from '@core/data/catalogue'
 import { bidHistory } from '@core/data/bidding'
-import { BASKETS, GRAD_LABELS, MARK_DONE } from '@core/data/degree'
+import { MARK_DONE } from '@core/data/degree'
 import { candidatesFor } from '@core/utils/degreeChecklist'
 import { slideEnter, slideLeave } from '@/motion'
 import { semesterTone, semesterToneLabel } from '@/semesterTones'
@@ -82,12 +80,11 @@ const selectedModule = computed(() => candidates.value.find((m) => m.key === mod
 
 // The list leaves descriptions out, so fetch the picked module from GET /api/modules/:code
 watch(selectedModule, (m) => {
-  if (m?.live) catalogue.loadDetail(m.code)
+  if (m) catalogue.loadDetail(m.code)
 })
 const description = computed(() => {
   const m = selectedModule.value
-  if (!m?.live) return m?.description ?? 'Course description will be loaded from the module catalogue.'
-  const d = catalogue.details[m.code]
+  const d = m && catalogue.details[m.code]
   if (!d) return 'Loading the course description…'
   return d.description || 'No description in the catalogue yet.'
 })
@@ -133,14 +130,7 @@ function markDone(i) {
   moduleKey.value = null
 }
 
-const tags = (m) =>
-  m.live
-    ? [...m.categories.map((c) => CATEGORY_LABEL[c] ?? c), ...m.fulfils.map((f) => FULFILS_LABEL[f] ?? f)]
-    : [
-        ...(m.basket ? [`${BASKETS[m.basket]} basket`] : []),
-        ...(m.tracks ?? []),
-        ...(m.grad ?? []).map((g) => GRAD_LABELS[g]),
-      ]
+const tags = (m) => [...m.categories.map((c) => CATEGORY_LABEL[c] ?? c), ...m.fulfils.map((f) => FULFILS_LABEL[f] ?? f)]
 
 const placementPill = (p) =>
   !p
@@ -156,20 +146,12 @@ const placementPill = (p) =>
 const requisiteText = (groups) => groups.map((g) => g.join(' or ')).join(', and ') || 'None'
 const offeredText = (terms) => (terms.length ? `Term ${terms.map((t) => t.replace(/^T/, '')).join(' & ')}` : 'Not listed')
 
-const facts = (m) =>
-  m.live
-    ? [
-        { label: 'Offered', value: offeredText(m.termsOffered) },
-        { label: 'Median bid', value: bidHistory[m.code]?.length ? `e$ ${bidHistory[m.code][0].median}` : '—', mono: !!bidHistory[m.code]?.length },
-        { label: 'Prerequisites', value: requisiteText(m.prerequisites) },
-        { label: 'Co-requisites', value: requisiteText(m.corequisites) },
-      ]
-    : [
-  { label: 'Offered', value: m.offered ?? 'Term 1 & 2' },
-  { label: 'Median bid', value: m.medianBid ? `e$ ${m.medianBid}` : '—', mono: !!m.medianBid },
-  { label: 'Prerequisites', value: m.prereqs?.map((c) => `${c} ${moduleName(c)}`).join(', ') || 'None' },
-  { label: 'Co-requisites', value: m.coreqs?.map((c) => `${c} ${moduleName(c)}`).join(', ') || 'None' },
-      ]
+const facts = (m) => [
+  { label: 'Offered', value: offeredText(m.termsOffered) },
+  { label: 'Median bid', value: bidHistory[m.code]?.length ? `e$ ${bidHistory[m.code][0].median}` : '—', mono: !!bidHistory[m.code]?.length },
+  { label: 'Prerequisites', value: requisiteText(m.prerequisites) },
+  { label: 'Co-requisites', value: requisiteText(m.corequisites) },
+]
 
 const inBasket = computed(() => !!selectedModule.value && planner.basket.includes(selectedModule.value.code))
 const addLabel = computed(() => {
@@ -296,7 +278,7 @@ const addLabel = computed(() => {
           </ul>
           <p v-else-if="candidates.length" class="px-4 py-4 text-[13px] text-muted-foreground">No course matches "{{ optionQuery }}".</p>
           <p v-else class="px-4 py-4 text-[13px] leading-normal text-muted-foreground">
-            {{ item.detail }}.<template v-if="item.rule === 'exposure'"> Mark a semester as an exchange in Plan settings to count this.</template>
+            {{ item.detail }}.<template v-if="item.requirement?.tag === 'CORE:GLOBAL_EXPOSURE'"> Mark a semester as an exchange in Plan settings to count this.</template>
           </p>
         </div>
       </Transition>
@@ -307,7 +289,7 @@ const addLabel = computed(() => {
           <div v-if="selectedModule" :key="selectedModule.key" class="flex flex-col gap-4 p-6">
             <div class="flex flex-col gap-1.5">
               <p class="text-overline text-primary">
-                {{ selectedModule.code || item.label }}<template v-if="!selectedModule.stub"> · {{ selectedModule.cu ?? 1 }} CU</template>
+                {{ selectedModule.code || item.label }} · {{ selectedModule.cu ?? 1 }} CU
               </p>
               <h3 class="text-h3">{{ selectedModule.name }}</h3>
               <div class="flex flex-wrap items-center gap-2 pt-1">
@@ -320,21 +302,16 @@ const addLabel = computed(() => {
               </div>
             </div>
 
-            <template v-if="!selectedModule.stub">
-              <div class="flex flex-col gap-2">
-                <p class="text-[13px] font-semibold">Description</p>
-                <p class="rounded-lg bg-muted px-3.5 py-3 text-[14px] leading-[22px] whitespace-pre-line">{{ description }}</p>
+            <div class="flex flex-col gap-2">
+              <p class="text-[13px] font-semibold">Description</p>
+              <p class="rounded-lg bg-muted px-3.5 py-3 text-[14px] leading-[22px] whitespace-pre-line">{{ description }}</p>
+            </div>
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div v-for="f in facts(selectedModule)" :key="f.label" class="flex flex-col gap-0.5 leading-normal">
+                <dt class="text-[12px] text-muted-foreground">{{ f.label }}</dt>
+                <dd class="text-[14px] font-medium" :class="f.mono && 'font-mono'">{{ f.value }}</dd>
               </div>
-              <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
-                <div v-for="f in facts(selectedModule)" :key="f.label" class="flex flex-col gap-0.5 leading-normal">
-                  <dt class="text-[12px] text-muted-foreground">{{ f.label }}</dt>
-                  <dd class="text-[14px] font-medium" :class="f.mono && 'font-mono'">{{ f.value }}</dd>
-                </div>
-              </dl>
-            </template>
-            <p v-else class="rounded-lg bg-muted px-3.5 py-3 text-[14px] leading-[22px]">
-              Course details will be loaded from the module catalogue.
-            </p>
+            </dl>
 
             <div class="flex flex-col gap-1 rounded-lg border border-border px-3.5 py-3 leading-normal">
               <p class="text-overline text-muted-foreground">Counts as</p>
@@ -347,7 +324,7 @@ const addLabel = computed(() => {
 
             <div class="flex justify-end">
               <BaseButton
-                :disabled="selectedModule.stub || !!selectedModule.placement || inBasket"
+                :disabled="!!selectedModule.placement || inBasket"
                 @click="planner.addToBasket(selectedModule.code)"
               >
                 {{ addLabel }}
