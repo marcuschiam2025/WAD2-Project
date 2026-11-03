@@ -1,7 +1,6 @@
 // Helpers for the degree checklist. Pure functions. The checklist itself is built in curriculumChecklist.js.
 import { SEM_IDS } from '../data/degree'
-import { effectiveCode } from './requirementChecker'
-import { curriculumCandidates } from './curriculumChecklist'
+import { curriculumCandidates, effectiveCode } from './curriculumChecklist'
 
 // "Y2S1" -> 3, so semesters compare as numbers
 const semNum = (id) => {

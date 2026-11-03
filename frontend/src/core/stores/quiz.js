@@ -148,13 +148,6 @@ export const useQuizStore = defineStore('quiz', () => {
     error.value = ''
   }
 
-  function chooseAnswer(optionId) {
-    const question = questions.value[current.value]
-    if (submitting.value || !question?.options.some(option => option.id === optionId)) return
-    answer(optionId)
-    if (current.value < questions.value.length - 1) current.value++
-  }
-
   async function submit() {
     if (submitting.value) return null
     const revision = sessionRevision
@@ -179,5 +172,5 @@ export const useQuizStore = defineStore('quiz', () => {
     } finally { if (revision === sessionRevision) submitting.value = false }
   }
 
-  return { questions, rubricVersion, answers, current, attempts, latest, answeredCount, firstBlank, sectionCoverage, hasDraft, loading, submitting, error, issues, initialize, start, answer, chooseAnswer, optionsFor, submit }
+  return { questions, rubricVersion, answers, current, attempts, latest, answeredCount, firstBlank, sectionCoverage, hasDraft, loading, submitting, error, issues, initialize, start, answer, optionsFor, submit }
 })

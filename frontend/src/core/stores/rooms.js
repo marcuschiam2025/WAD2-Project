@@ -4,25 +4,12 @@ import { api } from '../services/api'
 import { useUserStore } from './user'
 import { buildRoomBoard } from '../utils/roomBoard'
 
-export const MAX_ROOM_SIZE = 8
 const ME = 'me'
 
 // owner > admin > member
 export function roleOf(room, id) {
   if (room.ownerId === id) return 'owner'
   return room.admins.includes(id) ? 'admin' : 'member'
-}
-
-// The owner can remove anyone; admins can only remove regular members.
-export function canKick(room, actorId, targetId) {
-  if (actorId === targetId) return false
-  const actor = roleOf(room, actorId)
-  return actor === 'owner' || (actor === 'admin' && roleOf(room, targetId) === 'member')
-}
-
-// Only the owner promotes and demotes admins.
-export function canSetAdmin(room, actorId, targetId) {
-  return actorId !== targetId && roleOf(room, actorId) === 'owner' && roleOf(room, targetId) !== 'owner'
 }
 
 export const useRoomsStore = defineStore('rooms', () => {
@@ -35,8 +22,6 @@ export const useRoomsStore = defineStore('rooms', () => {
   // room id -> section ids the signed-in student picked
   const myVotes = ref({})
 
-  // room id -> the section the signed-in student accepted
-  const accepted = ref({})
   const user = useUserStore()
   watch(() => user.uid, () => {
     revision++; listRequest++
@@ -44,17 +29,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     people.value = {}; loading.value = false; busy.value = false; online.value = false; error.value = ''
     rooms.value = []
     myVotes.value = {}
-    accepted.value = {}
   }, { flush: 'sync' })
-
-  const hasVoted = (room, id) =>
-    id === ME ? (myVotes.value[room.id] ?? []).length > 0 : Object.values(room.votes).some((v) => v.includes(id))
-
-  // Who voted for a section (the signed-in student first)
-  function votersOf(room, sectionId) {
-    const mine = (myVotes.value[room.id] ?? []).includes(sectionId)
-    return [...(mine ? [ME] : []), ...(room.votes[sectionId] ?? [])]
-  }
 
   // Where a room stands. Once everyone has voted, the section(s) with the most votes can be accepted.
   // Several sections on the same top count is a tie: the student accepts exactly one of them.
@@ -69,15 +44,6 @@ export const useRoomsStore = defineStore('rooms', () => {
   const pickedForBidding = computed(() => rooms.value.flatMap(room => room.mySectionId
     ? [{ roomId: room.id, roomName: room.name, module: room.module, term: room.term, sectionId: room.mySectionId }]
     : []))
-
-  function acceptSection(roomId, sectionId) {
-    const st = roomState(getRoom(roomId))
-    if (st.allVoted && st.leaders.includes(sectionId)) accepted.value[roomId] = sectionId
-  }
-
-  function undoAccept(roomId) {
-    delete accepted.value[roomId]
-  }
 
   function getRoom(id) {
     return rooms.value.find((r) => r.id === id)
@@ -111,7 +77,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     }
     return { id: String(party._id), name: party.name, description: party.description, module: party.module,
       inviteCode: party.inviteCode, maxMembers: party.maxMembers, ownerId: memberId(party.owner),
-      admins: [], members, votes, suggestedBids: {}, term: party.termKey, summary: party.summary, updatedAt: party.updatedAt,
+      admins: [], members, votes, term: party.termKey, summary: party.summary, updatedAt: party.updatedAt,
       sharedSections: Object.fromEntries((party.memberSections ?? []).map(entry => [memberId(entry.user), entry.sectionId])),
       mySectionId: party.memberSections?.find(entry => memberId(entry.user) === ME)?.sectionId ?? null }
   }
@@ -160,7 +126,7 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (version !== revision) throw new Error('Your account changed.')
     listRequest++
     rooms.value = rooms.value.filter(room => room.id !== id)
-    delete myVotes.value[id]; delete accepted.value[id]
+    delete myVotes.value[id]
   }
 
   async function loadVotes(roomId, { quiet = false } = {}) {
@@ -209,7 +175,6 @@ export const useRoomsStore = defineStore('rooms', () => {
       if (version !== revision) return false
       voteBoards.value[roomId] = { ...voteBoards.value[roomId], mySectionIds: [...ids] }
       myVotes.value[roomId] = [...ids]
-      delete accepted.value[roomId]
       await loadVotes(roomId)
       return version === revision
     } catch (failure) { if (version === revision) voteErrors.value[roomId] = failure.message; return false }
@@ -242,64 +207,16 @@ export const useRoomsStore = defineStore('rooms', () => {
   // Owner only: removes the member and stops them rejoining with the code
   const removeMember = (roomId, memberId) => roomAction(roomId, () => api.banRoomMember(roomId, memberId))
 
-  function setMyVotes(roomId, sectionIds) {
-    myVotes.value[roomId] = sectionIds
-    delete accepted.value[roomId]
-  }
-
-  // Take the signed-in student's picks back (and the bids they suggested for those sections)
-  async function clearMyVotes(roomId) {
-    await api.clearVotes(roomId)
-    myVotes.value[roomId] = []
-    delete accepted.value[roomId]
-    Object.values(getRoom(roomId)?.suggestedBids ?? {}).forEach((bids) => delete bids[ME])
-    await loadVotes(roomId)
-  }
-
-  // The signed-in student's suggested e$ for one section of the room's module
-  // TODO(Backend 2): PUT /api/rooms/:id/sections/:sectionId/bids/me
-  function setMyBid(roomId, sectionId, amount) {
-    const bids = getRoom(roomId).suggestedBids
-    bids[sectionId] = { ...bids[sectionId], [ME]: amount }
-  }
-
-  // TODO(Backend 2): DELETE /api/rooms/:id/members/:memberId (owner, or admin for regular members)
-  function kickMember(roomId, memberId) {
-    const room = getRoom(roomId)
-    if (!room || !canKick(room, ME, memberId)) return
-    room.members = room.members.filter((m) => m !== memberId)
-    room.admins = room.admins.filter((m) => m !== memberId)
-    delete accepted.value[roomId]
-    Object.keys(room.votes).forEach((s) => (room.votes[s] = room.votes[s].filter((m) => m !== memberId)))
-    Object.values(room.suggestedBids).forEach((bids) => delete bids[memberId])
-  }
-
-  // TODO(Backend 2): PATCH /api/rooms/:id/members/:memberId { role: 'admin' | 'member' } (owner only)
-  function setAdmin(roomId, memberId, makeAdmin) {
-    const room = getRoom(roomId)
-    if (!room || !canSetAdmin(room, ME, memberId)) return
-    const rest = room.admins.filter((m) => m !== memberId)
-    room.admins = makeAdmin ? [...rest, memberId] : rest
-  }
-
   return {
     rooms, loading, busy, online, error, load, joinRoom,
     voteBoards, voteLoading, voteSaving, voteErrors, loadVotes, saveRoomVotes,
     myVotes, confirmSection, removeMember,
     decided, pickedForBidding,
     roomState,
-    votersOf,
-    acceptSection,
-    undoAccept,
     getRoom,
     person,
     createRoom,
     leaveRoom,
-    setMyVotes,
-    clearMyVotes,
-    setMyBid,
-    kickMember,
-    setAdmin,
   }
 })
 

@@ -197,8 +197,6 @@ export function layoutCurriculum(result, plan, bundle, { majorCode = '' } = {}) 
     ...result,
     groups: ordered,
     other,
-    hasRecommendations: true,
-    byCredit: true,
     totals: {
       required: add('required'), cleared: add('cleared'), exempted: add('exempted'),
       inProgress: add('inProgress'), planned: add('planned'), todo: add('todo'), late,

@@ -2,7 +2,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { liveModules } from '../data/catalogue'
 import { api } from '../services/api'
-import { buildCurriculumChecklist } from '../utils/curriculumChecklist'
+import { buildCurriculumChecklist, effectiveCode } from '../utils/curriculumChecklist'
 import { layoutCurriculum } from '../utils/curriculumLayout'
 import { useCatalogueStore } from './catalogue'
 import { useRoomsStore } from './rooms'
@@ -14,10 +14,7 @@ export const MAX_MODULES_PER_SEM = 6
 // A semester has room for a module if it already holds it (a move) or is under the maximum
 export const hasRoom = (sem, code) => sem.modules.includes(code) || sem.modules.length < MAX_MODULES_PER_SEM
 
-// Exchange chips look like "CS412 → IS460"; the mapped SMU code is on the right.
-export function effectiveCode(entry) {
-  return entry.split('→').pop().trim()
-}
+export { effectiveCode }
 
 // Plans from GET /api/plans, in the shape the planner screens use (the backend's _id becomes id)
 function fromApi(p) {
@@ -550,8 +547,6 @@ export const usePlannerStore = defineStore('planner', () => {
     return request
   }
 
-  // The backend's requirement check for the active plan (null offline, or when the plan has no major)
-  const activeCheck = computed(() => checks.value[activePlan.value.id] ?? null)
 
   // The backend's module catalogue in the shape the checklist matches against, empty until it has loaded
   const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModulesFor(activePlan.value.majorId) : {}))
@@ -583,7 +578,7 @@ export const usePlannerStore = defineStore('planner', () => {
         : bundle?.requirementsAvailable === false
           ? 'Graduation requirements for this plan’s curriculum are not available yet.'
           : 'Live curriculum requirements have not loaded for this plan. Reload to retry; completion is unavailable until they load.'
-    return { live: true, unavailable: true, unavailableReason, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
+    return { unavailable: true, unavailableReason, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
   })
 
   const hasAnyWarning = computed(() => {
@@ -601,7 +596,6 @@ export const usePlannerStore = defineStore('planner', () => {
     planActionPending,
     planActionError,
     savePlans,
-    activeCheck,
     checklist,
     curriculumNotice,
     checklistCatalogue,

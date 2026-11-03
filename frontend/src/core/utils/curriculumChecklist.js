@@ -1,6 +1,7 @@
 // Live requirement rows. Counts are requirements, while credit progress stays in CU.
 const passes = ['all', 'chooseN', 'basket', 'anyFromCategory']
-const effectiveCode = entry => entry.split('→').pop().trim()
+// Exchange chips look like "CS412 → IS460"; the mapped SMU code is on the right.
+export const effectiveCode = entry => entry.split('→').pop().trim()
 const matches = (r, m) => ['all', 'chooseN'].includes(r.rule) ? r.modules?.includes(m.code)
   : ['basket', 'flag'].includes(r.rule) ? m.fulfils?.includes(r.tag)
     : r.rule === 'anyFromCategory' && (r.categories?.includes('ANY') || r.categories?.some(c => m.categories?.includes(c)))
@@ -85,5 +86,5 @@ export function buildCurriculumChecklist(plan, catalogue, bundle, { exempted = [
   const flat = [...groups.flatMap(g => g.slots), ...other]
   const totals = { required: flat.length, late: 0 }
   for (const status of ['cleared', 'exempted', 'inProgress', 'planned', 'todo']) totals[status] = flat.filter(s => s.status === status).length
-  return { groups, other, totals, live: true }
+  return { groups, other, totals }
 }

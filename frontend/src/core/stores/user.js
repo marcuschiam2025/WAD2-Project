@@ -1,5 +1,5 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { api, setToken, setTokenProvider } from '../services/api'
 import { authClient } from '../services/firebase'
 
@@ -10,7 +10,6 @@ export const useUserStore = defineStore('user', () => {
   const error = ref(''), busy = ref(false)
   let initialized, loadingIdentity
   let revision = 0
-  const degreeLabel = computed(() => `BSc ${profile.value.major} · Y${profile.value.year}`)
   function clear() {
     revision++
     setToken(null)
@@ -92,9 +91,6 @@ export const useUserStore = defineStore('user', () => {
   async function unmarkDone(id) {
     try { await save({ markedDone: (profile.value.markedDone ?? []).filter(done => done !== id) }) } catch (failure) { error.value = failure.message }
   }
-  async function revokeAccess() {
-    try { await save({ consents: { gmail: false, outlook: false } }) } catch (failure) { error.value = failure.message }
-  }
-  return { isSignedIn, uid, onboarded, profile, balance, consents, error, busy, degreeLabel, initialize, signIn, signOut, completeOnboarding, markDone, unmarkDone, revokeAccess }
+  return { isSignedIn, uid, onboarded, profile, balance, consents, error, busy, initialize, signIn, signOut, completeOnboarding, markDone, unmarkDone }
 })
 if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useUserStore, import.meta.hot))

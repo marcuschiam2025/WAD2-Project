@@ -81,7 +81,6 @@ export const useCatalogueStore = defineStore('catalogue', () => {
         code: m._id,
         name: m.title,
         cu: m.cu ?? 1,
-        live: true,
         archived: m.archived === true,
         category,
         tracks,

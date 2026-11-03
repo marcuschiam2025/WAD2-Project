@@ -15,10 +15,3 @@ export const findClashes=sections=>pairs(sections,(a,b)=>meetings(a).some(x=>mee
 export const findExamClashes=sections=>pairs(sections,(a,b)=>a.examPeriod&&b.examPeriod?examOverlap(a.examPeriod,b.examPeriod):!!a.exam&&!NO_EXAM_TIME.includes(a.exam)&&a.exam===b.exam)
 export const sectionMeetings=section=>meetings(section)
 
-const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-// "Mon 10:00–11:30 · Thu 10:00–11:30", or a note for work-study / SMU-X sections that have no fixed class time
-export function meetingLabel(section) {
- const list=section.sessions??(section.day==null?[]:meetings(section))
- if(!list.length) return 'No fixed class time'
- return list.map(m=>`${DAY_NAMES[m.day]} ${m.start}–${m.end}`).join(' · ')
-}

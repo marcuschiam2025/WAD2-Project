@@ -258,7 +258,7 @@ const badge = (n) => [
 
         <p v-if="!currentSem" class="text-[13px] text-muted-foreground">Choose your semester above first.</p>
         <template v-else>
-          <ModuleSearchBox live :exclude="takenOrExempt" @pick="addModule" />
+          <ModuleSearchBox :exclude="takenOrExempt" @pick="addModule" />
 
           <!-- Basket: search results land here, then drag each one into its semester -->
           <div
@@ -356,7 +356,7 @@ const badge = (n) => [
           <h2 class="text-h4">Are you exempted from any modules?</h2>
           <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Optional</span>
         </div>
-        <ModuleSearchBox live :exclude="takenOrExempt" placeholder="Search for a module you're exempted from" @pick="addExemption" />
+        <ModuleSearchBox :exclude="takenOrExempt" placeholder="Search for a module you're exempted from" @pick="addExemption" />
         <div v-if="exempted.length" class="flex flex-wrap gap-2">
           <span
             v-for="code in exempted"

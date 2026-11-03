@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
-import { bidHistory, sections, slots, days, weightage, MIN_BID, estimateHistory } from '../data/bidding'
+import { bidHistory, sections, days, weightage, MIN_BID, estimateHistory } from '../data/bidding'
 import { api } from '../services/api'
 import { usePlannerStore, effectiveCode } from './planner'
 import { useRoomsStore } from './rooms'

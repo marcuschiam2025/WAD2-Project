@@ -94,7 +94,6 @@ test('totals are counted in courses: a requirement only part met still counts th
     [laid.totals.required, laid.totals.cleared, laid.totals.inProgress, laid.totals.planned, laid.totals.todo],
     [10, 2, 1, 1, 6],
   )
-  assert.equal(laid.byCredit, true)
   // ...which the requirement-by-requirement count could not show: it would have said 0 cleared / 1 in progress / 1 planned
   assert.equal(built.totals.cleared, 1)
 })
