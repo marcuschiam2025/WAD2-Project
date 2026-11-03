@@ -118,11 +118,10 @@ test('scenario normalisation agrees with a hand-calculated BA example', () => {
   assert.ok(Object.values(result.sectionPreferenceIndices).every((value) => value === 100))
 })
 
-test('skipped/E scenarios are omitted; every track can reach its scenario ceiling', () => {
+test('skipped scenarios are omitted; every track can reach its scenario ceiling', () => {
   const reduced = answers('4', 'a')
   for (const response of reduced) {
-    if (['I4', 'S4'].includes(response.questionId)) response.optionId = 'e'
-    if (['W4', 'C4'].includes(response.questionId)) response.optionId = null
+    if (['I4', 'S4', 'W4', 'C4'].includes(response.questionId)) response.optionId = null
   }
   assert.equal(calculateScenarioPreferences(reduced).find((r) => r.track === 'BA').scenarioPreferenceIndex, 100)
   for (const [track, profile] of Object.entries(TRACK_PROFILES)) {
@@ -137,7 +136,7 @@ test('skipped/E scenarios are omitted; every track can reach its scenario ceilin
     }
     assert.equal(calculateScenarioPreferences(best).find((r) => r.track === track).scenarioPreferenceIndex, 100)
   }
-  reduced.find((r) => r.questionId === 'I2').optionId = 'e'
+  reduced.find((r) => r.questionId === 'I2').optionId = null
   assert.throws(() => calculateScenarioPreferences(reduced), /Missing informative scenario/)
 })
 

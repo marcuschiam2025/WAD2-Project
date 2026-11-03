@@ -57,15 +57,12 @@ export const useQuizStore = defineStore('quiz', () => {
   }, { flush: 'sync' })
   const draftKey = () => `bidmaxxer:quiz:v2:${user.profile.email}`
   const latest = computed(() => attempts.value[0] ?? null)
-  const answeredCount = computed(() => questions.value.filter((q) => {
-    const answer = answers.value[q.id]
-    return answer != null && !(q.type === 'scenario' && answer === 'e')
-  }).length)
-  // Every question needs an answer. "None of these" on a scenario is an answer; blank is not.
+  const answeredCount = computed(() => questions.value.filter((q) => answers.value[q.id] != null).length)
+  // Every question needs an answer; blank is not allowed.
   const firstBlank = computed(() => questions.value.findIndex((q) => answers.value[q.id] == null))
   const sectionCoverage = computed(() => Object.keys(sectionLabels).map((section) => {
     const items = questions.value.filter((q) => q.section === section)
-    const answered = items.filter((q) => answers.value[q.id] != null && !(q.type === 'scenario' && answers.value[q.id] === 'e')).length
+    const answered = items.filter((q) => answers.value[q.id] != null).length
     const scenarios = items.filter((q) => q.type === 'scenario' && ['a', 'b', 'c', 'd'].includes(answers.value[q.id])).length
     return { section, label: sectionLabels[section], answered, scenarios, eligible: answered >= 3 && scenarios >= 1 }
   }))
@@ -119,11 +116,11 @@ export const useQuizStore = defineStore('quiz', () => {
     restoring = true
     answers.value = Object.fromEntries(questions.value.map((q) => [q.id, null]))
     optionOrders.value = Object.fromEntries(questions.value.filter((q) => q.type === 'scenario').map((q) => {
-      const ids = q.options.filter((o) => o.id !== 'e').map((o) => o.id)
+      const ids = q.options.map((o) => o.id)
       for (let i = ids.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]
       }
-      return [q.id, [...ids, 'e']]
+      return [q.id, ids]
     }))
     current.value = 0
     submissionId.value = crypto.randomUUID()
@@ -137,7 +134,7 @@ export const useQuizStore = defineStore('quiz', () => {
   function optionsFor(question) {
     if (question.type !== 'scenario') return question.options
     const ids = optionOrders.value[question.id]
-    return Array.isArray(ids) && ids.length === 5 && new Set(ids).size === 5 && ids.every((id) => question.options.some((o) => o.id === id))
+    return Array.isArray(ids) && ids.length === question.options.length && new Set(ids).size === ids.length && ids.every((id) => question.options.some((o) => o.id === id))
       ? ids.map((id) => question.options.find((o) => o.id === id)) : question.options
   }
 

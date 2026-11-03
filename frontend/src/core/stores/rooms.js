@@ -1,7 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { api } from '../services/api'
-import { classmates, roomPrereqs } from '../data/rooms'
 import { useUserStore } from './user'
 import { sections } from '../data/bidding'
 import { buildRoomBoard } from '../utils/roomBoard'
@@ -88,22 +87,6 @@ export const useRoomsStore = defineStore('rooms', () => {
   function person(id) {
     if (id === ME) return { id: ME, name: 'You', short: 'You', initials: user.profile.initials || 'You', you: true }
     return people.value[id] ?? { id, name: 'Member', short: 'Member', initials: '?', you: false }
-  }
-
-  function searchClassmates(query, exclude = []) {
-    const q = query.trim().toLowerCase()
-    if (!q) return []
-    return classmates.filter(
-      (c) => !exclude.includes(c.id) && (c.name.toLowerCase().includes(q) || c.email.includes(q)),
-    )
-  }
-
-  // Returns the prerequisite the classmate is missing for the module, or null
-  function missingPrereq(classmateId, moduleCode) {
-    const req = roomPrereqs[moduleCode]
-    const c = classmates.find((x) => x.id === classmateId)
-    if (!req || !c) return null
-    return c.completed.includes(req.code) ? null : req
   }
 
   function normalize(party) {
@@ -311,8 +294,6 @@ export const useRoomsStore = defineStore('rooms', () => {
     undoAccept,
     getRoom,
     person,
-    searchClassmates,
-    missingPrereq,
     createRoom,
     leaveRoom,
     setMyVotes,

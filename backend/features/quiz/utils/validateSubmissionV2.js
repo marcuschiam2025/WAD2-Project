@@ -51,13 +51,11 @@ export function validateSubmissionV2(body, rubric) {
       issues.push({ questionId: question.id, section: question.section, code: 'QUESTION_UNANSWERED' })
       continue
     }
-    if (question.type === 'scenario' && optionId === 'e') continue
     section.answered += 1
     if (question.type === 'scenario') section.informativeScenarios += 1
   }
   for (const [section, counts] of Object.entries(coverage)) {
     if (counts.answered < 3) issues.push({ section, code: 'SECTION_NEEDS_THREE_ANSWERS' })
-    if (counts.informativeScenarios < 1) issues.push({ section, code: 'SECTION_NEEDS_SCENARIO' })
   }
   if (issues.length) return fail(422, 'QUIZ_INCOMPLETE')
 

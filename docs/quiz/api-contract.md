@@ -24,7 +24,7 @@ POST `/api/quiz/v2/attempts` accepts:
 }
 ```
 
-This is an abbreviated shape example, not an eligible completed attempt. Send one entry per question. A null answer returns 422 with `QUESTION_UNANSWERED` for that question, and rating option `3` is no longer valid. Scenario option `e` is accepted but supplies no evidence, and each section requires at least one other scenario choice. Unknown/duplicate question IDs, invalid options and unsupported versions must be rejected. A repeated submissionId for the same user must not create another result.
+This is an abbreviated shape example, not an eligible completed attempt. Send one entry per question. A null answer returns 422 with `QUESTION_UNANSWERED` for that question, and rating option `3` is no longer valid. Scenarios offer options `a` to `d`; option `e` is no longer valid. Unknown/duplicate question IDs, invalid options and unsupported versions must be rejected. A repeated submissionId for the same user must not create another result.
 
 ## Result states
 

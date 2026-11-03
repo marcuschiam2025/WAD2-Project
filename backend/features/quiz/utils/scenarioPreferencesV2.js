@@ -9,7 +9,7 @@ export function calculateScenarioPreferences(responses) {
   for (const [questionId, mapping] of Object.entries(SCENARIO_MAPPINGS)) {
     if (!byQuestion.has(questionId)) throw new TypeError(`Missing validated response: ${questionId}`)
     const optionId = byQuestion.get(questionId)
-    if (optionId === null || optionId === 'e') continue
+    if (optionId === null) continue
     if (!Object.hasOwn(mapping.options, optionId)) throw new TypeError(`Invalid scenario option: ${questionId}`)
     sections[mapping.section].push({ mapping, optionId })
   }
