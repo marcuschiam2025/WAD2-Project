@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
     school: { type: String, default: 'SCIS' }, //for now just default to SCIS + info sys. Have to expand if wanna add more schools
     major: { type: String, default: 'Information Systems' },
     currentSem: { type: String, match: /^Y[1-5]S[12]$/ }, 
-    takenBySem: { type: Map, of: [String], default: {} },
+    takenBySem: { type: Object, default: () => ({}) },
     exempted: [String],
     freeExemptions: { type: Number, min: 0, max: 6, default: 0 },
     balance: { type: Number, min: 0, default: 210 }, //default number is arbitrary

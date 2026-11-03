@@ -45,14 +45,12 @@ function checkWholeNumber(value, name, min, max) {
 // Modules from every semester BEFORE the current one, plus exemptions.
 // The current semester is left out because those modules are still in progress.
 function buildCompletedModules(currentSem, takenBySem, exempted) {
-  // From the database, takenBySem is a Map; from a request, it's a plain object. Use one form.
-  const semesters = takenBySem instanceof Map ? Object.fromEntries(takenBySem) : takenBySem
   const current = semesterNumber(currentSem)
 
   const modules = []
-  for (const semester of Object.keys(semesters)) {
+  for (const semester of Object.keys(takenBySem)) {
     if (semesterNumber(semester) < current) {
-      modules.push(...semesters[semester])
+      modules.push(...takenBySem[semester])
     }
   }
   modules.push(...exempted)
