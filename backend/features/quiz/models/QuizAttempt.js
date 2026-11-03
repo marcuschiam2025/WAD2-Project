@@ -13,7 +13,8 @@ const resultSchema = new mongoose.Schema(
     track: String,
     pct: Number, // legacy only; never use as a fallback for a missing v2 index
     rank: { type: Number, min: 1, validate: Number.isInteger },
-    alignmentIndex: { type: Number, min: 0, max: 100 },
+    alignmentIndex: { type: Number, min: 0, max: 100 }, // the score students see; ratings and scenarios combined from v2.1
+    ratingAlignmentIndex: { type: Number, min: 0, max: 100 },
     scenarioPreferenceIndex: { type: Number, min: 0, max: 100 },
   },
   { _id: false },
@@ -30,7 +31,7 @@ const quizAttemptSchema = new mongoose.Schema(
     rubricVersion: String,
     submissionId: String,
     responses: { type: [responseSchema], default: undefined },
-    rankingBasis: { type: String, enum: ['rating', 'scenario-provisional'] },
+    rankingBasis: { type: String, enum: ['blended', 'rating', 'scenario-provisional'] },
     themeCoverage: {
       type: Map,
       of: { type: Number, min: 0, max: 2, validate: Number.isInteger },

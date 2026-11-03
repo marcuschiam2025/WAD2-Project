@@ -12,6 +12,14 @@ export const quizTrackNames = {
   SMT: 'Smart-City Management & Technology', DCS: 'Digitalisation & Cloud Solutions (legacy)',
 }
 
+// True when a tie runs past the two tracks shown, which the backend settles at random when the attempt is scored
+export const tieRunsPastShown = (results) => results?.length > 2 && results[1].rank === results[2].rank
+
+// Saved before scores combined ratings and scenarios. These results are kept as they were, not rescored.
+export const isOlderResult = (attempt) => attempt?.rankingBasis !== 'blended'
+// A rating theme as a word, so it does not read as a part of the match score. The cut-offs split the 0-100 scale in three.
+export const themeLevel = (index) => index === null || index === undefined ? 'No evidence yet' : index >= 67 ? 'High' : index >= 34 ? 'Medium' : 'Low'
+
 export const useQuizStore = defineStore('quiz', () => {
   const user = useUserStore()
   const questions = ref([])
@@ -53,6 +61,8 @@ export const useQuizStore = defineStore('quiz', () => {
     const answer = answers.value[q.id]
     return answer != null && !(q.type === 'scenario' && answer === 'e')
   }).length)
+  // Every question needs an answer. "None of these" on a scenario is an answer; blank is not.
+  const firstBlank = computed(() => questions.value.findIndex((q) => answers.value[q.id] == null))
   const sectionCoverage = computed(() => Object.keys(sectionLabels).map((section) => {
     const items = questions.value.filter((q) => q.section === section)
     const answered = items.filter((q) => answers.value[q.id] != null && !(q.type === 'scenario' && answers.value[q.id] === 'e')).length
@@ -172,5 +182,5 @@ export const useQuizStore = defineStore('quiz', () => {
     } finally { if (revision === sessionRevision) submitting.value = false }
   }
 
-  return { questions, rubricVersion, answers, current, attempts, latest, answeredCount, sectionCoverage, hasDraft, loading, submitting, error, issues, initialize, start, answer, chooseAnswer, optionsFor, submit }
+  return { questions, rubricVersion, answers, current, attempts, latest, answeredCount, firstBlank, sectionCoverage, hasDraft, loading, submitting, error, issues, initialize, start, answer, chooseAnswer, optionsFor, submit }
 })

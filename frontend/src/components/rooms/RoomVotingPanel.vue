@@ -15,6 +15,8 @@ const picks = ref([]), feedback = ref('')
 // Saved picks that haven't been changed since: the calendar is locked until they are unselected
 const submitted = computed(() => !dirty.value && (board.value?.mySectionIds?.length ?? 0) > 0)
 const saving = computed(() => !!rooms.voteSaving[props.roomId])
+// Once a section is picked in Room results, the votes behind it stay put
+const sectionPicked = computed(() => !!board.value?.finalisedSection)
 watch(() => props.roomId, id => { picks.value = []; dirty.value = false; feedback.value = ''; rooms.loadVotes(id) }, { immediate: true })
 watch(board, value => { if (value && !dirty.value) picks.value = [...value.mySectionIds] })
 function toggle(id) {
@@ -35,7 +37,7 @@ async function save(ids = picks.value) {
   }
 }
 // Clearing a vote is saving an empty set of picks
-const unselect = () => save([])
+const unselect = () => { if (!sectionPicked.value) save([]) }
 let timer
 onMounted(() => { timer = setInterval(() => {
   if (document.visibilityState === 'visible' && !rooms.busy && !rooms.voteSaving[props.roomId] && !rooms.voteLoading[props.roomId]) rooms.loadVotes(props.roomId, { quiet: true })
@@ -50,12 +52,12 @@ onBeforeUnmount(() => clearInterval(timer))
         <h2 id="room-voting-heading" class="text-h4">Modules for bid · {{ module }}</h2>
         <p class="text-[13px] text-muted-foreground">
           <template v-if="board">{{ board.term }} · </template>
-          {{ submitted ? "You've submitted these picks. Unselect them if you want to change your votes." : "Pick every section you'd take. You can choose more than one." }}
+          {{ submitted ? (sectionPicked ? "You've submitted these picks and picked a section, so your votes are locked." : "You've submitted these picks. Unselect them if you want to change your votes.") : "Pick every section you'd take. You can choose more than one." }}
         </p>
       </div>
       <div v-if="board?.rows.length" class="flex shrink-0 items-center gap-2">
         <span v-if="dirty" class="text-[12px] text-muted-foreground">Unsaved changes</span>
-        <BaseButton v-if="submitted" variant="outline" :disabled="saving" @click="unselect">{{ saving ? 'Saving…' : 'Unselect my picks' }}</BaseButton>
+        <BaseButton v-if="submitted" variant="outline" :disabled="saving || sectionPicked" :title="sectionPicked ? 'Your votes are locked because you have picked a section' : undefined" @click="unselect">{{ saving ? 'Saving…' : 'Unselect my picks' }}</BaseButton>
         <BaseButton v-else :disabled="!dirty || saving" @click="save()">{{ saving ? 'Saving…' : 'Submit my picks' }}</BaseButton>
       </div>
     </div>

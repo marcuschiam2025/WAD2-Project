@@ -11,6 +11,7 @@ function alignmentLabel(attempt) {
   if (attempt.rankingBasis === 'scenario-provisional') return 'Provisional exploration'
   if (attempt.rubricVersion === 'legacy-v1') return 'Earlier quiz format'
   const score = attempt.results[0]?.alignmentIndex
+  if (attempt.rankingBasis === 'blended' && Number.isFinite(score)) return `${Math.round(score)}/100 match`
   return Number.isFinite(score) ? `${Math.round(score)}% alignment` : 'Alignment unavailable'
 }
 function start() {
@@ -29,7 +30,7 @@ function start() {
         <h2 class="text-h3">20 questions. Four perspectives.</h2>
         <p class="text-sm text-muted-foreground">Designed for Year 1–2 Information Systems students. Allow about five minutes; we’re still checking this timing with students.</p>
         <div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div v-for="label in ['Interests', 'Current confidence', 'Working style', 'Career goals']" :key="label" class="rounded-md bg-muted p-3">{{ label }}<span class="mt-1 block text-xs text-muted-foreground">5 questions</span></div></div>
-        <p class="text-sm">In each section, answer at least three questions, including one scenario choice other than “None” or “Not sure”. You can skip questions. A rating of 3 means Unsure and supplies no scoring evidence.</p>
+        <p class="text-sm">Answer every question. In each section, at least one scenario choice must be something other than “None” or “Not sure”.</p>
         <p class="text-sm text-muted-foreground">Retake whenever you like. Only your latest two completed results are kept; completing another attempt replaces the oldest. Your planner stays unchanged.</p>
         <div class="flex flex-wrap gap-3"><BaseButton :disabled="quiz.loading || !quiz.questions.length || !!quiz.error" @click="start">{{ quiz.attempts.length ? 'Start new attempt' : 'Start quiz' }}</BaseButton><BaseButton v-if="quiz.hasDraft" variant="outline" to="/quiz/attempt">Resume unfinished quiz</BaseButton></div>
       </section>
