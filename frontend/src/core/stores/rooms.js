@@ -2,7 +2,6 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { api } from '../services/api'
 import { useUserStore } from './user'
-import { sections } from '../data/bidding'
 import { buildRoomBoard } from '../utils/roomBoard'
 
 export const MAX_ROOM_SIZE = 8

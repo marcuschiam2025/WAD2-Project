@@ -139,7 +139,7 @@ export const useBiddingStore = defineStore('bidding', () => {
 
   // --- Backend ------------------------------------------------------------------------------
   // online once GET /api/bidding/round answers. Sections, bid history and weightage are fetched per
-  // module and replace the sample data for that module; modules the backend has nothing for keep the sample.
+  // module; a module the backend has nothing for stays empty.
   const online = ref(false)
   const round = ref({ term: null, round: null, closesAt: null, availableTerms: [], configured: false })
   const saveError = ref('')
@@ -173,7 +173,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       return
     }
     if (version !== session) return
-    // Empty live results must remove sample sections too.
+    // Replace whatever was loaded for these modules before; an empty result removes them.
     for (let i = sections.length - 1; i >= 0; i--) {
       if (todo.includes(sections[i].module)) { liveSections.delete(sections[i].id); sections.splice(i, 1) }
     }
@@ -288,7 +288,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     if (online.value) api.dropFromCart(code, id, round.value.term).catch((e) => (saveError.value = e.message))
   }
 
-  // Modules whose sections are only sample data can't be saved: the backend doesn't know those sections
+  // Booked sections the server does not list can't be saved
   const unsaved = computed(() => Object.entries(booked.value).filter(([, id]) => !liveSections.has(id)).map(([code]) => code))
 
   async function save() {

@@ -23,7 +23,7 @@ const user = useUserStore()
 const tabs = ['Details', 'Simulate', 'History']
 const tab = ref('Simulate')
 
-// Sections, bid history and weightage: the backend's for each module, the sample data where it has none
+// Sections, bid history and weightage: the backend's for each module
 const section = computed(() => props.code && sections.find((s) => s.id === bidding.booked[props.code]))
 const details = computed(() => section.value ? [
   ['Professor', section.value.prof],
@@ -298,7 +298,7 @@ watch(
       </p>
       <BaseButton size="sm" :disabled="bidding.saving || !bidding.online" @click="bidding.save()">{{ bidding.saving ? 'Saving…' : 'Save plan' }}</BaseButton>
     </div>
-    <!-- Save result: the backend's error, or modules whose sections are only sample data so they can't be saved yet -->
+    <!-- Save result: the backend's error, or modules whose sections the server does not list so they can't be saved yet -->
     <p v-if="bidding.saveError" class="-mt-1.5 px-5 pb-3 text-[12px] text-destructive">{{ bidding.saveError }}</p>
     <p v-else-if="bidding.online && bidding.unsaved.length" class="-mt-1.5 px-5 pb-3 text-[12px] text-muted-foreground">
       No BOSS sections on the server for {{ bidding.unsaved.join(', ') }} yet, so {{ bidding.unsaved.length === 1 ? 'it is' : 'they are' }} not saved.
