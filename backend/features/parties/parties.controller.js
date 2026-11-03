@@ -8,6 +8,10 @@ import { toSectionView } from "../bidding/utils/sectionView.js";
 import { unmetGroups } from "../planning/utils/requisites.js";
 import { httpError } from "../../middleware/errorHandler.js";
 import { prerequisitesBeforeTerm } from "./utils/eligibility.js";
+import {
+  notify,
+  displayName,
+} from "../notifications/notifications.controller.js";
 
 const MEMBER_FIELDS = "name email";
 const SECTION_STATUSES = ["considering", "bidding", "enrolled"];
@@ -15,9 +19,7 @@ const SECTION_STATUSES = ["considering", "bidding", "enrolled"];
 async function missingPrereqs(user, moduleCode, termKey) {
   const mod = await Module.findById(moduleCode).lean();
   const available = new Set(prerequisitesBeforeTerm(user, termKey));
-  const groups = unmetGroups(mod?.prerequisites, (code) =>
-    available.has(code),
-  );
+  const groups = unmetGroups(mod?.prerequisites, (code) => available.has(code));
   return groups.map((group) => group.join(" or "));
 }
 
@@ -39,8 +41,18 @@ function isMember(party, userId) {
   return party.members.some((memberId) => memberId.equals(userId));
 }
 
+// Everyone in the party except the given user
+function otherMembers(party, userId) {
+  return party.members.filter((memberId) => !memberId.equals(userId));
+}
+
+// The link a notification opens: the party's room page
+function roomLink(party) {
+  return `/rooms/${party._id}`;
+}
+
 async function generateInviteCode(length = 6) {
-  const CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; //removed IL1 and O0 because they look similar
   while (true) {
     let code = "";
     for (let i = 0; i < length; i++) {
@@ -73,11 +85,10 @@ export async function listParties(req, res) {
 
 export async function createParty(req, res) {
   const { name, description, module, termKey, maxMembers } = req.body;
-  const memberEmails = req.body.memberEmails || [];
-  const emails = memberEmails.map((email) => String(email).toLowerCase()) //convert emails to lowercase within the list
-  const invitees = await User.find({ email: { $in: emails } })//goes through the list find invited classmates, puts it into an object
+  //const memberEmails = req.body.memberEmails || [];
+  //const emails = memberEmails.map((email) => String(email).toLowerCase()) //convert emails to lowercase within the list
+  //const invitees = await User.find({ email: { $in: emails } })//goes through the list find invited classmates, puts it into an object
   const blocked = []; // different from banned. block is not saved to the mongoDB
-
 
   if (!name || !module || !termKey) {
     throw httpError(400, "name, module and termKey are required");
@@ -94,18 +105,18 @@ export async function createParty(req, res) {
     members: [req.user._id],
   });
 
-  //invites the members (invitees is a list of objects, each object being a user)
-  for (const invitee of invitees) {
-    if (party.members.length >= party.maxMembers) break; 
+  // invitees not a function in the create collab room (no time?)
+  // for (const invitee of invitees) {
+  //   if (party.members.length >= party.maxMembers) break;
 
-    const missing = await missingPrereqs(invitee, module, party.termKey);
+  //   const missing = await missingPrereqs(invitee, module, party.termKey);
 
-    if (missing.length > 0) {
-      blocked.push({ email: invitee.email, name: invitee.name, missing });
-    } else if (!isMember(party, invitee._id)) {
-      party.members.push(invitee._id);
-    }
-  }
+  //   if (missing.length > 0) {
+  //     blocked.push({ email: invitee.email, name: invitee.name, missing });
+  //   } else if (!isMember(party, invitee._id)) {
+  //     party.members.push(invitee._id);
+  //   }
+  // }
 
   await party.save();
   res.status(201).json({ party, blocked });
@@ -140,6 +151,14 @@ export async function joinParty(req, res) {
 
   party.members.push(userId);
   await party.save();
+
+  //notify other members of the change
+  await notify(
+    otherMembers(party, userId),
+    "party_joined",
+    `${displayName(req.user.name)} joined ${party.name}`,
+    roomLink(party),
+  );
   res.json(party);
 }
 
@@ -162,6 +181,7 @@ export async function deleteParty(req, res) {
 
 // GET /api/parties/:id/updates?since=<ISO date>
 // Short-polling: 204 (no body) when nothing changed since the given time
+// (for front end to refresh information periodically)
 export async function getUpdates(req, res) {
   const party = req.party;
   const since = new Date(req.query.since || 0);
@@ -195,6 +215,23 @@ export async function leaveParty(req, res) {
       party.owner = party.members[0]; // longest-standing remaining member takes over
     }
     await party.save();
+
+    await notify(
+      party.members,
+      "party_left",
+      `${displayName(req.user.name)} left ${party.name}`,
+      roomLink(party),
+    );
+
+    // The new owner is also told they're in charge now
+    if (wasOwner) {
+      await notify(
+        [party.owner],
+        "party_owner_changed",
+        `You're now the owner of ${party.name}`,
+        roomLink(party),
+      );
+    }
   }
   res.status(204).end();
 }
@@ -221,18 +258,31 @@ export async function banMember(req, res) {
   }
 
   await party.save();
+
+  // The banned student is told, with no link, since they can't open the room any more
+  await notify([userId], 'party_banned', `You were removed from ${party.name}`)
+
+  // The other members (not the owner who did it) are told who was removed
+  await notify(
+    otherMembers(party, req.user._id),
+    'party_member_removed',
+    `${displayName(bannedUser?.name)} was removed from ${party.name}`,
+    roomLink(party),
+  )
+
   res.json(party);
 }
 
+//currently no way to unban from front end yet
 // DELETE /api/parties/:id/ban/:userId — owner lifts a ban (the user can then rejoin with the code)
-export async function unbanMember(req, res) {
-  const party = req.party;
-  party.banned = party.banned.filter(
-    (bannedId) => !bannedId.equals(req.params.userId),
-  );
-  await party.save();
-  res.json(party);
-}
+// export async function unbanMember(req, res) {
+//   const party = req.party;
+//   party.banned = party.banned.filter(
+//     (bannedId) => !bannedId.equals(req.params.userId),
+//   );
+//   await party.save();
+//   res.json(party);
+// }
 
 // ---------------------------------------------------------------------------
 // Sections: votes and "my section"
@@ -244,9 +294,14 @@ export async function saveVotes(req, res) {
   const userId = req.user._id;
   const sectionIds = [...new Set(req.body.sectionIds || [])]; // Set removes duplicates
 
-  const validIds = new Set((await partySections(party)).map((section) => section.sectionId));
+  const validIds = new Set(
+    (await partySections(party)).map((section) => section.sectionId),
+  );
   if (sectionIds.some((id) => !validIds.has(id))) {
-    throw httpError(400, `All sections must belong to ${party.module} in ${party.termKey}`);
+    throw httpError(
+      400,
+      `All sections must belong to ${party.module} in ${party.termKey}`,
+    );
   }
 
   const myVote = party.votes.find((vote) => vote.user.equals(userId));
@@ -262,10 +317,10 @@ export async function saveVotes(req, res) {
 
 // DELETE /api/parties/:id/votes — take my votes back
 export async function clearVotes(req, res) {
-  const party = req.party
-  party.votes = party.votes.filter((vote) => !vote.user.equals(req.user._id))
-  await party.save()
-  res.status(204).end()
+  const party = req.party;
+  party.votes = party.votes.filter((vote) => !vote.user.equals(req.user._id));
+  await party.save();
+  res.status(204).end();
 }
 
 // PUT /api/parties/:id/my-section { sectionId, status } — the one section I'm going for
@@ -284,9 +339,14 @@ export async function setMySection(req, res) {
       `status must be one of: ${SECTION_STATUSES.join(", ")}`,
     );
   }
-  const sectionExists = (await partySections(party)).some((section) => section.sectionId === sectionId);
+  const sectionExists = (await partySections(party)).some(
+    (section) => section.sectionId === sectionId,
+  );
   if (!sectionExists) {
-    throw httpError(400, `That section does not belong to ${party.module} in ${party.termKey}`);
+    throw httpError(
+      400,
+      `That section does not belong to ${party.module} in ${party.termKey}`,
+    );
   }
 
   const mine = party.memberSections.find((entry) => entry.user.equals(userId));
@@ -343,7 +403,12 @@ export async function getSectionSummary(req, res) {
     }
 
     // The same section shape as the bidding page (sessions, prof, exam, ...)
-    summary.push({ section: toSectionView(section), voteCount: voters.length, voters, goingFor });
+    summary.push({
+      section: toSectionView(section),
+      voteCount: voters.length,
+      voters,
+      goingFor,
+    });
   }
 
   res.json(summary);

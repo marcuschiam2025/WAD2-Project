@@ -1,69 +1,156 @@
-// Only profile fields may be changed by a student. Identity and role come from the server.
-const semesterIndex = (id) => {
-  if (typeof id !== 'string' || !/^Y[1-5]S[12]$/.test(id)) throw new Error('Choose a valid semester')
-  return Number(id[1]) * 2 + Number(id[3])
+const MARKED_DONE_OPTIONS = ['internship', 'community', 'exposure']
+
+// ---------------------------------------------------------------------------
+// True for { ... }, false for null, arrays, strings, numbers
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
-const codes = (value) => {
-  if (!Array.isArray(value) || value.some(code => typeof code !== 'string' || !code.trim())) throw new Error('Expected a list of module codes')
-  return [...new Set(value.map(code => code.trim().toUpperCase()))]
+
+// Checks a semester label like 'Y2S1' and turns it into a number so semesters can be compared:
+// Y1S1 = 3, Y1S2 = 4, Y2S1 = 5, Y2S2 = 6, ...
+function semesterNumber(label) {
+  const valid = typeof label === 'string' && /^Y[1-5]S[12]$/.test(label)
+  if (!valid) throw new Error('Choose a valid semester')
+
+  const year = Number(label[1]) // 'Y2S1' → 2
+  const sem = Number(label[3])  // 'Y2S1' → 1
+  return year * 2 + sem
 }
-export function profileUpdate(body, current = {}) {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Expected profile details')
-  const result = {}
-  for (const key of ['name', 'major']) if (body[key] !== undefined) {
-    if (typeof body[key] !== 'string' || !body[key].trim()) throw new Error(`Invalid ${key}`)
-    result[key] = body[key].trim()
+
+// Checks a list of module codes and tidies it: trimmed, uppercase, no duplicates
+function cleanCodes(list) {
+  if (!Array.isArray(list)) throw new Error('Expected a list of module codes')
+
+  const result = []
+  for (const code of list) {
+    if (typeof code !== 'string' || code.trim() === '') throw new Error('Expected a list of module codes')
+    const tidy = code.trim().toUpperCase()
+    if (!result.includes(tidy)) result.push(tidy)
   }
-  for (const [key, min, max] of [['intakeYear', 2000, 2100], ['yearOfStudy', 1, 5], ['freeExemptions', 0, 6]]) {
-    if (body[key] !== undefined) {
-      if (!Number.isInteger(body[key]) || body[key] < min || body[key] > max) throw new Error(`Invalid ${key}`)
-      result[key] = body[key]
+  return result
+}
+
+// Non-empty text, with spaces trimmed from both ends
+function checkText(value, name) {
+  if (typeof value !== 'string' || value.trim() === '') throw new Error(`Invalid ${name}`)
+  return value.trim()
+}
+
+// A whole number between min and max
+function checkWholeNumber(value, name, min, max) {
+  if (!Number.isInteger(value) || value < min || value > max) throw new Error(`Invalid ${name}`)
+  return value
+}
+
+// Modules from every semester BEFORE the current one, plus exemptions.
+// The current semester is left out because those modules are still in progress.
+function buildCompletedModules(currentSem, takenBySem, exempted) {
+  const current = semesterNumber(currentSem)
+
+  const modules = []
+  for (const semester of Object.keys(takenBySem)) {
+    if (semesterNumber(semester) < current) {
+      modules.push(...takenBySem[semester])
     }
   }
+  modules.push(...exempted)
+  return cleanCodes(modules)
+}
+
+
+// ---------------------------------------------------------------------------
+// The main function
+// body    = what the student sent
+// current = their user document as it is now
+// Returns only the fields that should be saved.
+// ---------------------------------------------------------------------------
+export function profileUpdate(body, current = {}) {
+  if (!isPlainObject(body)) throw new Error('Expected profile details')
+  const result = {}
+
+  // Check Text (Non-empty text, with spaces trimmed from both ends)
+  if (body.name !== undefined) result.name = checkText(body.name, 'name')
+  if (body.major !== undefined) result.major = checkText(body.major, 'major')
+
+  // Whole numbers
+  if (body.intakeYear !== undefined) result.intakeYear = checkWholeNumber(body.intakeYear, 'intakeYear', 2000, 2100)
+  if (body.yearOfStudy !== undefined) result.yearOfStudy = checkWholeNumber(body.yearOfStudy, 'yearOfStudy', 1, 5)
+  if (body.freeExemptions !== undefined) result.freeExemptions = checkWholeNumber(body.freeExemptions, 'freeExemptions', 0, 6)
+
+  // e$ balance: a number, not negative - rounds to 2dp
   if (body.balance !== undefined) {
-    if (typeof body.balance !== 'number' || !Number.isFinite(body.balance) || !/^\d+(?:\.\d{1,2})?$/.test(String(body.balance))) throw new Error('Balance must be a non-negative number with up to 2 decimal places')
-    result.balance = body.balance
+  if (typeof body.balance !== 'number' || body.balance < 0) {
+    throw new Error('Balance must be a number that is 0 or more')
   }
+  result.balance = Math.round(body.balance * 100) / 100   // keep 2 decimal places
+}
+
+  // Finished onboarding?
   if (body.onboarded !== undefined) {
     if (typeof body.onboarded !== 'boolean') throw new Error('Invalid onboarding status')
     result.onboarded = body.onboarded
   }
-  for (const key of ['tracks', 'basket', 'exempted', 'completedModules']) {
-    if (body[key] !== undefined) result[key] = codes(body[key])
-  }
+
+  // Lists of module codes
+  if (body.tracks !== undefined) result.tracks = cleanCodes(body.tracks)
+  if (body.basket !== undefined) result.basket = cleanCodes(body.basket)
+  if (body.exempted !== undefined) result.exempted = cleanCodes(body.exempted)
+  if (body.completedModules !== undefined) result.completedModules = cleanCodes(body.completedModules)
+
+  // Non-course requirements the student has ticked off
   if (body.markedDone !== undefined) {
-    const allowed = ['internship', 'community', 'exposure']
-    if (!Array.isArray(body.markedDone) || body.markedDone.some(id => !allowed.includes(id))) throw new Error('Invalid completion flag')
-    result.markedDone = [...new Set(body.markedDone)]
+    if (!Array.isArray(body.markedDone)) throw new Error('Invalid completion flag')
+    const done = []
+    for (const item of body.markedDone) {
+      if (!MARKED_DONE_OPTIONS.includes(item)) throw new Error('Invalid completion flag')
+      if (!done.includes(item)) done.push(item)
+    }
+    result.markedDone = done
   }
+
+  // Current semester; the year of study always follows from it
   if (body.currentSem !== undefined) {
-    semesterIndex(body.currentSem)
+    semesterNumber(body.currentSem) // throws if it isn't a valid label
     result.currentSem = body.currentSem
     result.yearOfStudy = Number(body.currentSem[1])
   }
+
+  // Modules taken, per semester: { Y1S1: [...], Y1S2: [...] }
   if (body.takenBySem !== undefined) {
-    if (!body.takenBySem || typeof body.takenBySem !== 'object' || Array.isArray(body.takenBySem)) throw new Error('Invalid semester modules')
-    result.takenBySem = Object.fromEntries(Object.entries(body.takenBySem).map(([semester, modules]) => {
-      semesterIndex(semester)
-      return [semester, codes(modules)]
-    }))
-  }
-  if (body.consents !== undefined) {
-    if (!body.consents || typeof body.consents !== 'object' || Array.isArray(body.consents)) throw new Error('Invalid consents')
-    result.consents = { gmail: current.consents?.gmail ?? false, outlook: current.consents?.outlook ?? false }
-    for (const key of ['gmail', 'outlook']) if (body.consents[key] !== undefined) {
-      if (typeof body.consents[key] !== 'boolean') throw new Error('Invalid consent')
-      result.consents[key] = body.consents[key]
+    if (!isPlainObject(body.takenBySem)) throw new Error('Invalid semester modules')
+    result.takenBySem = {}
+    for (const semester of Object.keys(body.takenBySem)) {
+      semesterNumber(semester) // throws if the label is invalid
+      result.takenBySem[semester] = cleanCodes(body.takenBySem[semester])
     }
   }
-  const sem = result.currentSem ?? current.currentSem
-  if (sem && ['currentSem', 'takenBySem', 'exempted', 'completedModules'].some(key => body[key] !== undefined)) {
-    const stored = result.takenBySem ?? current.takenBySem ?? {}
-    const entries = stored instanceof Map ? [...stored.entries()] : Object.entries(stored)
-    result.completedModules = [...new Set([
-      ...entries.filter(([id]) => semesterIndex(id) < semesterIndex(sem)).flatMap(([, modules]) => codes(modules)),
-      ...codes(result.exempted ?? current.exempted ?? []),
-    ])]
+
+  // Calendar export permissions not used
+  // if (body.consents !== undefined) {
+  //   if (!isPlainObject(body.consents)) throw new Error('Invalid consents')
+  //   const saved = current.consents || {}
+  //   result.consents = { gmail: saved.gmail === true, outlook: saved.outlook === true }
+  //   for (const provider of ['gmail', 'outlook']) {
+  //     const value = body.consents[provider]
+  //     if (value !== undefined) {
+  //       if (typeof value !== 'boolean') throw new Error('Invalid consent')
+  //       result.consents[provider] = value
+  //     }
+  //   }
+  // }
+
+  // Rebuild completedModules whenever something it depends on was sent
+  const semester = result.currentSem || current.currentSem 
+  const dependsOnChanged =
+    body.currentSem !== undefined ||
+    body.takenBySem !== undefined ||
+    body.exempted !== undefined ||
+    body.completedModules !== undefined
+  if (semester && dependsOnChanged) { //if there is a change, save the changes
+    const takenBySem = result.takenBySem || current.takenBySem || {}
+    const exempted = result.exempted || current.exempted || []
+    result.completedModules = buildCompletedModules(semester, takenBySem, exempted)
   }
+
   return result
 }

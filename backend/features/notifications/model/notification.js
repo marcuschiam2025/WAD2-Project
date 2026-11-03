@@ -1,25 +1,27 @@
 import mongoose from 'mongoose'
 
-// The kinds of notification the app can send. Add a type here before using it.
 export const NOTIFICATION_TYPES = [
-  'party_joined',          // someone joined your party (sent to the owner)
+  'party_joined',          // someone joined your party
+  'party_left',            // someone left your party
+  'party_owner_changed',   // you became the owner after the previous owner left
   'party_banned',          // you were removed from a party
+  'party_member_removed',  // another member was removed from your party
   'party_section_changed', // a party member changed the section they're going for
 ]
 
-// One notification for one user
 const notificationSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // who it's for
-    type: { type: String, enum: NOTIFICATION_TYPES, required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // user
+    type: { type: String, enum: NOTIFICATION_TYPES, required: true }, //from NOTIICATION_TYPES
     message: { type: String, required: true, maxlength: 300 },  // e.g. "Noah joined IS216 Squad"
-    link: String,                                                // where clicking it goes, e.g. "/rooms/6adc..."
-    read: { type: Boolean, default: false },
+    link: String,                                                // redirect to, e.g. "/rooms/6adc..."
+    read: { type: Boolean, default: false },                    // keep track of whether it has been read already
   },
   { timestamps: true }, // adds createdAt and updatedAt
 )
 
-// Makes "my newest notifications" and "how many are unread?" fast
+// Index (kept by MongoDB): a sorted list of each user's notifications, newest first,
+// pointing to the full documents. Makes "my newest notifications" and "unread count" fast.
 notificationSchema.index({ user: 1, createdAt: -1 })
 
 // MongoDB deletes each notification automatically 60 days after it's created

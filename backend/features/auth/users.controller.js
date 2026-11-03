@@ -13,9 +13,11 @@ export async function updateProfile(req, res) {
     Object.assign(req.user, profileUpdate(req.body, req.user))
     await req.user.save()
   } catch (error) {
-    // e.g. yearOfStudy outside 1-5
-    return res.status(400).json({ error: error.message })
+  if (error.name === 'ValidationError' || !error.name || error.name === 'Error') {
+    return res.status(400).json({ error: error.message })   // bad input
   }
+  throw error   // anything else: let the error handler report it as a server error
+}
   res.json(req.user)
 }
 

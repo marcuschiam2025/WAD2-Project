@@ -6,8 +6,6 @@ import { httpError } from '../../middleware/errorHandler.js'
 // ---------------------------------------------------------------------------
 
 // Sends the same notification to one or more users.
-// Example (in parties.controller.js):
-//   await notify([party.owner], 'party_joined', `${req.user.name} joined ${party.name}`, `/rooms/${party._id}`)
 export async function notify(userIds, type, message, link) {
   const docs = []
   for (const userId of userIds) {
@@ -17,6 +15,19 @@ export async function notify(userIds, type, message, link) {
     await Notification.insertMany(docs)
   }
 }
+
+
+export function displayName(name) {
+  if (!name) return 'Someone'
+
+  const words = name.replace(/[\s_]+$/, '').toLowerCase().split(' ')
+  const tidy = []
+  for (const word of words) {
+    if (word) tidy.push(word[0].toUpperCase() + word.slice(1))
+  }
+  return tidy.join(' ')
+}
+
 
 // ---------------------------------------------------------------------------
 // Route handlers (requireAuth has already set req.user)
@@ -30,7 +41,7 @@ export async function listMine(req, res) {
   res.json(notifications)
 }
 
-// GET /api/notifications/unread-count: the number on the bell icon
+// GET /api/notifications/unread-count: the number on the bell icon? see whether actually want to implement
 export async function unreadCount(req, res) {
   const count = await Notification.countDocuments({ user: req.user._id, read: false })
   res.json({ count })
