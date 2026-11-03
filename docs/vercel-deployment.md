@@ -4,6 +4,11 @@ Project: `minxie-ngs-projects/bidmaxxer`.
 Production URL: https://bidmaxxer.vercel.app
 Use Node.js 24 LTS for both services and the Vercel project.
 
+The backend's committed `jwks-rsa` patch replaces eager `require('jose')` calls
+with dynamic imports for Vercel's module loader. Keep the patch and its lockfile
+entry together; `config/firebase-compat.test.js` checks signing-key loading with
+ES-module `require()` disabled.
+
 Deploy the repository root, with `vercel.json` defining the Vite frontend and
 Express backend as services. `/api/*` reaches Express with its original path;
 other requests reach the frontend, including Vue Router deep links.
