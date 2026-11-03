@@ -39,8 +39,11 @@ vercel link --yes --scope minxie-ngs-projects --project bidmaxxer
 vercel deploy --prod --yes --scope minxie-ngs-projects
 ```
 
-This project was deployed from the local checkout; automatic Git deployments
-require linking the GitHub repository separately in Vercel.
+The intended automatic Production branch is `dev` in
+`marcuschiam2025/WAD2-Project`. This project was initially deployed from the local
+checkout; automatic Git deployments require granting the Vercel GitHub app access
+to that repository, connecting it in Vercel, and selecting `dev` as the Production
+branch. Preview credentials are configured separately from Production.
 
 Verify the landing page, a direct `/planner` navigation, `/api/health`, the public
 module catalogue, and Google sign-in after deployment.
