@@ -145,14 +145,6 @@ function place(code, semId) {
   return true
 }
 
-// Keyboard/touch alternative to dragging a basket module.
-function placeFromSelect(code, event) {
-  const semId = event.target.value
-  event.target.value = ''
-  if (!semId || !place(code, semId)) return
-  if (planner.hasWarning(plan.value, code, semId)) warning.value = { code, semId }
-}
-
 function onDragStart(e, code) {
   dragging.value = code
   e.dataTransfer.effectAllowed = 'move'
@@ -339,10 +331,6 @@ const onTrack = computed(() => !planner.hasAnyWarning)
               <div class="flex min-w-0 flex-1 flex-col leading-normal">
                 <span class="font-mono text-[13px] font-bold">{{ m.code }}</span>
                 <span class="truncate text-[12px] text-muted-foreground">{{ m.name }}</span>
-                <select :aria-label="`Place ${m.code} in semester`" :disabled="!!roomDecision(m.code)" class="mt-2 w-full rounded border border-border bg-card p-1 text-xs" @change="placeFromSelect(m.code, $event)" @mousedown.stop draggable="false">
-                  <option value="">Place in semester…</option>
-                  <option v-for="semester in plan.semesters.filter(canDrop)" :key="semester.id" :value="semester.id" :disabled="isFull(semester)">{{ semester.label }}{{ isFull(semester) ? ' (full)' : '' }}</option>
-                </select>
               </div>
               <button
                 v-if="!roomDecision(m.code)"
