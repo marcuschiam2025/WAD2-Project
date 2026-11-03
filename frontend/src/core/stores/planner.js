@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { modules, liveModules, requirementBuckets } from '../data/catalogue'
+import { liveModules } from '../data/catalogue'
 import { api } from '../services/api'
 import { buildChecklist } from '../utils/degreeChecklist'
 import { buildCurriculumChecklist } from '../utils/curriculumChecklist'
@@ -298,17 +298,16 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   // Requisites as AND-of-OR groups: [['IS111', 'CS101'], ['IS217']] = (IS111 or CS101) and IS217.
-  // From the backend catalogue when it is loaded, otherwise from the sample catalogue.
+  // From the backend catalogue; a module it does not list has none.
   function requisites(code) {
     const live = liveModules[code]
     if (live) return { ...live, prereqs: live.prerequisites ?? [], coreqs: live.corequisites ?? [] }
-    const mod = modules[code]
-    return { ...mod, categories: mod?.category === 'track' ? ['IS_TRACK'] : [], prereqs: (mod?.prereqs ?? []).map((c) => [c]), coreqs: (mod?.coreqs ?? []).map((c) => [c]) }
+    return { categories: [], prereqs: [], coreqs: [] }
   }
 
-  // The module to suggest for an unmet group: one in the basket, then one the app knows, else the first
+  // The module to suggest for an unmet group: one in the basket, else the first
   const suggestFrom = (group) =>
-    group.find((c) => basket.value.includes(c)) ?? group.find((c) => modules[c]) ?? group[0]
+    group.find((c) => basket.value.includes(c)) ?? group[0]
 
   // Match the server's academic checks against the current, possibly unsaved plan.
   // Preserve AND-of-OR groups for explanations, with one suggested course per group for add actions.
@@ -328,7 +327,7 @@ export const usePlannerStore = defineStore('planner', () => {
     const coreqGroups = mod.coreqs.filter(group => !group.some(c => positions.has(c) && positions.get(c) <= target))
     const exclusions = (mod.mutuallyExclusive ?? []).filter(c => positions.has(c))
     const rules = (mod.prerequisiteRules ?? []).filter(rule => {
-      const count = [...positions].filter(([c, at]) => at < target && (liveModules[c] || modules[c]) &&
+      const count = [...positions].filter(([c, at]) => at < target && liveModules[c] &&
         (rule.countFrom !== 'TRACK' || requisites(c).categories?.includes('IS_TRACK'))).length
       return count < rule.n
     }).map(rule => `${rule.n} ${rule.countFrom === 'TRACK' ? 'track courses' : 'courses'} before this one`)
@@ -552,41 +551,12 @@ export const usePlannerStore = defineStore('planner', () => {
     return request
   }
 
-  // Requirement overview: every placed module sorted into a bucket.
-  // Track modules beyond the 4 needed overflow to IS Depth (single track) or Free Electives.
-  const requirements = computed(() => {
-    const plan = activePlan.value
-    const buckets = Object.fromEntries(requirementBuckets.map((b) => [b.key, []]))
-    const placed = plan.semesters.flatMap((s) => s.modules.map(effectiveCode))
-    const firstTrack = plan.tracks[0]
-    let trackCount = 0
-    placed.forEach((code) => {
-      const mod = modules[code]
-      if (!mod) return
-      if (mod.category === 'track') {
-        if (mod.tracks?.includes(firstTrack) && trackCount < 4) {
-          trackCount++
-          buckets.track.push(mod)
-        } else if (mod.tracks?.includes(firstTrack) && plan.tracks.length === 1) {
-          buckets.depth.push(mod)
-        } else {
-          buckets.free.push(mod)
-        }
-      } else {
-        buckets[mod.category].push(mod)
-      }
-    })
-    return requirementBuckets.map((b) => ({ ...b, modules: buckets[b.key], planned: buckets[b.key].length }))
-  })
-
-  const plannedCu = computed(() => requirements.value.reduce((a, b) => a + Math.min(b.planned, b.required), 0))
-  const requiredCu = computed(() => requirementBuckets.reduce((a, b) => a + b.required, 0))
   // The backend's requirement check for the active plan (null offline, or when the plan has no major)
   const activeCheck = computed(() => checks.value[activePlan.value.id] ?? null)
 
   // Outstanding Modules: the 36 courses of the course progression (data/degree.js), matched against the backend's
-  // module catalogue (its tags, e.g. CORE:NUMERACY, and the track course lists) when it is loaded, else the sample one
-  const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModulesFor(activePlan.value.majorId) : modules))
+  // module catalogue (its tags, e.g. CORE:NUMERACY, and the track course lists) once it is loaded
+  const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModulesFor(activePlan.value.majorId) : {}))
   const exempted = computed(() => user.profile.exempted ?? [])
   const curriculumNotice = computed(() => {
     const saved = activePlan.value.majorId
@@ -648,9 +618,6 @@ export const usePlannerStore = defineStore('planner', () => {
     basketSaving,
     basketError,
     saveBasket,
-    requirements,
-    plannedCu,
-    requiredCu,
     hasAnyWarning,
     semIndex,
     semStatus,

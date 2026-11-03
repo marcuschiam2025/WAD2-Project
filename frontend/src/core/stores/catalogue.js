@@ -12,7 +12,7 @@ const IS_CATEGORIES = ['IS', 'IS_TRACK', 'IS_RELATED']
 const FIXED_CODES = new Set(degreeGroups.flatMap((g) => g.slots).flatMap((s) => s.codes ?? []))
 
 // The backend's module and major catalogue. Loaded once; while the backend is unreachable,
-// liveModules stays empty and everything falls back to the sample catalogue in core/data.
+// liveModules stays empty, so module lists and searches come up empty.
 export const useCatalogueStore = defineStore('catalogue', () => {
   const online = ref(false)
   const majors = ref([])

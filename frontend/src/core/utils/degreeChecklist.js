@@ -297,39 +297,3 @@ export function candidatesFor(item, plan, catalogue, exempted = []) {
     .map((m) => ({ ...m, key: m.code || item.id, placement: where.get(m.code) ?? null }))
     .sort((a, b) => a.code.localeCompare(b.code))
 }
-
-/**
- * Facts about one module for the student: have they taken it, which semesters the course sequence recommends it,
- * which degree requirements it can count as, and which graduation requirements it fulfils.
- * `rec` is null when the module is not part of the standard IS course sequence.
- * TODO(backend): "taken before" should come from the student's completed-module history, not just the plan.
- */
-export function moduleFacts(mod, plan, catalogue) {
-  const here = placedModules(plan, catalogue).find((p) => p.mod.code === mod.code) ?? null
-  const { recFor, chipFor } = semTools(plan)
-
-  const matches = degreeGroups.flatMap((g) =>
-    g.slots
-      .filter((s) => ['codes', 'basket', 'track', 'anyIs', 'free'].some((pass) => fits(pass, s, mod, plan)))
-      .map((s) => ({ slot: s, name: s.rule === 'codes' || s.rule === 'basket' ? s.label : g.label })),
-  )
-
-  let rec = null
-  let chip = null
-  if (matches.length) {
-    const starts = matches.map((m) => semNum(m.slot.window[0]))
-    const ends = matches.map((m) => semNum(m.slot.window[1]))
-    const first = matches.find((m) => semNum(m.slot.window[0]) === Math.min(...starts)).slot.window[0]
-    const last = matches.find((m) => semNum(m.slot.window[1]) === Math.max(...ends)).slot.window[1]
-    rec = recFor([first, last], here?.semId ?? null)
-    chip = chipFor([first, last], here?.semId ?? null)
-  }
-
-  return {
-    taken: here ? { status: here.status, semId: here.semId } : null,
-    countsAs: [...new Set(matches.map((m) => m.name))],
-    rec,
-    chip,
-    grad: mod.grad ?? [],
-  }
-}

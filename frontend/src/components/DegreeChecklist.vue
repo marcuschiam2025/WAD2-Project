@@ -67,7 +67,7 @@ const left = computed(() => totals.value.inProgress + totals.value.planned + tot
 const selectedId = ref(null)
 const moduleKey = ref(null)
 const item = computed(() => sections.value.flatMap((s) => s.items).find((i) => i.id === selectedId.value) ?? null)
-// The modules that can fill a checklist line, from the backend catalogue (or the sample one offline)
+// The modules that can fill a checklist line, from the backend catalogue
 const candidatesOf = (i) => candidatesFor(i, plan.value, planner.checklistCatalogue, planner.exempted).filter(m => !planner.checklistCatalogue[m.code]?.archived || m.placement)
 
 const candidates = computed(() => (item.value ? candidatesOf(item.value) : []))

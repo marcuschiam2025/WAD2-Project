@@ -61,3 +61,19 @@ test('requirements met by profile exemptions alone show as exempted, mixed ones 
   // Not exempted: a normal cleared requirement
   assert.equal(buildCurriculumChecklist(plan, mods, bundle).totals.exempted, 0)
 })
+test('with no track chosen, one row holds the track courses so the total stays the same', () => {
+  const tracks = [
+    { _id: 'T1', trackCode: 'BA', name: 'BA', requirements: [{ _id: 'T1R', level: 'track', label: 'Any 2', rule: 'chooseN', n: 2, modules: ['A', 'C'], cuRequired: 2 }] },
+    { _id: 'T2', trackCode: 'FT', name: 'FT', requirements: [{ _id: 'T2R', level: 'track', label: 'Any 2', rule: 'chooseN', n: 2, modules: ['C', 'D'], cuRequired: 2 }] },
+  ]
+  const b = { ...bundle, requirements: [{ _id: 'ELECT', level: 'major', label: 'IS electives', rule: 'anyFromCategory', categories: ['IS'], cuRequired: 2 }], tracks }
+  const undecided = buildCurriculumChecklist({ ...plan, tracks: [] }, mods, b)
+  const row = undecided.groups.flatMap(g => g.slots).find(r => r.id === 'undecided-track')
+  assert.equal(row.requirement.cuRequired, 2)
+  assert.deepEqual(row.taken.map(t => t.code), ['A', 'C'], 'courses from any track count here before the electives')
+  assert.deepEqual(curriculumCandidates(row, mods).map(m => m.code), ['A', 'C', 'D'])
+  const chosen = buildCurriculumChecklist({ ...plan, tracks: ['BA'] }, mods, b)
+  assert.ok(!chosen.groups.flatMap(g => g.slots).some(r => r.id === 'undecided-track'), 'the row goes once a track is chosen')
+  assert.equal(undecided.totals.required, chosen.totals.required)
+  assert.ok(!buildCurriculumChecklist({ ...plan, tracks: [] }, mods, bundle).groups.flatMap(g => g.slots).some(r => r.id === 'undecided-track'), 'a major with no tracks gets no row')
+})

@@ -5,7 +5,7 @@ import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM, MAX_PLANS
 import { useRoomsStore } from '@core/stores/rooms'
 import { useBiddingStore } from '@core/stores/bidding'
 import { useCatalogueStore } from '@core/stores/catalogue'
-import { modules, moduleName, tracks, trackName } from '@core/data/catalogue'
+import { moduleName, tracks, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -223,10 +223,10 @@ function resolveWarning(action, target) {
 const q = computed(() => query.value.trim().toLowerCase())
 const matches = (m) => !q.value || m.code.toLowerCase().includes(q.value) || m.name.toLowerCase().includes(q.value)
 const basket = computed(() =>
-  planner.basket.map((code) => ({ ...modules[code], code, name: moduleName(code) })).filter(matches),
+  planner.basket.map((code) => ({ code, name: moduleName(code) })).filter(matches),
 )
 
-// Search: GET /api/modules?q=… when the backend is up (debounced), the sample catalogue otherwise
+// Search: GET /api/modules?q=… (debounced)
 const apiResults = ref([])
 let searchTimer
 watch(q, (text) => {
@@ -240,8 +240,7 @@ watch(q, (text) => {
 const searchResults = computed(() => {
   if (!q.value) return []
   const placed = new Set(plan.value.semesters.flatMap((s) => s.modules.map(effectiveCode)))
-  const pool = catalogue.online ? apiResults.value : Object.values(modules).filter(matches)
-  return pool.filter((m) => !placed.has(m.code) && !planner.basket.includes(m.code)).slice(0, 4)
+  return apiResults.value.filter((m) => !placed.has(m.code) && !planner.basket.includes(m.code)).slice(0, 4)
 })
 
 // --- Requirements strip --------------------------------------------------------------------
@@ -444,7 +443,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
 
           <p class="text-[13px] text-muted-foreground">
             Now: {{ nowSem?.label.replace('S', 'Sem ') }}
-            · 1st track: {{ trackName(plan.tracks[0]) }}
+            · 1st track: {{ plan.tracks[0] ? trackName(plan.tracks[0]) : 'Not decided' }}
             <template v-if="plan.tracks[1]"> · 2nd track: {{ trackName(plan.tracks[1]) }}</template>
           </p>
 

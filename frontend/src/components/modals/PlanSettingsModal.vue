@@ -18,13 +18,15 @@ const semesterOptions = computed(() =>
   plan.value.semesters.filter((s) => !s.loa).map((s) => ({ value: s.id, label: s.label.replace('S', 'Sem ') })),
 )
 const trackOptions = tracks.map((t) => ({ value: t.code, label: t.name }))
+const firstTrackOptions = [{ value: '', label: 'Not decided' }, ...trackOptions]
 const secondTrackOptions = computed(() => [
   { value: '', label: 'None' },
   ...trackOptions.filter((o) => o.value !== plan.value.tracks[0]),
 ])
 const firstTrack = computed({
-  get: () => plan.value.tracks[0],
-  set: (v) => (plan.value.tracks = [v, ...plan.value.tracks.slice(1).filter((c) => c !== v)]),
+  get: () => plan.value.tracks[0] ?? '',
+  // A 2nd track needs a 1st, so "Not decided" clears both
+  set: (v) => (plan.value.tracks = v ? [v, ...plan.value.tracks.slice(1).filter((c) => c !== v)] : []),
 })
 const secondTrack = computed({
   get: () => plan.value.tracks[1] ?? '',
@@ -54,8 +56,8 @@ async function deletePlan() {
     </div>
 
     <SelectField v-model="plan.currentSem" label="Current semester" :options="semesterOptions" />
-    <SelectField v-model="firstTrack" label="1st track" :options="trackOptions" />
-    <SelectField v-model="secondTrack" label="2nd track" :options="secondTrackOptions" />
+    <SelectField v-model="firstTrack" label="1st track" :options="firstTrackOptions" />
+    <SelectField v-if="firstTrack" v-model="secondTrack" label="2nd track" :options="secondTrackOptions" />
 
     <div class="flex flex-col gap-2">
       <p class="text-[13px] font-medium">Exchange semesters</p>

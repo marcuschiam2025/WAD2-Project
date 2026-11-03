@@ -34,7 +34,12 @@ export function buildCurriculumChecklist(plan, catalogue, bundle, { exempted = [
   const major = sorted(bundle.requirements ?? [])
   const selected = (plan.tracks ?? []).map(code => bundle.tracks?.find(t => t.trackCode === code)).filter(Boolean)
   const main = selected[0]
-  const rules = [...major, ...sorted(main?.requirements ?? [])]
+  // No track chosen yet: hold the track courses' place so the degree still adds up to its full total
+  const trackCu = Math.min(...(bundle.tracks ?? []).map(t => (t.requirements ?? []).reduce((n, r) => n + (r.cuRequired ?? 0), 0)))
+  const undecided = !main && bundle.tracks?.length && trackCu > 0
+    ? [{ _id: 'undecided-track', level: 'track', label: 'Track courses (no track chosen yet)', rule: 'chooseN', n: trackCu, cuRequired: trackCu, modules: [...new Set(bundle.tracks.flatMap(t => (t.requirements ?? []).flatMap(r => r.modules ?? [])))] }]
+    : []
+  const rules = [...major, ...sorted(main?.requirements ?? []), ...undecided]
   const allocated = new Map(rules.map(r => [r._id, []]))
   const used = new Set()
   for (const pass of passes) {
