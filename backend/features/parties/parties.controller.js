@@ -35,12 +35,12 @@ async function partySections(party) {
   return loadSections({ term: party.termKey, modules: [party.module] });
 }
 
-function isMember(party, userId) {
+function isMember(party, userId) { 
   return party.members.some((memberId) => memberId.equals(userId));
 }
 
 async function generateInviteCode(length = 6) {
-  const CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; //removed IL1 and O0 because they look similar
   while (true) {
     let code = "";
     for (let i = 0; i < length; i++) {
@@ -73,9 +73,9 @@ export async function listParties(req, res) {
 
 export async function createParty(req, res) {
   const { name, description, module, termKey, maxMembers } = req.body;
-  const memberEmails = req.body.memberEmails || [];
-  const emails = memberEmails.map((email) => String(email).toLowerCase()) //convert emails to lowercase within the list
-  const invitees = await User.find({ email: { $in: emails } })//goes through the list find invited classmates, puts it into an object
+  //const memberEmails = req.body.memberEmails || [];
+  //const emails = memberEmails.map((email) => String(email).toLowerCase()) //convert emails to lowercase within the list
+  //const invitees = await User.find({ email: { $in: emails } })//goes through the list find invited classmates, puts it into an object
   const blocked = []; // different from banned. block is not saved to the mongoDB
 
 
@@ -94,18 +94,18 @@ export async function createParty(req, res) {
     members: [req.user._id],
   });
 
-  //invites the members (invitees is a list of objects, each object being a user)
-  for (const invitee of invitees) {
-    if (party.members.length >= party.maxMembers) break; 
+  // invitees not a function in the create collab room (no time?)
+  // for (const invitee of invitees) {
+  //   if (party.members.length >= party.maxMembers) break; 
 
-    const missing = await missingPrereqs(invitee, module, party.termKey);
+  //   const missing = await missingPrereqs(invitee, module, party.termKey);
 
-    if (missing.length > 0) {
-      blocked.push({ email: invitee.email, name: invitee.name, missing });
-    } else if (!isMember(party, invitee._id)) {
-      party.members.push(invitee._id);
-    }
-  }
+  //   if (missing.length > 0) {
+  //     blocked.push({ email: invitee.email, name: invitee.name, missing });
+  //   } else if (!isMember(party, invitee._id)) {
+  //     party.members.push(invitee._id);
+  //   }
+  // }
 
   await party.save();
   res.status(201).json({ party, blocked });
@@ -162,6 +162,7 @@ export async function deleteParty(req, res) {
 
 // GET /api/parties/:id/updates?since=<ISO date>
 // Short-polling: 204 (no body) when nothing changed since the given time
+// (for front end to refresh information periodically)
 export async function getUpdates(req, res) {
   const party = req.party;
   const since = new Date(req.query.since || 0);
@@ -224,15 +225,16 @@ export async function banMember(req, res) {
   res.json(party);
 }
 
+//currently no way to unban from front end yet
 // DELETE /api/parties/:id/ban/:userId — owner lifts a ban (the user can then rejoin with the code)
-export async function unbanMember(req, res) {
-  const party = req.party;
-  party.banned = party.banned.filter(
-    (bannedId) => !bannedId.equals(req.params.userId),
-  );
-  await party.save();
-  res.json(party);
-}
+// export async function unbanMember(req, res) {
+//   const party = req.party;
+//   party.banned = party.banned.filter(
+//     (bannedId) => !bannedId.equals(req.params.userId),
+//   );
+//   await party.save();
+//   res.json(party);
+// }
 
 // ---------------------------------------------------------------------------
 // Sections: votes and "my section"

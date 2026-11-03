@@ -1,26 +1,22 @@
 import mongoose from "mongoose";
 
-export const MAX_PARTY_SIZE = 8;
+export const MAX_PARTY_SIZE = 8; //arbitrary limit but good to have. If collab rooms are too big they might loose functionality.
 
 const { ObjectId } = mongoose.Schema.Types;
 
-// A party of students planning and bidding for one module together.
-// updatedAt doubles as the cursor for the polling endpoint.
 const partySchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    description: String,
-    module: { type: String, required: true ,uppercase: true}, // module the party is bidding for
-    // Required for new parties. Older parties saved before this field have none: they keep working,
-    // and their votes and section list cover every term on file.
-    termKey: { type: String, required: function () { return this.isNew; } },
-    inviteCode: { type: String, required: true, unique: true, uppercase: true },
+    description: { type: String, trim: true },
+    module: { type: String, required: true, uppercase: true, trim: true }, // e.g. "IS216"
+    termKey: { type: String, required: true, match: /^\d{4}-\d{2}_T(1|2|3A|3B)$/ }, // e.g. "2026-27_T2"
+    inviteCode: { type: String, required: true, unique: true, uppercase: true }, // 6 characters, shared to join
     owner: { type: ObjectId, ref: "User", required: true },
-    maxMembers: { type: Number, min: 2, max: MAX_PARTY_SIZE, default: 6 },
-    members: [{ type: ObjectId, ref: "User" }],
+    maxMembers: { type: Number, default: MAX_PARTY_SIZE},
+    members: [{ type: ObjectId, ref: "User" }], // includes the owner
     banned: [{ type: ObjectId, ref: "User" }],
 
-    //vote from each member may not necesarily be the actual section they choose
+    //votes is their vote not necessarily the section they bid for
     votes: [
       {
         _id: false,
@@ -44,14 +40,6 @@ const partySchema = new mongoose.Schema(
           updatedAt: { type: Date, default: Date.now },
         },
       ],
-      validate: {
-        // at most one entry per member
-        validator(list) {
-          const ids = list.map((s) => s.user.toString());
-          return new Set(ids).size === ids.length;
-        },
-        message: "A member can only share one section",
-      },
     },
   },
   { timestamps: true },

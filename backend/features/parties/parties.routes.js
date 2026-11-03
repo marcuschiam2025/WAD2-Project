@@ -16,7 +16,7 @@ router.get('/:id/updates', loadParty, requireMember, parties.getUpdates)
 // Members
 router.delete('/:id/members/me', loadParty, requireMember, parties.leaveParty)
 router.post('/:id/ban', loadParty, requireOwner, parties.banMember)
-router.delete('/:id/ban/:userId', loadParty, requireOwner, parties.unbanMember)
+//router.delete('/:id/ban/:userId', loadParty, requireOwner, parties.unbanMember)
 
 // Sections: votes (sections I like) and my section (the one I'm going for)
 router.put('/:id/votes', loadParty, requireMember, parties.saveVotes)
