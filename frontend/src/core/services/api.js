@@ -16,20 +16,32 @@ export class ApiError extends Error {
   }
 }
 
+const UNREACHABLE = 'Could not reach the BidMaxxer server. Check your connection and try again in a moment.'
+const RETRY_DELAY_MS = 1500
+
 async function request(method, path, body) {
   const token = tokenProvider ? await tokenProvider() : idToken
+  const send = () => fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
   let res
   try {
-    res = await fetch(`${BASE}${path}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    })
+    try {
+      res = await send()
+    } catch (error) {
+      // The server may only be restarting. A read changes nothing, so it is safe to ask once more before giving up;
+      // a save is never repeated, because the first attempt might have reached the server.
+      if (method !== 'GET') throw error
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
+      res = await send()
+    }
   } catch {
-    throw new ApiError('Could not reach the BidMaxxer server', 0)
+    throw new ApiError(UNREACHABLE, 0)
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
