@@ -330,7 +330,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
               <img :src="iconGrip" alt="" class="size-3.5" />
               <div class="flex min-w-0 flex-1 flex-col leading-normal">
                 <span class="font-mono text-[13px] font-bold">{{ m.code }}</span>
-                <span class="truncate text-[12px] text-muted-foreground">{{ m.name }}</span>
+                <span class="text-[12px] text-muted-foreground">{{ m.name }}</span>
               </div>
               <button
                 v-if="!roomDecision(m.code)"
@@ -393,7 +393,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
             </div>
             <div class="flex gap-2 pb-2">
               <BaseButton variant="outline" size="sm" @click="showSettings = true">Plan settings</BaseButton>
-              <BaseButton variant="secondary" size="sm" :disabled="importingToBidding" @click="importToBidding">{{ importingToBidding ? 'Saving plan…' : 'Import to Bidding Planner' }}</BaseButton>
+              <BaseButton variant="secondary" size="sm" :disabled="importingToBidding" @click="importToBidding">{{ importingToBidding ? 'Saving plan…' : 'View in Bidding Planner' }}</BaseButton>
             </div>
           </div>
 
