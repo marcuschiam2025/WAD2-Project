@@ -1,9 +1,12 @@
 import mongoose from 'mongoose'
 
-export const NOTIFICATION_TYPES = [ //can expand the list if required, consider reminders to vote
-  'party_joined',          // someone joined your party (sent to the owner)
+export const NOTIFICATION_TYPES = [
+  'party_joined',          // someone joined your party
+  'party_left',            // someone left your party
+  'party_owner_changed',   // you became the owner after the previous owner left
   'party_banned',          // you were removed from a party
-  'party_section_changed', // change in target section
+  'party_member_removed',  // another member was removed from your party
+  'party_section_changed', // a party member changed the section they're going for
 ]
 
 const notificationSchema = new mongoose.Schema(

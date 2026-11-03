@@ -16,6 +16,19 @@ export async function notify(userIds, type, message, link) {
   }
 }
 
+
+export function displayName(name) {
+  if (!name) return 'Someone'
+
+  const words = name.replace(/[\s_]+$/, '').toLowerCase().split(' ')
+  const tidy = []
+  for (const word of words) {
+    if (word) tidy.push(word[0].toUpperCase() + word.slice(1))
+  }
+  return tidy.join(' ')
+}
+
+
 // ---------------------------------------------------------------------------
 // Route handlers (requireAuth has already set req.user)
 // ---------------------------------------------------------------------------
