@@ -3,3 +3,5 @@ allowBuilds:
   # @firebase/util only auto-configures the browser SDK on Firebase Hosting
   '@firebase/util': false
   protobufjs: false
+patchedDependencies:
+  jwks-rsa@4.1.0: patches/jwks-rsa@4.1.0.patch

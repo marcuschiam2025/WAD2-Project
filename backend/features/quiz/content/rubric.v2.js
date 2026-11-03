@@ -1,6 +1,6 @@
 // Approved pilot assumptions, not empirically calibrated track predictions.
 // This module is server-only. Never include it in the public question response.
-export const RUBRIC_VERSION = 'v2-draft'
+export const RUBRIC_VERSION = 'v2.1'
 
 export const THEMES = ['DATA', 'BUILD', 'FINANCE', 'CIVIC', 'RELIABLE', 'PEOPLE']
 
@@ -40,6 +40,11 @@ export const SCENARIO_MAPPINGS = {
 }
 
 export const SUPPORTING_THEME_WEIGHT = 0.25
+
+// The match score weighs ratings and scenarios equally. A scenario answer is scaled down slightly because a set of
+// one-of-four choices swings further than ratings do. Both are judgment calls to revisit with real student results.
+export const BLEND_SCENARIO_SHARE = 0.5
+export const SCENARIO_SCALE = 0.75
 
 // Keys also establish stable display order for equal scores, not a tiebreaker.
 export const TRACK_PROFILES = {

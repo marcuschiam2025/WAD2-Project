@@ -125,6 +125,10 @@ export const api = {
   // the terms before it count. round is required.
   referenceBid: (moduleCode, amount, round, term) =>
     request('GET', `/bidding/reference/${moduleCode}${query({ amount, round, term })}`),
+  // The same for one section, matched on its instructors and class times:
+  // { ...referenceBid, low, high, matchLevel: 'prof-slot' | 'prof' | 'module' | null, history: [{ term, median, min, sections }], section }
+  sectionReferenceBid: (sectionId, amount, round, term) =>
+    request('GET', `/bidding/reference-bid${query({ sectionId, amount, round, term })}`),
   weightage: (moduleCode) => request('GET', `/bidding/weightage/${moduleCode}`),
   savedBidPlans: (term) => request('GET', `/bidding/plans${query({ term })}`),
   cart: (planId, term) => request('GET', `/bidding/cart${query({ planId, term })}`),

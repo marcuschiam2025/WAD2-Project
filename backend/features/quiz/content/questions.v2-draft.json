@@ -1,5 +1,5 @@
 {
-  "rubricVersion": "v2-draft",
+  "rubricVersion": "v2.1",
   "status": "unpublished",
   "questions": [
     {
@@ -16,10 +16,6 @@
         {
           "id": "2",
           "label": "Slightly interested"
-        },
-        {
-          "id": "3",
-          "label": "Unsure"
         },
         {
           "id": "4",
@@ -76,10 +72,6 @@
           "label": "Slightly interested"
         },
         {
-          "id": "3",
-          "label": "Unsure"
-        },
-        {
           "id": "4",
           "label": "Interested"
         },
@@ -134,10 +126,6 @@
           "label": "Slightly interested"
         },
         {
-          "id": "3",
-          "label": "Unsure"
-        },
-        {
           "id": "4",
           "label": "Interested"
         },
@@ -161,10 +149,6 @@
         {
           "id": "2",
           "label": "Slightly confident"
-        },
-        {
-          "id": "3",
-          "label": "Unsure"
         },
         {
           "id": "4",
@@ -221,10 +205,6 @@
           "label": "Slightly confident"
         },
         {
-          "id": "3",
-          "label": "Unsure"
-        },
-        {
           "id": "4",
           "label": "Confident"
         },
@@ -279,10 +259,6 @@
           "label": "Slightly confident"
         },
         {
-          "id": "3",
-          "label": "Unsure"
-        },
-        {
           "id": "4",
           "label": "Confident"
         },
@@ -306,10 +282,6 @@
         {
           "id": "2",
           "label": "Somewhat unlike me"
-        },
-        {
-          "id": "3",
-          "label": "Unsure"
         },
         {
           "id": "4",
@@ -366,10 +338,6 @@
           "label": "Somewhat unlike me"
         },
         {
-          "id": "3",
-          "label": "Unsure"
-        },
-        {
           "id": "4",
           "label": "Somewhat like me"
         },
@@ -424,10 +392,6 @@
           "label": "Somewhat unlike me"
         },
         {
-          "id": "3",
-          "label": "Unsure"
-        },
-        {
           "id": "4",
           "label": "Somewhat like me"
         },
@@ -451,10 +415,6 @@
         {
           "id": "2",
           "label": "Slightly interested"
-        },
-        {
-          "id": "3",
-          "label": "Unsure"
         },
         {
           "id": "4",
@@ -511,10 +471,6 @@
           "label": "Slightly interested"
         },
         {
-          "id": "3",
-          "label": "Unsure"
-        },
-        {
           "id": "4",
           "label": "Interested"
         },
@@ -567,10 +523,6 @@
         {
           "id": "2",
           "label": "Slightly interested"
-        },
-        {
-          "id": "3",
-          "label": "Unsure"
         },
         {
           "id": "4",

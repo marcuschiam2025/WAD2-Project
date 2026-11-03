@@ -1,46 +1,49 @@
 <script setup>
-// Grouped bar chart: one group per quiz section (plus the overall index), one bar per track, scored 0–100.
+// One bar per track: the single score the track was ranked on, 0–100, best first.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
-import { quizTrackNames, sectionLabels } from '@core/stores/quiz'
+import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip } from 'chart.js'
+import { quizTrackNames } from '@core/stores/quiz'
 
-Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
+Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip)
 
 const props = defineProps({
-  results: { type: Array, required: true }, // attempt.results: { track, scenarioPreferenceIndex, sectionPreferenceIndices }
+  results: { type: Array, required: true }, // attempt.results, best first
+  provisional: Boolean, // an older result ranked on scenario choices alone, with no match score
 })
 
-const palette = { SMT: '#2563eb', BA: '#16a34a', PD: '#f59e0b', FT: '#7c3aed' }
-const fallback = ['#2563eb', '#16a34a', '#f59e0b', '#7c3aed', '#dc2626']
-
-const labels = computed(() => ['Overall', ...Object.values(sectionLabels)])
-const datasets = computed(() =>
-  props.results.map((r, i) => ({
-    label: quizTrackNames[r.track] ?? r.track,
-    backgroundColor: palette[r.track] ?? fallback[i % fallback.length],
-    borderRadius: 4,
-    data: [r.scenarioPreferenceIndex, ...Object.keys(sectionLabels).map((s) => r.sectionPreferenceIndices?.[s])].map((v) => (typeof v === 'number' ? Math.round(v) : null)),
-  })),
+const scoreOf = (r) => (props.provisional ? r.scenarioPreferenceIndex : r.alignmentIndex)
+const rows = computed(() =>
+  props.results.map((r) => ({ label: quizTrackNames[r.track] ?? r.track, score: typeof scoreOf(r) === 'number' ? Math.round(scoreOf(r)) : null })),
 )
+const chartData = () => ({
+  labels: rows.value.map((row) => row.label),
+  datasets: [{ data: rows.value.map((row) => row.score), backgroundColor: '#2563eb', borderRadius: 4, borderSkipped: 'start', maxBarThickness: 20 }],
+})
 
 const canvas = ref(null)
 let chart
 onMounted(() => {
   chart = new Chart(canvas.value, {
     type: 'bar',
-    data: { labels: labels.value, datasets: datasets.value },
+    data: chartData(),
     options: {
+      indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      scales: { y: { min: 0, max: 100, ticks: { stepSize: 25 } }, x: { grid: { display: false } } },
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, boxHeight: 12 } } },
+      scales: {
+        x: { min: 0, max: 100, ticks: { stepSize: 25, color: '#475569' }, grid: { color: '#e2e8f0' }, border: { display: false } },
+        y: { ticks: { color: '#0f172a' }, grid: { display: false }, border: { display: false } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { displayColors: false, callbacks: { label: (item) => `${item.parsed.x} / 100` } },
+      },
     },
   })
 })
-watch(datasets, () => {
+watch(rows, () => {
   if (!chart) return
-  chart.data.labels = labels.value
-  chart.data.datasets = datasets.value
+  chart.data = chartData()
   chart.update()
 })
 onBeforeUnmount(() => chart?.destroy())
@@ -48,22 +51,20 @@ onBeforeUnmount(() => chart?.destroy())
 
 <template>
   <figure class="flex flex-col gap-2">
-    <div class="h-72 sm:h-80">
-      <canvas ref="canvas" role="img" aria-label="Grouped bar chart of scenario preference scores out of 100 for each track, overall and by quiz section. The same figures are listed in the table below." />
+    <div class="h-56">
+      <canvas ref="canvas" role="img" aria-label="Bar chart of your score out of 100 for each track, highest first. The same figures are listed in the table below." />
     </div>
     <details class="text-xs text-muted-foreground">
       <summary class="cursor-pointer">View chart data as a table</summary>
-      <div class="mt-2 overflow-x-auto">
-        <table class="w-full text-left">
-          <thead><tr><th class="py-1 pr-3 font-medium">Track</th><th v-for="l in labels" :key="l" class="py-1 pr-3 font-medium">{{ l }}</th></tr></thead>
-          <tbody>
-            <tr v-for="d in datasets" :key="d.label" class="border-t border-border">
-              <th class="py-1 pr-3 font-normal text-foreground">{{ d.label }}</th>
-              <td v-for="(v, i) in d.data" :key="i" class="py-1 pr-3 font-mono">{{ v ?? '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <table class="mt-2 w-full text-left">
+        <thead><tr><th class="py-1 pr-3 font-medium">Track</th><th class="py-1 font-medium">Score</th></tr></thead>
+        <tbody>
+          <tr v-for="row in rows" :key="row.label" class="border-t border-border">
+            <th class="py-1 pr-3 font-normal text-foreground">{{ row.label }}</th>
+            <td class="py-1 font-mono">{{ row.score ?? '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
     </details>
   </figure>
 </template>

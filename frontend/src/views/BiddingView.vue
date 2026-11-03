@@ -197,9 +197,6 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
       </section>
       <div v-if="emptyReason" v-enter class="card flex flex-col items-start gap-3 p-6"> <!-- motion: fade + slide up on mount -->
         <p class="text-[14px] leading-normal">{{ emptyReason }}</p>
-        <div v-if="bidding.droppedModules.length" class="flex flex-wrap items-center gap-2">
-          <BaseButton v-for="code in bidding.droppedModules" :key="code" size="sm" variant="outline" :aria-label="`Add ${code} back to the cart`" @click="bidding.restoreModule(code)">Add {{ code }} back</BaseButton>
-        </div>
         <BaseButton variant="outline" to="/planner">Open the What-If Planner</BaseButton>
       </div>
 
@@ -289,16 +286,6 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
           <p v-if="bidding.clashes.size" class="text-[13px] text-destructive">
             Class or exam clash: {{ clashList }} overlap. Click one and pick an alternative section.
           </p>
-          <div v-if="bidding.droppedModules.length" class="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
-            <p class="text-overline text-muted-foreground">Dropped from your cart</p>
-            <ul class="flex flex-col divide-y divide-border">
-              <li v-for="code in bidding.droppedModules" :key="code" class="flex items-center justify-between gap-3 py-2 text-[13px]">
-                <span class="min-w-0 truncate"><span class="font-mono font-bold">{{ code }}</span><span class="ml-2 text-muted-foreground">{{ moduleName(code) }}</span></span>
-                <BaseButton size="sm" variant="outline" :aria-label="`Add ${code} back to the cart`" @click="bidding.restoreModule(code)">Add back</BaseButton>
-              </li>
-            </ul>
-            <p class="text-[12px] text-muted-foreground">These modules are still in your What-If plan but are not part of this bid. Add one back to bid for it again.</p>
-          </div>
           <ExamSchedule :sections="bidding.bookedSections" />
         </div>
 

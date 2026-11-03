@@ -47,8 +47,12 @@ export function validateSubmissionV2(body, rubric) {
   for (const question of rubric.questions) {
     const section = coverage[question.section] ??= { answered: 0, informativeScenarios: 0 }
     const optionId = responses.get(question.id)
-    if (optionId === null || (question.type === 'scenario' && optionId === 'e')) continue
-    section.answered += 1 // rating 3 counts toward completion, but not scoring evidence
+    if (optionId === null) {
+      issues.push({ questionId: question.id, section: question.section, code: 'QUESTION_UNANSWERED' })
+      continue
+    }
+    if (question.type === 'scenario' && optionId === 'e') continue
+    section.answered += 1
     if (question.type === 'scenario') section.informativeScenarios += 1
   }
   for (const [section, counts] of Object.entries(coverage)) {

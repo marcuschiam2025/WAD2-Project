@@ -12,7 +12,7 @@ Open http://localhost:5173/quiz. The current local API on port 4000 uses develop
 - A completed rating attempt saves and displays four tracks, six theme indices and separate scenario indices.
 - Results reload from server history.
 - Choosing E for both Interests scenarios yields a section error and a Review Interests link.
-- Correcting one scenario permits submission; all-Unsure ratings produce provisional results without fabricated alignment indices.
+- Correcting one scenario permits submission; all-Unsure ratings produce provisional results without fabricated alignment indices. (This describes the v2-draft preview. From v2.1 there is no Unsure option; see `scoring-revision.md`.)
 - The history screen displays the two saved test results.
 
 Production frontend build and 28 unit checks passed at the Git checkpoint. These checks do not establish the scoring rubric's empirical validity or complete production authentication.
