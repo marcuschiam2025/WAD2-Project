@@ -1,11 +1,11 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
-import { bidHistory, sections, days, weightage, MIN_BID, estimateHistory } from '../data/bidding'
+import { bidHistory, sections, days, weightage, MIN_BID, estimateHistory, termLabel } from '../data/bidding'
 import { api } from '../services/api'
 import { usePlannerStore, effectiveCode } from './planner'
 import { useRoomsStore } from './rooms'
 import { useUserStore } from './user'
-import { findClashes, findExamClashes, sectionMeetings } from '../utils/clash'
+import { findClashes, findExamClashes, sectionCode, sectionMeetings } from '../utils/clash'
 
 // The bidding timetable is the next semester of the chosen What-If plan. Pick the plan with `planId`.
 export const useBiddingStore = defineStore('bidding', () => {
@@ -47,27 +47,8 @@ export const useBiddingStore = defineStore('bidding', () => {
   const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))))
 
   // Per plan: modules taken out of the cart, the section picked per module, and the e$ typed per module.
-  // The dropped list is kept in this browser: the saved cart can't tell a dropped module from a new one.
-  const droppedKey = () => `bidmaxxer:dropped:${user.uid ?? 'signed-out'}`
-  const dropped = ref(loadDropped())
-  function loadDropped() {
-    try {
-      return JSON.parse(localStorage.getItem(droppedKey())) ?? {}
-    } catch {
-      return {}
-    }
-  }
-  watch(
-    dropped,
-    () => {
-      try {
-        localStorage.setItem(droppedKey(), JSON.stringify(dropped.value))
-      } catch {
-        // storage blocked: the list still works for this session
-      }
-    },
-    { deep: true },
-  )
+  // Modules taken out during this visit. A reload follows the plan and the saved cart again, so nothing stays hidden.
+  const dropped = ref({})
   const chosen = ref({})
   const typed = ref({})
 
@@ -116,7 +97,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   const bookedSections = computed(() => Object.entries(booked.value).map(([code, id]) => sections.find(s => s.id === id && s.module === code && liveSections.has(s.id))).filter(Boolean))
   const unavailableSelections = computed(() => Object.entries(booked.value)
     .filter(([code, id]) => !sections.some(s => s.id === id && s.module === code && liveSections.has(s.id)))
-    .map(([module, sectionId]) => ({ module, sectionId, section: sectionId?.includes(':') ? sectionId.split(':').pop() : sectionId?.startsWith(`${module}-`) ? sectionId.slice(module.length + 1) : sectionId ?? 'Unknown section' })))
+    .map(([module, sectionId]) => ({ module, sectionId, section: sectionCode(sectionId, module) ?? 'Unknown section' })))
   const archivedSelections = computed(() => bookedSections.value.filter(s => s?.archived).map(s => `${s.module} ${s.section}`))
   const allocated = computed(() => Object.values(bids.value).reduce((a, b) => a + (Number(b) || 0), 0))
 
@@ -148,7 +129,7 @@ export const useBiddingStore = defineStore('bidding', () => {
   const roundInfo = computed(() => {
     const date = round.value.closesAt ? new Date(round.value.closesAt) : null
     return {
-      term: round.value.term ?? 'No section catalogue',
+      term: termLabel(round.value.term) ?? 'No section catalogue',
       name: round.value.round ? `Round ${round.value.round}` : 'Round not configured',
       closesAt: date && Number.isFinite(date.getTime()) ? date : null,
       configured: round.value.configured === true,
@@ -256,7 +237,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     // The room's section, looked up in the bidding term (prerequisites are checked on the bidding page)
     const room = rooms.getRoom(roomId)
     if (!room) throw new Error('This room is no longer available.')
-    if (room.term && room.term !== term) throw new Error(`This room is for ${room.term}, but bidding is for ${term}.`)
+    if (room.term && room.term !== term) throw new Error(`This room is for ${termLabel(room.term)}, but bidding is for ${termLabel(term)}.`)
     const offered = await api.sections([room.module], term)
     const found = offered.find(s => s.id === sectionId)
     if (!found) throw new Error('This section is not available in the bidding term.')
@@ -329,7 +310,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     online.value = false
     chosen.value = {}
     typed.value = {}
-    dropped.value = loadDropped()
+    dropped.value = {}
     selectedModule.value = null
     savedAt.value = null
     saveError.value = ''

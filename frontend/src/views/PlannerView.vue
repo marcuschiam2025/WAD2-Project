@@ -5,6 +5,7 @@ import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM, MAX_PLANS
 import { useRoomsStore } from '@core/stores/rooms'
 import { useBiddingStore } from '@core/stores/bidding'
 import { useCatalogueStore } from '@core/stores/catalogue'
+import { useUserStore } from '@core/stores/user'
 import { moduleName, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -47,6 +48,11 @@ const planner = usePlannerStore()
 const rooms = useRoomsStore()
 const bidding = useBiddingStore()
 const catalogue = useCatalogueStore()
+const user = useUserStore()
+const overline = computed(() => {
+  const { major, intakeYear } = user.profile
+  return intakeYear ? `BSc ${major} · Class of ${Number(intakeYear) + 4}` : `BSc ${major}`
+})
 
 // Modules whose section was accepted in a collab room are locked and get their own colour. This only reads the student's
 // accepted section; it never edits the plan (rooms.decided stays empty on purpose).
@@ -164,6 +170,30 @@ function dropOnSemester(sem) {
   if (planner.hasWarning(plan.value, code, sem.id)) warning.value = { code, semId: sem.id }
 }
 
+// Tap a module, then tap a semester: dragging doesn't work on touch screens
+const picked = ref(null)
+watch(() => planner.activePlanId, () => (picked.value = null))
+function pick(code) {
+  picked.value = picked.value === code ? null : code
+}
+function placePicked(sem) {
+  const code = picked.value
+  if (!code || !canDrop(sem)) return
+  picked.value = null
+  if (place(code, sem.id) && planner.hasWarning(plan.value, code, sem.id)) warning.value = { code, semId: sem.id }
+}
+function tapPlaced(event, code, sem) {
+  if (event.target.closest('button')) return
+  event.stopPropagation()
+  if (picked.value && picked.value !== code) placePicked(sem)
+  else if (status(sem) !== 'done' && !roomDecision(code)) pick(code)
+}
+// A module picked from a semester goes back to the basket
+function tapBasket() {
+  if (picked.value && !planner.basket.includes(picked.value)) planner.returnToBasket(picked.value)
+  picked.value = null
+}
+
 // Clearing the basket can be undone for a few seconds, in case it was a mis-click
 const clearedCodes = ref(null)
 let undoTimer
@@ -263,7 +293,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
 
 <template>
   <div>
-    <PageHeader overline="BSc Information Systems · Class of 2027" title="What-If Planner">
+    <PageHeader :overline="overline" title="What-If Planner">
       <template #actions>
         <BaseButton variant="outline" size="lg" @click="planner.addSemester({ loa: true })">Add LOA term</BaseButton>
         <BaseButton size="lg" :disabled="!planner.online || planner.planActionPending" @click="addPlan">Add plan</BaseButton>
@@ -289,6 +319,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
           :class="dragging && !planner.basket.includes(dragging) && 'bg-primary-tint'"
           @dragover.prevent
           @drop.prevent="dropOnBasket"
+          @click="tapBasket"
         >
           <div class="flex flex-col gap-1">
             <div class="flex items-center justify-between">
@@ -298,7 +329,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                 <button
                   v-if="clearable"
                   type="button"
-                  class="rounded-sm px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground hover:bg-muted hover:text-destructive"
+                  class="rounded-sm px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground hover:bg-muted hover:text-destructive max-lg:min-h-11 max-lg:min-w-11 max-lg:px-3 max-lg:text-[13px]"
                   @click="clearBasket"
                 >Clear</button>
               </div>
@@ -323,9 +354,14 @@ const onTrack = computed(() => !planner.hasAnyWarning)
               :draggable="!roomDecision(m.code)"
               :title="roomDecision(m.code) ? `Accepted in ${roomDecision(m.code).roomName}. Undo it in the room to move it.` : undefined"
               class="group flex items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-[opacity,border-color]"
-              :class="[roomDecision(m.code) ? 'border-2 border-success bg-success-tint' : 'cursor-grab border-border hover:border-primary/50 active:cursor-grabbing', dragging === m.code && 'border-primary opacity-50']"
+              :class="[roomDecision(m.code) ? 'border-2 border-success bg-success-tint' : 'cursor-grab border-border hover:border-primary/50 active:cursor-grabbing', dragging === m.code && 'border-primary opacity-50', picked === m.code && 'border-primary ring-2 ring-primary/30']"
+              :role="roomDecision(m.code) ? undefined : 'button'"
+              :tabindex="roomDecision(m.code) ? undefined : 0"
+              :aria-pressed="roomDecision(m.code) ? undefined : picked === m.code"
               @dragstart="onDragStart($event, m.code)"
               @dragend="onDragEnd"
+              @click.stop="!roomDecision(m.code) && pick(m.code)"
+              @keydown.enter.self="!roomDecision(m.code) && pick(m.code)"
             >
               <img :src="iconGrip" alt="" class="size-3.5" />
               <div class="flex min-w-0 flex-1 flex-col leading-normal">
@@ -337,7 +373,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                 type="button"
                 draggable="false"
                 :aria-label="`Remove ${m.code} from the basket`"
-                class="shrink-0 rounded-sm px-1 text-[12px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
+                class="shrink-0 rounded-sm px-1 text-[12px] text-muted-foreground hover:text-destructive lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
                 @click.stop="planner.removeFromBasket(m.code)"
               >✕</button>
             </li>
@@ -364,7 +400,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
           <p v-if="!planner.basket.length" class="text-[12px] text-muted-foreground">
             Your basket is empty. Save modules from your track matches, or drag one back here.
           </p>
-          <p v-else class="text-[12px] text-muted-foreground">Drag a module onto a semester.</p>
+          <p v-else class="text-[12px] text-muted-foreground">Drag a module onto a semester, or tap it and then tap the semester.</p>
         </aside>
 
         <!-- Plans -->
@@ -403,6 +439,11 @@ const onTrack = computed(() => !planner.hasAnyWarning)
             <template v-if="plan.tracks[1]"> · 2nd track: {{ trackName(plan.tracks[1]) }}</template>
           </p>
 
+          <p v-if="picked" role="status" class="flex items-center justify-between gap-2 rounded-md bg-primary-tint px-3 py-2 text-[13px]">
+            Tap a semester to place {{ picked }}.
+            <button type="button" class="font-semibold text-primary hover:underline" @click="picked = null">Cancel</button>
+          </p>
+
           <div class="flex gap-2.5 overflow-x-auto pb-1">
             <template v-for="col in columns" :key="col.key">
               <!-- Collapsed finished year -->
@@ -427,10 +468,12 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                   'border border-border bg-card': status(col.sem) === 'future' && !col.sem.loa,
                   'border border-border bg-muted': status(col.sem) === 'done',
                   'border border-dashed border-border bg-muted': col.sem.loa,
+                  'cursor-pointer ring-2 ring-primary/30': picked && canDrop(col.sem),
                 }"
                 @dragenter="canDrop(col.sem) && (dragOver = col.sem.id)"
                 @dragover.prevent
                 @drop.prevent="dropOnSemester(col.sem)"
+                @click.stop="placePicked(col.sem)"
               >
                 <div class="flex items-center justify-between px-0.5 font-mono text-[11px]">
                   <button
@@ -462,9 +505,11 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                         : 'bg-secondary',
                     status(col.sem) !== 'done' && !roomDecision(code) && 'cursor-grab',
                     dragging === code && 'opacity-40',
+                    picked === code && 'ring-2 ring-primary',
                   ]"
                   @dragstart="onDragStart($event, code)"
                   @dragend="onDragEnd"
+                  @click="tapPlaced($event, code, col.sem)"
                 >
                   <span class="flex items-center gap-1 font-mono text-[12px] font-bold">
                     {{ code }}
@@ -487,7 +532,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                     v-if="status(col.sem) !== 'done' && !roomDecision(code)"
                     type="button"
                     :aria-label="`Move ${code} back to basket`"
-                    class="absolute top-1 right-1.5 hidden text-[11px] text-muted-foreground group-hover:block hover:text-foreground"
+                    class="absolute top-1 right-1.5 text-[11px] text-muted-foreground hover:text-foreground lg:hidden lg:group-hover:block"
                     @click="planner.returnToBasket(code)"
                   >
                     ✕

@@ -7,6 +7,7 @@ import { usePlannerStore } from '@core/stores/planner'
 import { api } from '@core/services/api'
 import { useCalendarExportStore } from '@core/stores/calendarExport'
 import { moduleName } from '@core/data/catalogue'
+import { termLabel } from '@core/data/bidding'
 import { buildIcs, downloadFile, hasTeachingDates } from '@core/utils/ics'
 import { findClashes, findExamClashes } from '@core/utils/clash'
 import { fmtE } from '@core/utils/money'
@@ -117,7 +118,7 @@ async function confirmDelete() {
           <article v-for="copy in copies" :key="copy.id" class="card flex flex-col gap-3 p-5">
             <h2 class="text-lg font-semibold">{{ copy.name }}</h2>
             <p class="font-mono text-xl font-semibold">e$ {{ fmtE(copy.allocated) }} <span class="text-sm font-normal">saved bids</span></p>
-            <p class="text-sm text-muted-foreground">{{ copy.items.length }} modules · {{ copy.term }}</p>
+            <p class="text-sm text-muted-foreground">{{ copy.items.length }} modules · {{ termLabel(copy.term) }}</p>
             <p v-if="copy.updatedAt" class="text-xs text-muted-foreground">Saved {{ new Date(copy.updatedAt).toLocaleString() }}</p>
             <p v-if="blocked(copy)" class="text-sm text-destructive">{{ blocked(copy) }}</p>
             <BaseButton :disabled="!!blocked(copy) || (needsDates(copy) && !termStart) || adding !== null" @click="addToGoogle(copy)">{{ adding === copy.id ? 'Adding to Google Calendar…' : 'Add to Google Calendar' }}</BaseButton>
@@ -127,13 +128,14 @@ async function confirmDelete() {
             <BaseButton variant="destructive-outline" :disabled="!planner.online || planner.planActionPending || planner.plans.length <= 1" :title="planner.plans.length <= 1 ? 'You need at least one plan' : undefined" @click="planToDelete = copy">Delete plan</BaseButton>
           </article>
         </div>
+        <p v-if="copies.length > 1" class="text-[12px] text-muted-foreground md:hidden">Swipe the table sideways to compare your plans.</p>
         <section class="card overflow-x-auto" aria-label="Saved section comparison">
           <table class="w-full text-left text-sm">
-            <thead class="bg-muted"><tr><th class="p-4">Module</th><th v-for="copy in copies" :key="copy.id" class="p-4">{{ copy.name }}</th></tr></thead>
+            <thead class="bg-muted"><tr><th class="sticky left-0 z-10 bg-muted p-4">Module</th><th v-for="copy in copies" :key="copy.id" class="p-4">{{ copy.name }}</th></tr></thead>
             <tbody><tr v-for="code in modules" :key="code" class="border-t border-border">
-              <th class="p-4"><span class="font-mono">{{ code }}</span><span class="block font-normal">{{ moduleName(code) }}</span></th>
+              <th class="sticky left-0 z-10 max-w-[130px] bg-card p-4 md:max-w-none"><span class="font-mono">{{ code }}</span><span class="block font-normal">{{ moduleName(code) }}</span></th>
               <td v-for="copy in copies" :key="copy.id" class="min-w-52 p-4">
-                <template v-if="cell(copy,code)"><p>{{ cell(copy,code).section?.section || 'Section unavailable' }} · e$ {{ cell(copy,code).amount }}</p><p v-if="cell(copy,code).section" class="mt-1 text-xs text-muted-foreground">{{ bidding.slotLabel(cell(copy,code).section) }}</p></template>
+                <template v-if="cell(copy,code)"><p>{{ cell(copy,code).section?.section || 'Section unavailable' }} · e$ {{ fmtE(cell(copy,code).amount) }}</p><p v-if="cell(copy,code).section" class="mt-1 text-xs text-muted-foreground">{{ bidding.slotLabel(cell(copy,code).section) }}</p></template>
                 <span v-else class="text-muted-foreground">Not in this cart</span>
               </td>
             </tr></tbody>

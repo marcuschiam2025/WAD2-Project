@@ -91,7 +91,7 @@ async function leave() {
             <div class="flex flex-col gap-1.5 leading-normal">
               <h2 class="text-[18px] font-semibold">{{ room.name }}</h2>
               <p class="flex items-center gap-2 text-[13px] text-muted-foreground">
-                <span class="rounded-sm bg-secondary px-1.5 py-px font-mono text-[11px] font-bold text-foreground">{{ room.module }}</span>
+                <span class="shrink-0 rounded-sm bg-secondary px-1.5 py-px font-mono text-[11px] font-bold whitespace-nowrap text-foreground">{{ room.module }}</span>
                 {{ moduleName(room.module) }}
               </p>
               <p v-if="room.description" class="text-[13px] text-muted-foreground">{{ room.description }}</p>

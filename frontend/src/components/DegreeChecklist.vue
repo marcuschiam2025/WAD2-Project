@@ -7,6 +7,8 @@ import { usePlannerStore } from '@core/stores/planner'
 import { useUserStore } from '@core/stores/user'
 import { useCatalogueStore } from '@core/stores/catalogue'
 import { bidHistory } from '@core/data/bidding'
+import { useBiddingStore } from '@core/stores/bidding'
+import { api } from '@core/services/api'
 import { MARK_DONE } from '@core/data/degree'
 import { candidatesFor } from '@core/utils/degreeChecklist'
 import { slideEnter, slideLeave } from '@/motion'
@@ -18,6 +20,7 @@ import DegreeChecklistRow from '@/components/DegreeChecklistRow.vue'
 const planner = usePlannerStore()
 const user = useUserStore()
 const catalogue = useCatalogueStore()
+const bidding = useBiddingStore()
 const plan = computed(() => planner.activePlan)
 const checklist = computed(() => planner.checklist)
 const totals = computed(() => checklist.value.totals)
@@ -78,7 +81,9 @@ const selectedModule = computed(() => candidates.value.find((m) => m.key === mod
 
 // The list leaves descriptions out, so fetch the picked module from GET /api/modules/:code
 watch(selectedModule, (m) => {
-  if (m) catalogue.loadDetail(m.code)
+  if (!m) return
+  catalogue.loadDetail(m.code)
+  if (!bidHistory[m.code]) api.bidHistory(m.code).then((rows) => (bidHistory[m.code] = rows.map(({ term, round, median, min }) => ({ term, round, median, min })))).catch(() => {})
 })
 const description = computed(() => {
   const m = selectedModule.value
@@ -86,6 +91,11 @@ const description = computed(() => {
   if (!d) return 'Loading the course description…'
   return d.description || 'No description in the catalogue yet.'
 })
+
+// Below lg the columns stack, so bring a panel that just opened into view
+function revealStacked(el) {
+  if (window.matchMedia('(max-width: 1023.98px)').matches) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
 
 function selectItem(i) {
   if (selectedId.value === i.id) {
@@ -144,9 +154,16 @@ const placementPill = (p) =>
 const requisiteText = (groups) => groups.map((g) => g.join(' or ')).join(', and ') || 'None'
 const offeredText = (terms) => (terms.length ? `Term ${terms.map((t) => t.replace(/^T/, '')).join(' & ')}` : 'Not listed')
 
+// The newest result for the current round if there is one, else the newest of any round
+function lastMedian(code) {
+  const rows = bidHistory[code] ?? []
+  const row = rows.find((r) => r.round === bidding.round.round) ?? rows[0]
+  return row ? `e$ ${row.median} · Round ${row.round}` : '—'
+}
+
 const facts = (m) => [
   { label: 'Offered', value: offeredText(m.termsOffered) },
-  { label: 'Median bid', value: bidHistory[m.code]?.length ? `e$ ${bidHistory[m.code][0].median}` : '—', mono: !!bidHistory[m.code]?.length },
+  { label: 'Median bid', value: lastMedian(m.code), mono: !!bidHistory[m.code]?.length },
   { label: 'Prerequisites', value: requisiteText(m.prerequisites) },
   { label: 'Co-requisites', value: requisiteText(m.corequisites) },
 ]
@@ -213,9 +230,9 @@ const addLabel = computed(() => {
       <template v-else>All {{ totals.required }} courses are cleared.</template>
     </p>
 
-    <div v-else class="flex h-[560px] overflow-x-auto overflow-y-hidden rounded-lg border border-border">
+    <div v-else class="flex flex-col overflow-hidden rounded-lg border border-border lg:h-[560px] lg:flex-row">
       <!-- 1. Courses still to clear -->
-      <div class="w-[340px] shrink-0 overflow-y-auto border-r border-border">
+      <div class="max-h-[420px] w-full shrink-0 overflow-y-auto border-b border-border lg:max-h-none lg:w-[340px] lg:border-r lg:border-b-0">
         <div v-for="s in sections" :key="s.key">
           <div class="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-muted px-4 py-2">
             <h3 class="text-overline text-muted-foreground">{{ s.label }}</h3>
@@ -234,8 +251,8 @@ const addLabel = computed(() => {
       </div>
 
       <!-- 2. Options for the selected course (motion: slides out beside the list) -->
-      <Transition mode="out-in" :css="false" @enter="slideEnter" @leave="slideLeave">
-        <div v-if="item" :key="item.id" class="flex w-[300px] shrink-0 flex-col border-r border-border">
+      <Transition mode="out-in" :css="false" @enter="slideEnter" @leave="slideLeave" @after-enter="revealStacked">
+        <div v-if="item" :key="item.id" class="flex max-h-[420px] w-full shrink-0 flex-col border-b border-border lg:max-h-none lg:w-[300px] lg:border-r lg:border-b-0">
           <div class="flex flex-col gap-0.5 border-b border-border px-4 py-3 leading-normal">
             <p class="text-[14px] font-semibold">{{ item.label }}</p>
             <p class="text-[12px] text-muted-foreground">
@@ -282,7 +299,7 @@ const addLabel = computed(() => {
 
       <!-- 3. Details of the selected module -->
       <div class="min-w-0 flex-1 overflow-y-auto">
-        <Transition mode="out-in" :css="false" @enter="slideEnter" @leave="slideLeave">
+        <Transition mode="out-in" :css="false" @enter="slideEnter" @leave="slideLeave" @after-enter="revealStacked">
           <div v-if="selectedModule" :key="selectedModule.key" class="flex flex-col gap-4 p-6">
             <div class="flex flex-col gap-1.5">
               <p class="text-overline text-primary">
@@ -329,7 +346,7 @@ const addLabel = computed(() => {
             </div>
           </div>
           <div v-else key="hint" class="flex h-full items-center justify-center p-8 text-center text-[13px] leading-normal text-muted-foreground">
-            {{ item ? 'Pick a module to see more about it.' : 'Pick a course on the left to see what you can take for it.' }}
+            {{ item ? 'Pick a module to see more about it.' : 'Pick a course to see what you can take for it.' }}
           </div>
         </Transition>
       </div>

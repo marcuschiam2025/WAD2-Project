@@ -17,16 +17,17 @@ const visibleDays = computed(() => days.map((name, day) => ({ name, day })).filt
 </script>
 
 <template>
+ <div>
   <div class="overflow-x-auto rounded-lg border border-border bg-card" tabindex="0" aria-label="Weekly section calendar; scroll horizontally to see all days">
     <div class="min-w-[720px]" role="table" aria-label="Weekly section calendar. Select any meeting to select or deselect its whole section.">
       <div class="flex bg-muted" role="row">
-        <div class="w-[68px] shrink-0 px-2.5 py-2.5 text-overline text-muted-foreground" role="columnheader">Time</div>
+        <div class="sticky left-0 z-10 w-[68px] shrink-0 bg-muted px-2.5 py-2.5 text-overline text-muted-foreground" role="columnheader">Time</div>
         <div v-for="day in visibleDays" :key="day.day" class="min-w-0 flex-1 border-l border-border px-2.5 py-2.5 text-[13px] font-semibold" role="columnheader">
           {{ day.name.slice(0, 3) }}
         </div>
       </div>
       <div v-for="time in times" :key="`${time.start}-${time.end}`" class="flex min-h-[104px] border-t border-border" role="row">
-        <div class="flex w-[68px] shrink-0 flex-col gap-0.5 px-2.5 py-2.5 font-mono text-[11px] leading-normal font-medium" role="rowheader">
+        <div class="sticky left-0 z-10 flex w-[68px] shrink-0 flex-col gap-0.5 bg-card px-2.5 py-2.5 font-mono text-[11px] leading-normal font-medium" role="rowheader">
           <span>{{ time.start }}</span>
           <span class="text-muted-foreground">{{ time.end }}</span>
         </div>
@@ -61,4 +62,6 @@ const visibleDays = computed(() => days.map((name, day) => ({ name, day })).filt
       </div>
     </div>
   </div>
+  <p class="mt-1.5 text-[12px] text-muted-foreground xl:hidden">Swipe sideways to see the whole week.</p>
+ </div>
 </template>

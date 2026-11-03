@@ -43,9 +43,9 @@ const degree = computed(() => {
     <main class="flex flex-col gap-6 px-5 md:px-8 lg:px-16 pt-8 pb-12">
       <section v-enter class="card flex items-center gap-4 p-6"> <!-- motion: profile header fades in on mount -->
         <UserAvatar :initials="user.profile.initials" :size="64" />
-        <div class="flex flex-col gap-1 leading-normal">
+        <div class="flex min-w-0 flex-col gap-1 leading-normal">
           <p class="text-[18px] font-semibold">{{ user.profile.displayName }}</p>
-          <p class="text-[13px] text-muted-foreground">
+          <p class="text-[13px] [overflow-wrap:anywhere] text-muted-foreground">
             {{ user.profile.email }} · BSc {{ user.profile.major }} · Y{{ user.profile.year }}
           </p>
         </div>

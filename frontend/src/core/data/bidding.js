@@ -20,6 +20,12 @@ export const weightage = reactive({})
 
 export const MIN_BID = 10
 
+// "2026-27_T2" -> "AY26/27 T2", the way students read a term. Anything else is shown as it is.
+export function termLabel(value) {
+  const match = /^20(\d{2})-(\d{2})_T([1-3])$/.exec(value ?? '')
+  return match ? `AY${match[1]}/${match[2]} T${match[3]}` : value
+}
+
 function termOrder(value) {
   const match = /^(?:AY(\d{2})\/(\d{2}) T|((?:20)\d{2})-(\d{2})_T)([1-3])$/.exec(value ?? '')
   if (!match) return null

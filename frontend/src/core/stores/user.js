@@ -82,7 +82,10 @@ export const useUserStore = defineStore('user', () => {
     return data
   }
   async function completeOnboarding(details) {
+    // What the profile held before, so plans only lose what the student actually took off it
+    const before = { tracks: [...(profile.value.tracks ?? [])], takenBySem: { ...profile.value.takenBySem } }
     await save({ ...details, onboarded: true })
+    profile.value.previousDegree = before
     profile.value.appliedToPlans = false
   }
   async function markDone(id) {

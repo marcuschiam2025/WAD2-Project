@@ -72,11 +72,12 @@ async function deletePlan() {
       </div>
     </div>
 
-    <div class="flex items-center justify-between gap-2 border-t border-border pt-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
       <BaseButton variant="destructive-outline" size="sm" :disabled="!planner.online || planner.planActionPending || planner.plans.length <= 1" @click="deletePlan">
         Delete plan
       </BaseButton>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
+        <BaseButton v-if="planner.removableSemester" variant="outline" size="sm" @click="planner.removeSemester()">Remove {{ planner.removableSemester.label }}</BaseButton>
         <BaseButton variant="outline" size="sm" @click="planner.addSemester()">Add semester</BaseButton>
         <BaseButton size="sm" @click="emit('close')">Done</BaseButton>
       </div>

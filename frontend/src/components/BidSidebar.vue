@@ -7,6 +7,7 @@ import { useBiddingStore } from '@core/stores/bidding'
 import { useUserStore } from '@core/stores/user'
 import { api } from '@core/services/api'
 import { moduleName } from '@core/data/catalogue'
+import { fmtE } from '@core/utils/money'
 import { sections, weightage, rateBid, MIN_BID, estimateHistory, canEstimateBid } from '@core/data/bidding'
 import { ease } from '@/motion'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -40,7 +41,17 @@ const bid = computed({
 const bidTooLow = computed(() => bid.value !== '' && bid.value < MIN_BID)
 
 const history = computed(() => bidding.bidHistory[props.code] ?? [])
-const round = ref('1A')
+// The current BOSS round when this module has results for it, until the student picks another
+const pickedRound = ref(null)
+watch(() => props.code, () => (pickedRound.value = null))
+const round = computed({
+  get() {
+    if (pickedRound.value) return pickedRound.value
+    const rounds = history.value.map((h) => h.round)
+    return [bidding.round.round, '1A', rounds[0]].find((r) => rounds.includes(r)) ?? 'all'
+  },
+  set: (value) => (pickedRound.value = value),
+})
 const roundOptions = computed(() => [
   ...[...new Set(history.value.map((h) => h.round))].map((r) => ({ value: r, label: `Round ${r}` })),
   { value: 'all', label: 'All rounds' },
@@ -141,9 +152,9 @@ const verdictText = computed(() => {
     if (v.rating === 'competitive') return `Between last term's min (e$ ${+v.low.toFixed(1)}) and median (${median}). You may still be outbid.`
     return `Below last term's lowest successful bid (e$ ${+v.low.toFixed(1)}).`
   }
-  if (v.rating === 'safe') return `Above the last ${v.basedOn}${label} medians (${median}).`
-  if (v.rating === 'competitive') return `Within 1 SD of the ${median} median. You may still be outbid.`
-  return `More than 1 SD below the ${median} median.`
+  if (v.rating === 'safe') return `Above the average of the last ${v.basedOn}${label} medians (${median}).`
+  if (v.rating === 'competitive') return `Within 1 SD of the ${median} average median. You may still be outbid.`
+  return `More than 1 SD below the ${median} average median.`
 })
 const pill = { safe: ['success', 'Safe'], competitive: ['warning', 'Competitive'], 'at-risk': ['destructive', 'At risk'] }
 
@@ -293,7 +304,7 @@ watch(
 
     <div class="flex items-center justify-between gap-3 border-t border-border px-5 py-3.5">
       <p class="flex items-baseline gap-1.5 leading-normal">
-        <span class="font-mono text-[15px] font-bold">e$ {{ bidding.allocated.toFixed(2) }}</span>
+        <span class="font-mono text-[15px] font-bold">e$ {{ fmtE(bidding.allocated) }}</span>
         <span class="text-[12px] text-muted-foreground">of e$ {{ user.balance.toLocaleString() }} allocated</span>
       </p>
       <BaseButton size="sm" :disabled="bidding.saving || !bidding.online" @click="bidding.save()">{{ bidding.saving ? 'Saving…' : 'Save plan' }}</BaseButton>

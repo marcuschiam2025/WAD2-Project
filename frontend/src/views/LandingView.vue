@@ -8,8 +8,8 @@ import iconCobid from '@/assets/v2/feature-cobid.svg'
 
 // Product visual: a mini What-If Planner. Marketing copy, so it stays static.
 const semesters = [
-  { label: 'Y2 S1', modules: ['IS211', 'IS216', 'STAT151'] },
-  { label: 'Y2 S2 · Now', current: true, modules: ['IS442', 'IS215'], highlight: 'IS460' },
+  { label: 'Y2 S1', modules: ['IS211', 'IS216', 'IS210'] },
+  { label: 'Y2 S2', current: true, modules: ['IS442', 'IS215'], highlight: 'IS460' },
   { label: 'Y3 S1', modules: ['IS424', 'IS428'] },
   { label: 'Y3 S2', modules: ['IS483'] },
 ]
@@ -17,9 +17,11 @@ const semesters = [
 const features = [
   { icon: iconPlanning, title: 'Degree planning', body: '8-semester roadmap with LOA and exchange terms' },
   { icon: iconBidding, title: 'Smart bidding', body: 'Reference bids from 3-semester medians' },
-  { icon: iconStress, title: 'Syllabus stress', body: '16-week matrix flags deliverable pile-ups' },
+  { icon: iconStress, title: 'Track finder', body: 'A short quiz that suggests tracks to explore' },
   { icon: iconCobid, title: 'Co-bidding', body: 'Vote on sections with friends in a room' },
 ]
+// The page's own feature cards, since there is no separate how-it-works page
+const showFeatures = () => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 </script>
 
 <template>
@@ -42,7 +44,7 @@ const features = [
           </p>
           <div class="flex flex-wrap items-center gap-3">
             <BaseButton to="/signin" size="lg">Get started</BaseButton>
-            <BaseButton to="/signin" variant="ghost" size="lg">See how bidding works</BaseButton>
+            <BaseButton variant="ghost" size="lg" @click="showFeatures">See what's included</BaseButton>
           </div>
         </div>
 
@@ -61,11 +63,11 @@ const features = [
               <span
                 v-for="code in sem.modules"
                 :key="code"
-                class="rounded-[4px] bg-secondary px-1.5 py-[5px] font-mono text-[11px] font-medium"
+                class="rounded-[4px] bg-secondary px-1.5 py-[5px] text-center font-mono text-[11px] font-medium max-sm:px-0.5 max-sm:text-[9px] lg:max-xl:px-0.5 lg:max-xl:text-[9px]"
               >{{ code }}</span>
               <span
                 v-if="sem.highlight"
-                class="rounded-[4px] border-[1.5px] border-primary bg-primary-tint px-1.5 py-[5px] font-mono text-[11px] font-medium text-primary"
+                class="rounded-[4px] border-[1.5px] border-primary bg-primary-tint px-1.5 py-[5px] text-center font-mono text-[11px] font-medium text-primary max-sm:px-0.5 max-sm:text-[9px] lg:max-xl:px-0.5 lg:max-xl:text-[9px]"
               >{{ sem.highlight }}</span>
             </div>
           </div>
@@ -73,7 +75,7 @@ const features = [
         </div>
       </section>
 
-      <div v-stagger="0.2" class="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:flex"> <!-- motion: feature cards stagger in 200ms apart -->
+      <div id="features" v-stagger="0.2" class="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:flex"> <!-- motion: feature cards stagger in 200ms apart -->
         <article
           v-for="f in features"
           :key="f.title"
@@ -90,7 +92,7 @@ const features = [
 
     <footer class="border-t border-border bg-card px-5 py-6 md:px-8 lg:px-16">
       <p class="text-[13px] text-muted-foreground">
-        © 2025 BidMaxxer · Built for SMU students · Not affiliated with BOSS or SMU
+        © {{ new Date().getFullYear() }} BidMaxxer · Built for SMU students · Not affiliated with BOSS or SMU
       </p>
     </footer>
   </div>

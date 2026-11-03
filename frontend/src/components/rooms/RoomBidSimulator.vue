@@ -7,6 +7,7 @@
 import { computed, ref, watch } from 'vue'
 import { api } from '@core/services/api'
 import { rateBid, MIN_BID, estimateHistory, canEstimateBid } from '@core/data/bidding'
+import { useBiddingStore } from '@core/stores/bidding'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import SelectField from '@/components/ui/SelectField.vue'
@@ -15,6 +16,8 @@ const props = defineProps({
   module: { type: String, required: true },
   term: { type: String, default: null }, // the term being bid for: only earlier terms count
 })
+
+const bidding = useBiddingStore()
 
 // --- Past results ---------------------------------------------------------------------------
 const history = ref([])
@@ -39,11 +42,11 @@ async function loadHistory() {
 }
 watch(() => props.module, loadHistory, { immediate: true })
 
-// BOSS rounds in the history; Round 1A first when there is one
+// BOSS rounds in the history; the current round first, then Round 1A
 const rounds = computed(() => [...new Set(history.value.map((h) => h.round))].sort())
 const round = ref('')
 watch(rounds, (list) => {
-  if (!list.includes(round.value)) round.value = list.includes('1A') ? '1A' : (list[0] ?? '')
+  if (!list.includes(round.value)) round.value = [bidding.round.round, '1A', list[0]].find((r) => list.includes(r)) ?? ''
 })
 const roundOptions = computed(() => rounds.value.map((r) => ({ value: r, label: `Round ${r}` })))
 // Newest term first

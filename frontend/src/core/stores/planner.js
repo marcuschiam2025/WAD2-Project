@@ -196,18 +196,30 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   // Onboarding answers -> the student's existing plans (a brand-new student's first plan is built from them
-  // in firstPlan instead). Completed semesters and the current one get the modules entered in onboarding, the
-  // current semester and tracks are updated, and future semesters keep their modules minus any now marked as taken.
+  // in firstPlan instead). Modules entered on the form go into their semesters, and only the ones the student took
+  // off the form leave the plan: anything added in the planner stays. Tracks follow only if they changed on the form,
+  // so a plan's own What-If tracks survive other profile edits.
   function applyOnboarding(plan) {
     const p = user.profile
+    const before = p.previousDegree ?? {}
     const taken = p.takenBySem ?? {}
     const takenCodes = new Set(Object.values(taken).flat())
     if (p.currentSem && plan.semesters.some((s) => s.id === p.currentSem)) plan.currentSem = p.currentSem
     const now = semIndex(plan, plan.currentSem)
-    plan.semesters.forEach((s, i) => {
-      s.modules = i <= now ? [...(taken[s.id] ?? [])] : s.modules.filter((m) => !takenCodes.has(effectiveCode(m)))
+    const removed = new Set(Object.entries(before.takenBySem ?? {})
+      .filter(([id]) => { const i = semIndex(plan, id); return i >= 0 && i <= now })
+      .flatMap(([, codes]) => codes)
+      .filter((code) => !takenCodes.has(code)))
+    plan.semesters.forEach((s) => {
+      const here = taken[s.id] ?? []
+      s.modules = s.modules.filter((m) => {
+        const code = effectiveCode(m)
+        return !removed.has(code) && (!takenCodes.has(code) || here.includes(code))
+      })
+      here.filter((code) => !s.modules.some((m) => effectiveCode(m) === code)).forEach((code) => s.modules.push(code))
     })
-    if (plan.majorId) plan.tracks = (p.tracks ?? []).map(trackCode).slice(0, 2)
+    const tracks = (p.tracks ?? []).map(trackCode)
+    if (plan.majorId && tracks.join() !== (before.tracks ?? []).map(trackCode).join()) plan.tracks = tracks.slice(0, 2)
   }
   watch(
     () => online.value && user.onboarded && user.profile.appliedToPlans === false,
@@ -471,6 +483,20 @@ export const usePlannerStore = defineStore('planner', () => {
     plan.semesters.push(sem(nextSemId(plan), [], { loa }))
   }
 
+  // The last semester can go if it was added on top of the 8-semester roadmap. Its modules return to the basket.
+  const removableSemester = computed(() => {
+    const plan = activePlan.value
+    const last = plan.semesters.at(-1)
+    return last && !/^Y[1-4]S[12]$/.test(last.id) && last.id !== plan.currentSem ? last : null
+  })
+
+  function removeSemester() {
+    const last = removableSemester.value
+    if (!last) return
+    last.modules.map(effectiveCode).forEach(addToBasket)
+    activePlan.value.semesters.pop()
+  }
+
   function toggleExchange(semId) {
     const s = activePlan.value.semesters.find((x) => x.id === semId)
     s.exchange = !s.exchange
@@ -571,14 +597,17 @@ export const usePlannerStore = defineStore('planner', () => {
       const majorCode = catalogue.majors.find((m) => m._id === activePlan.value.majorId)?.majorCode ?? ''
       return layoutCurriculum(buildCurriculumChecklist(activePlan.value, checklistCatalogue.value, bundle, options), activePlan.value, bundle, { majorCode })
     }
-    const unavailableReason = !catalogue.online
+    const stillLoading = catalogue.catalogueLoading || catalogue.loadingMajors.has(activePlan.value.majorId)
+    const unavailableReason = stillLoading
+      ? 'Loading your degree requirements…'
+      : !catalogue.online
       ? 'The course catalogue has not loaded. Reload to retry; completion is unavailable until it loads.'
       : !activePlan.value.majorId
         ? 'No curriculum is selected for this plan. Your major and intake year may not be supported yet; graduation progress is unavailable.'
         : bundle?.requirementsAvailable === false
           ? 'Graduation requirements for this plan’s curriculum are not available yet.'
           : 'Live curriculum requirements have not loaded for this plan. Reload to retry; completion is unavailable until they load.'
-    return { unavailable: true, unavailableReason, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
+    return { unavailable: true, loading: stillLoading, unavailableReason, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
   })
 
   const hasAnyWarning = computed(() => {
@@ -618,6 +647,8 @@ export const usePlannerStore = defineStore('planner', () => {
     removeFromBasket,
     clearBasket,
     addSemester,
+    removableSemester,
+    removeSemester,
     toggleExchange,
     addPlan,
     deletePlan,
