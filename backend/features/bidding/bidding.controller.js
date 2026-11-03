@@ -142,11 +142,25 @@ export async function saveCart(req, res) {
   const clashes = findClashes(sections)
   const examClashes = findExamClashes(sections)
   if (clashes.length || examClashes.length) throw httpError(400, 'Resolve class or final-exam clashes before saving your bids')
-  const cart = await BidCart.findOneAndUpdate(
-    { user: req.user._id, plan: planId, term: { $in: termAliases(term) } },
-    { items, term },
-    { upsert: true, new: true, runValidators: true },
-  )
+  // const cart = await BidCart.findOneAndUpdate(
+  //   { user: req.user._id, plan: planId, term: { $in: termAliases(term) } },
+  //   { items, term },
+  //   { upsert: true, new: true, runValidators: true },
+  // )
+  
+  // Exact match on the three unique-index fields, so MongoDB can safely retry a clashing save
+const filter = { user: req.user._id, plan: planId, term }
+const update = { items, term }
+const options = { upsert: true, new: true, runValidators: true }
+
+let cart
+try {
+  cart = await BidCart.findOneAndUpdate(filter, update, options)
+} catch (err) {
+  if (err.code !== 11000) throw err                          // a different error: pass it on
+  cart = await BidCart.findOneAndUpdate(filter, update, options)   // the cart exists now, so this updates it
+}
+
   res.json({ cart, clashes, allocated: total, balance })
 }
 
