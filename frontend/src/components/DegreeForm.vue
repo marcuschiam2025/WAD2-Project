@@ -6,7 +6,8 @@
 import { computed, ref, watch } from 'vue'
 import { useUserStore } from '@core/stores/user'
 import { usePlannerStore, effectiveCode } from '@core/stores/planner'
-import { tracks, moduleName } from '@core/data/catalogue'
+import { useCatalogueStore } from '@core/stores/catalogue'
+import { moduleName } from '@core/data/catalogue'
 import { SEM_IDS } from '@core/data/degree'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import SelectMenu from '@/components/ui/SelectMenu.vue'
@@ -153,6 +154,22 @@ const saving = ref(false)
 const saveError = ref('')
 const intakeYear = ref(user.profile.intakeYear ?? 2025)
 
+// The tracks on offer depend on the curriculum for this major and intake year
+const catalogue = useCatalogueStore()
+catalogue.load()
+const curriculumId = computed(() => catalogue.majorIdFor(major.value, intakeYear.value))
+const trackOptions = computed(() => catalogue.tracksFor(curriculumId.value))
+watch(curriculumId, (id) => catalogue.loadMajor(id), { immediate: true })
+// Once that curriculum has loaded, drop any chosen track it doesn't have
+watch(
+  () => catalogue.curricula[curriculumId.value],
+  (curriculum) => {
+    if (!curriculum) return
+    const available = trackOptions.value.map((t) => t.code)
+    selectedTracks.value = selectedTracks.value.filter((code) => available.includes(code))
+  },
+)
+
 async function submit() {
   if (missing.value) return
   saving.value = true
@@ -205,7 +222,7 @@ const badge = (n) => [
         </div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
-            v-for="t in tracks"
+            v-for="t in trackOptions"
             :key="t.code"
             type="button"
             role="checkbox"

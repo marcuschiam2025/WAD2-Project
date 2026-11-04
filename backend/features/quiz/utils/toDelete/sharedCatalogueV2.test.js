@@ -37,6 +37,25 @@ test('empty shared database is reported without falling back to the curated shor
   assert.equal(result.catalogueStatus, 'unavailable')
 })
 
+test('the 2024 intake gets suggestions and the 2023 intake is unsupported', async () => {
+  let trackLookups = 0
+  const load = createSharedCatalogueLoader({
+    tracks: async () => { trackLookups++; return [{ _id: 'smart', trackCode: 'SMCT' }, { _id: 'data', trackCode: 'BA' }] },
+    requirements: async () => [{ ownerId: 'smart', modules: ['NEW101'] }],
+    modules: async () => [{ _id: 'NEW101', title: 'Shared title' }],
+  })
+
+  const intake2024 = recommendExplorationModules(attempt, await load(attempt, { intakeYear: 2024 }), { intakeYear: 2024 })
+  assert.equal(intake2024.intakeStatus, 'within-guide')
+  assert.equal(trackLookups, 1)
+  assert.deepEqual(intake2024.groups[0].modules.map((m) => m.code), ['NEW101'])
+
+  const intake2023 = recommendExplorationModules(attempt, await load(attempt, { intakeYear: 2023 }), { intakeYear: 2023 })
+  assert.equal(intake2023.intakeStatus, 'unsupported')
+  assert.equal(trackLookups, 1, 'an unsupported intake never reaches the track lookup')
+  assert.deepEqual(intake2023.groups, [])
+})
+
 test('repository catalogue supports all four tracks and excludes completed courses', async () => {
   const { readFile } = await import('node:fs/promises')
   const data = async (name) => JSON.parse(await readFile(new URL(`../../../data/${name}.json`, import.meta.url), 'utf8'))
