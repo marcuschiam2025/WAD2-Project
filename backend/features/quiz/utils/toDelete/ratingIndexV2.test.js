@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { calculateThemeRating } from './ratingIndexV2.js'
+import { calculateThemeRating } from '../ratingIndexV2.js'
 
 test('reproduces the approved weighted example', () => {
   assert.deepEqual(calculateThemeRating([{ value: 5, weight: 30 }, { value: 2, weight: 15 }]), {

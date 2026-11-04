@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { listQuestionsV2, createSubmitAttemptV2 } from './quiz.v2.controller.js'
+import { listQuestionsV2, createSubmitAttemptV2 } from '../quiz.v2.controller.js'
 import { readFile } from 'node:fs/promises'
 
 const content = JSON.parse(await readFile(new URL('./content/questions.v2-draft.json', import.meta.url), 'utf8'))

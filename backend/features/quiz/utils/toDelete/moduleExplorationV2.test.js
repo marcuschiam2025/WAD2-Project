@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { recommendExplorationModules } from './moduleExplorationV2.js'
-import { createModuleExplorationV2 } from '../quiz.v2.recommendations.js'
+import { recommendExplorationModules } from '../moduleExplorationV2.js'
+import { createModuleExplorationV2 } from '../../quiz.v2.recommendations.js'
 
 const catalogue = JSON.parse(await readFile(new URL('../content/modules.ay2025.json', import.meta.url), 'utf8'))
 const attempt = {

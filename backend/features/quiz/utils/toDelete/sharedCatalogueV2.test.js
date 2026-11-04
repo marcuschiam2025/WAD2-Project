@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createSharedCatalogueLoader } from './sharedCatalogueV2.js'
-import { recommendExplorationModules } from './moduleExplorationV2.js'
+import { createSharedCatalogueLoader } from '../sharedCatalogueV2.js'
+import { recommendExplorationModules } from '../moduleExplorationV2.js'
 
 const attempt = { results: [{ track: 'SMT' }, { track: 'BA' }], resultSnapshot: { themeRatings: {} } }
 test('loads only top-two AY2025 tracks, maps SMT and uses shared module titles and prerequisites', async () => {
