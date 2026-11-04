@@ -25,7 +25,7 @@ const dots = { success: dotSuccess, warning: dotWarning, destructive: dotDestruc
     class="inline-flex shrink-0 items-center gap-[5px] rounded-full px-2.5 py-[3px] text-[12px] leading-normal font-semibold whitespace-nowrap"
     :class="tints[tone]"
   >
-    <img v-if="dots[tone]" :src="dots[tone]" alt="" class="size-1.5" />
+    <img v-if="dots[tone]" :src="dots[tone]" alt="" :class="['size-1.5', tone === 'info' && 'icon-accent']" />
     <slot />
   </span>
 </template>

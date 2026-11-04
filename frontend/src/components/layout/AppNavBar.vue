@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@core/stores/user'
+import { useThemeStore } from '@core/stores/theme'
 import { popEnter, popLeave } from '@/motion'
 import BrandLogo from './BrandLogo.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
@@ -13,6 +14,7 @@ import iconLogout from '@/assets/v2/logout.svg'
 const route = useRoute()
 const router = useRouter()
 const user = useUserStore()
+const theme = useThemeStore()
 
 const links = [
   { key: 'dashboard', label: 'Dashboard', to: '/dashboard' },
@@ -103,7 +105,7 @@ async function logOut() {
           @click="notifOpen = !notifOpen; menuOpen = false"
         >
           <img :src="iconBell" alt="" class="size-8" />
-          <span v-if="notifications.length" class="absolute top-[5px] right-[5px] size-2 rounded-full border border-white bg-destructive" />
+          <span v-if="notifications.length" class="absolute top-[5px] right-[5px] size-2 rounded-full border border-card bg-destructive" />
         </button>
         <Transition :css="false" @enter="popEnter" @leave="popLeave">
           <div
@@ -118,6 +120,22 @@ async function logOut() {
           </div>
         </Transition>
       </div>
+      <button
+        type="button"
+        class="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        :aria-label="theme.isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        :aria-pressed="theme.isDark"
+        :title="theme.isDark ? 'Light mode' : 'Dark mode'"
+        @click="theme.toggle()"
+      >
+        <svg viewBox="0 0 24 24" class="size-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <g v-if="theme.isDark">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+          </g>
+          <path v-else d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
       <div ref="menuRef" class="relative">
         <button
           type="button"
@@ -139,14 +157,14 @@ async function logOut() {
               class="flex items-center gap-2.5 rounded-sm p-2.5 text-left text-[14px] hover:bg-muted"
               @click="go('/profile')"
             >
-              <img :src="iconProfile" alt="" class="size-4" /> Profile
+              <img :src="iconProfile" alt="" class="icon-accent size-4" /> Profile
             </button>
             <button
               type="button"
               class="flex items-center gap-2.5 rounded-sm p-2.5 text-left text-[14px] hover:bg-muted"
               @click="go('/settings')"
             >
-              <img :src="iconSettings" alt="" class="size-4" /> Settings
+              <img :src="iconSettings" alt="" class="icon-accent size-4" /> Settings
             </button>
             <div class="h-px bg-border" />
             <button

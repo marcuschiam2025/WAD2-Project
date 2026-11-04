@@ -1,8 +1,9 @@
 <script setup>
 // One bar per track: the single score the track was ranked on, 0–100, best first.
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip } from 'chart.js'
 import { quizTrackNames } from '@core/stores/quiz'
+import { useThemeStore } from '@core/stores/theme'
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip)
 
@@ -11,13 +12,17 @@ const props = defineProps({
   provisional: Boolean, // an older result ranked on scenario choices alone, with no match score
 })
 
+const themeStore = useThemeStore()
+// Chart.js draws on a canvas, so it can't read CSS variables itself: take their current values
+const cssColor = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+
 const scoreOf = (r) => (props.provisional ? r.scenarioPreferenceIndex : r.alignmentIndex)
 const rows = computed(() =>
   props.results.map((r) => ({ label: quizTrackNames[r.track] ?? r.track, score: typeof scoreOf(r) === 'number' ? Math.round(scoreOf(r)) : null })),
 )
 const chartData = () => ({
   labels: rows.value.map((row) => row.label),
-  datasets: [{ data: rows.value.map((row) => row.score), backgroundColor: '#2563eb', borderRadius: 4, borderSkipped: 'start', maxBarThickness: 20 }],
+  datasets: [{ data: rows.value.map((row) => row.score), backgroundColor: cssColor('--primary'), borderRadius: 4, borderSkipped: 'start', maxBarThickness: 20 }],
 })
 
 const canvas = ref(null)
@@ -31,8 +36,8 @@ onMounted(() => {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        x: { min: 0, max: 100, ticks: { stepSize: 25, color: '#475569' }, grid: { color: '#e2e8f0' }, border: { display: false } },
-        y: { ticks: { color: '#0f172a' }, grid: { display: false }, border: { display: false } },
+        x: { min: 0, max: 100, ticks: { stepSize: 25, color: cssColor('--text-muted') }, grid: { color: cssColor('--border') }, border: { display: false } },
+        y: { ticks: { color: cssColor('--text') }, grid: { display: false }, border: { display: false } },
       },
       plugins: {
         legend: { display: false },
@@ -44,6 +49,15 @@ onMounted(() => {
 watch(rows, () => {
   if (!chart) return
   chart.data = chartData()
+  chart.update()
+})
+watch(() => themeStore.theme, async () => {
+  if (!chart) return
+  await nextTick() // the page's variables change a moment after the attribute is set
+  chart.data = chartData()
+  chart.options.scales.x.ticks.color = cssColor('--text-muted')
+  chart.options.scales.x.grid.color = cssColor('--border')
+  chart.options.scales.y.ticks.color = cssColor('--text')
   chart.update()
 })
 onBeforeUnmount(() => chart?.destroy())

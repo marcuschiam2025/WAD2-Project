@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* dark: utilities follow the app's own theme switch (data-theme on <html>), not the system setting */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 /*
  * BidMaxxer colour palette. This is the only place raw colours are defined;
  * everything else uses the Tailwind utilities below (bg-card, text-muted-foreground,
@@ -27,6 +30,36 @@
   --border: #e2e8f0;
   --bg: #f8fafc;
   --surface: #ffffff;
+  --switch-off: #e2e8f0;
+  --scrim: rgb(15 23 42 / 0.3);
+  color-scheme: light;
+}
+
+/* Dark theme: same names, different values. Nothing else in the app needs to know which theme is on.
+ * Plain charcoal greys with a near-white accent (no blue); the status colours keep their meaning. */
+[data-theme='dark'] {
+  --primary: #f4f4f5;
+  --primary-hover: #ffffff;
+  --primary-tint: #2c2c30;
+  --urgent: #fbbf24;
+  --urgent-tint: #332a10;
+  --success: #34d399;
+  --success-tint: #12291f;
+  --danger: #f87171;
+  --danger-tint: #341c1c;
+  --exempt: #a78bfa;
+  --exempt-tint: #26213b;
+  --text: #ececec;
+  --text-muted: #a1a1aa;
+  --border: #303034;
+  --bg: #121212;
+  --surface: #1c1c1e;
+  --switch-off: #4b4b52;
+  --scrim: rgb(0 0 0 / 0.6);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 10px 0 rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 12px 28px 0 rgb(0 0 0 / 0.55);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -34,6 +67,8 @@
   --color-foreground: var(--text);
   --color-card: var(--surface);
   --color-border: var(--border);
+  --color-scrim: var(--scrim);
+  --color-switch-off: var(--switch-off);
   --color-ring: var(--primary);
   --color-muted: var(--bg);
   --color-muted-foreground: var(--text-muted);
@@ -131,5 +166,14 @@
   }
   progress::-moz-progress-bar {
     background: var(--color-primary);
+  }
+  /* The line icons are dark-on-light SVG images, which CSS variables cannot recolour. Inverting them (and turning
+   * the hue back) keeps the same look on a dark page. Images that must keep their colours carry data-keep. */
+  [data-theme='dark'] img:is([src*='.svg'], [src^='data:image/svg']):not([data-keep], .icon-accent) {
+    filter: invert(1) hue-rotate(180deg);
+  }
+  /* The blue accent icons turn light grey instead */
+  [data-theme='dark'] img.icon-accent {
+    filter: grayscale(1) brightness(2.2);
   }
 }

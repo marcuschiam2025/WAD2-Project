@@ -1,10 +1,12 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuizStore, quizTrackNames, tieRunsPastShown, isOlderResult, themeLevel } from '@core/stores/quiz'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import TrackScoreChart from '@/components/TrackScoreChart.vue'
+import QuizAssistant from '@/components/QuizAssistant.vue'
+import AssistantFace from '@/components/AssistantFace.vue'
 import { api } from '@core/services/api'
 import { usePlannerStore } from '@core/stores/planner'
 import { useUserStore } from '@core/stores/user'
@@ -44,6 +46,31 @@ const moduleSuggestions = ref(null)
 const moduleLoading = ref(false)
 const moduleError = ref('')
 const explanation = ref(null)
+const assistantOpen = ref(false)
+// From xl up there is room beside the results, so the explanation docks there; below it slides over the page instead
+const wide = ref(false)
+let wideQuery
+const syncWide = () => (wide.value = wideQuery.matches)
+onMounted(() => { wideQuery = window.matchMedia('(min-width: 1280px)'); syncWide(); wideQuery.addEventListener('change', syncWide) })
+// The docked panel's top lines up with the top of the two track cards. What sits above them (the heading, a one or
+// two line note, an "older result" notice) changes height, so measure it instead of guessing.
+const layoutRef = ref(null)
+const mainRef = ref(null)
+const cardsRef = ref(null)
+const dockTop = ref(32)
+function measureDock() {
+  if (!layoutRef.value || !cardsRef.value) return
+  dockTop.value = Math.max(0, Math.round(cardsRef.value.getBoundingClientRect().top - layoutRef.value.getBoundingClientRect().top))
+}
+let layoutObserver
+onMounted(() => {
+  layoutObserver = new ResizeObserver(measureDock) // fires when the results above the cards change height
+  if (mainRef.value) layoutObserver.observe(mainRef.value)
+  measureDock()
+})
+watch(wide, () => nextTick(measureDock))
+onBeforeUnmount(() => { wideQuery?.removeEventListener('change', syncWide); layoutObserver?.disconnect() })
+watch(() => route.query.attempt, () => (assistantOpen.value = false))
 const explanationLoading = ref(false)
 const explanationError = ref(null) // the ApiError code, or 'UNREACHABLE' when the server could not be reached
 const attempt = computed(() => quiz.attempts.find((a) => String(a.id) === String(route.query.attempt)) ?? (!route.query.attempt ? quiz.latest : null))
@@ -105,7 +132,8 @@ onMounted(async () => { await quiz.initialize(); loading.value = false })
 <template>
   <div>
     <PageHeader class="quiz-header" overline="Track Finder" title="Your tracks to explore" subtitle="A guide to help you explore, not a prediction. Start with these two and open the details when you need them." />
-    <main class="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8 sm:px-12">
+    <div ref="layoutRef" class="mx-auto flex max-w-[1480px] justify-center gap-8 px-5 sm:px-12">
+    <main ref="mainRef" class="flex min-w-0 max-w-5xl flex-1 flex-col gap-6 py-8">
       <p v-if="loading" role="status">Loading your saved result…</p>
       <div v-else-if="!attempt" class="card p-6">
         <p>{{ quiz.error || 'This result is no longer in your latest two attempts.' }}</p>
@@ -122,39 +150,20 @@ onMounted(async () => { await quiz.initialize(); loading.value = false })
           <BaseButton size="sm" variant="outline" :disabled="quiz.loading" @click="retake">Retake quiz</BaseButton>
         </div>
 
-        <section v-if="!legacy" class="card flex flex-col gap-4 p-6" aria-labelledby="quiz-ai-explanation">
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <h3 id="quiz-ai-explanation" class="text-sm font-semibold">{{ topResults.length === 1 ? 'Why this track?' : 'Why these tracks?' }}</h3>
-            <span class="text-xs text-muted-foreground">AI-generated · may be imperfect</span>
-          </div>
-          <div v-if="explanationLoading" role="status" class="flex flex-col gap-4 motion-safe:animate-pulse">
-            <span class="sr-only">Writing an explanation…</span>
-            <div aria-hidden="true" class="flex flex-col gap-2">
-              <div class="h-3.5 w-full rounded bg-muted" />
-              <div class="h-3.5 w-11/12 rounded bg-muted" />
-              <div class="h-3.5 w-2/3 rounded bg-muted" />
-            </div>
-            <div v-for="result in topResults" :key="result.track" aria-hidden="true" class="flex flex-col gap-2 border-t border-border pt-3">
-              <div class="h-3.5 w-1/3 rounded bg-muted" />
-              <div class="h-3.5 w-full rounded bg-muted" />
-              <div class="h-3.5 w-4/5 rounded bg-muted" />
-            </div>
-          </div>
-          <div v-else-if="explanationError" role="status" class="flex flex-col gap-2 rounded-md bg-muted p-3">
-            <p class="text-sm"><span class="font-medium">AI explanation unavailable right now.</span> Your results below are still based on all of your answers, so you can rely on them as a starting point for choosing which tracks to explore.</p>
-            <p v-if="explanationError === 'AI_BUSY'" class="text-xs text-muted-foreground">The AI service is busy — try again in a minute.</p>
-            <BaseButton v-if="explanationRetryable" class="self-start" variant="link" :disabled="explanationLoading" @click="loadExplanation">Try again</BaseButton>
-          </div>
-          <template v-else-if="explanation">
-            <p class="text-sm leading-6">{{ explanation.summary }}</p>
-            <div v-for="item in explanation.tracks" :key="item.track" class="border-t border-border pt-3">
-              <h4 class="text-sm font-semibold">{{ quizTrackNames[item.track] ?? item.track }}</h4>
-              <p class="mt-1 text-sm leading-6 text-muted-foreground">{{ item.reasoning }}</p>
-            </div>
-          </template>
-        </section>
+        <!-- The AI explanation lives in a side chat panel; this button opens it -->
+        <button
+          v-if="!legacy && !assistantOpen && !wide"
+          type="button"
+          class="fixed right-5 bottom-5 z-40 flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-[14px] font-semibold text-primary-foreground shadow-lg transition-[background-color,transform] hover:bg-primary-hover active:scale-[0.98]"
+          :aria-label="`Open explanation: ${topResults.length === 1 ? 'Why this track?' : 'Why these tracks?'}`"
+          @click="assistantOpen = true"
+        >
+          <span class="rounded-full bg-primary-foreground p-0.5" aria-hidden="true"><AssistantFace :size="28" /></span>
+          {{ topResults.length === 1 ? 'Why this track?' : 'Why these tracks?' }}
+          <span v-if="explanationLoading" class="size-2 animate-pulse rounded-full bg-primary-foreground/70" aria-hidden="true" />
+        </button>
 
-        <div class="grid gap-4 md:grid-cols-2">
+        <div ref="cardsRef" class="grid gap-4 md:grid-cols-2">
           <section v-for="(result, index) in topResults" :key="result.track" class="card flex flex-col gap-3 border-primary p-6">
             <div class="flex items-center justify-between gap-3">
               <span class="text-xs font-medium text-muted-foreground">{{ legacy ? `Position ${index + 1}` : `Rank ${result.rank}` }}</span>
@@ -242,6 +251,32 @@ onMounted(async () => { await quiz.initialize(); loading.value = false })
         </div>
       </template>
     </main>
+    <!-- Docked: follows the reader down the page and stops where the page ends -->
+    <div v-if="wide && attempt && !legacy" class="sticky top-20 h-[calc(100vh-6.5rem)] min-h-[480px] w-[440px] shrink-0 self-start" :style="{ marginTop: `${dockTop}px` }">
+      <QuizAssistant
+        docked
+        :title="topResults.length === 1 ? 'Why this track?' : 'Why these tracks?'"
+        :loading="explanationLoading"
+        :explanation="explanation"
+        :error="explanationError"
+        :retryable="explanationRetryable"
+        :track-names="quizTrackNames"
+        @retry="loadExplanation"
+      />
+    </div>
+    </div>
+    <QuizAssistant
+      v-if="!legacy && !wide"
+      :open="assistantOpen"
+      :title="topResults.length === 1 ? 'Why this track?' : 'Why these tracks?'"
+      :loading="explanationLoading"
+      :explanation="explanation"
+      :error="explanationError"
+      :retryable="explanationRetryable"
+      :track-names="quizTrackNames"
+      @close="assistantOpen = false"
+      @retry="loadExplanation"
+    />
   </div>
 </template>
 

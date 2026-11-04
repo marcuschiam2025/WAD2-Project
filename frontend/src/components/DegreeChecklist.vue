@@ -210,7 +210,7 @@ const addLabel = computed(() => {
           >
             <span
               class="flex size-3.5 items-center justify-center rounded-[3px] border text-[10px] leading-none"
-              :class="f.flag.value ? (f.tone === 'warning' ? 'border-warning bg-warning text-white' : 'border-primary bg-primary text-white') : 'border-border'"
+              :class="f.flag.value ? (f.tone === 'warning' ? 'border-warning bg-warning text-primary-foreground' : 'border-primary bg-primary text-primary-foreground') : 'border-border'"
             >{{ f.flag.value ? '✓' : '' }}</span>
             {{ f.label }}
           </button>

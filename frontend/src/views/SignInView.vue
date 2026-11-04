@@ -27,7 +27,7 @@ async function continueWithGoogle() {
           Save your quiz results and degree plans securely. You will enter your completed modules during setup.
         </p>
         <div class="flex items-center gap-2 rounded-md bg-primary-tint px-3 py-2.5">
-          <img :src="iconInfo" alt="" class="size-4" />
+          <img :src="iconInfo" alt="" class="icon-accent size-4" />
           <p class="text-[13px] font-medium">Students: use your @smu.edu.sg Google account</p>
         </div>
         <button
@@ -36,7 +36,7 @@ async function continueWithGoogle() {
           :disabled="user.busy"
           @click="continueWithGoogle"
         >
-          <img :src="iconGoogle" alt="" class="size-[18px]" />
+          <img :src="iconGoogle" alt="" data-keep class="size-[18px]" />
           {{ user.busy ? 'Signing in…' : 'Continue with Google' }}
         </button>
         <p v-if="user.error" role="alert" class="text-sm text-destructive">{{ user.error }}</p>

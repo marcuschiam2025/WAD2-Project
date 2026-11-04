@@ -107,7 +107,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
               <img v-if="isSelected(o.value)" :src="checkWhite" alt="" class="size-3" />
             </span>
             <span class="flex-1">{{ o.label }}</span>
-            <img v-if="!multiple && isSelected(o.value)" :src="checkPrimary" alt="" class="size-4" />
+            <img v-if="!multiple && isSelected(o.value)" :src="checkPrimary" alt="" class="icon-accent size-4" />
           </button>
         </li>
         <li v-if="!visible.length" class="px-2.5 py-2 text-[13px] text-muted-foreground">No matches</li>
