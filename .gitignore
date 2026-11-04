@@ -148,3 +148,10 @@ vite.config.ts.timestamp-*
 # Local Vercel project link and deployment output
 .vercel/
 .vercel
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
