@@ -1,24 +1,32 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@core/stores/user'
-import { sectionCode } from '@core/utils/clash'
+import { sectionCode, sectionMeetings } from '@core/utils/clash'
 import { useBiddingStore } from '@core/stores/bidding'
 import { usePlannerStore, effectiveCode } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
+import { useQuizStore, quizTrackNames, isOlderResult } from '@core/stores/quiz'
 import { moduleName } from '@core/data/catalogue'
 import { fmtE } from '@core/utils/money'
 import { windowsFor } from '@core/utils/biddingWindows'
 import { plannedMeetings, singaporeDay } from '@core/utils/dashboardSchedule'
-import { slots, bidHistory, rateBid, estimateHistory } from '@core/data/bidding'
+import { bidHistory, rateBid, estimateHistory } from '@core/data/bidding'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
 import TodoList from '@/components/TodoList.vue'
+import TimetableGrid from '@/components/TimetableGrid.vue'
+import TimetableModuleCard from '@/components/TimetableModuleCard.vue'
+import TrackScoreChart from '@/components/TrackScoreChart.vue'
 
 const user = useUserStore()
 const bidding = useBiddingStore()
 const planner = usePlannerStore()
 const rooms = useRoomsStore()
+const quiz = useQuizStore()
+const route = useRoute()
+const router = useRouter()
 
 // The current BOSS round (GET /api/bidding/round, via the bidding store)
 const round = computed(() => bidding.roundInfo)
@@ -33,7 +41,10 @@ const closesLabel = computed(() => round.value.closesAt ? `${round.value.closesA
 
 // Live countdown to the round closing
 let timer
-onMounted(() => (timer = setInterval(() => (now.value = Date.now()), 30_000)))
+onMounted(() => {
+  timer = setInterval(() => (now.value = Date.now()), 30_000)
+  quiz.initialize() // the quiz tab shows the latest saved result
+})
 onBeforeUnmount(() => clearInterval(timer))
 const countdown = computed(() => {
   if (!round.value.closesAt) return 'Not configured'
@@ -43,30 +54,99 @@ const countdown = computed(() => {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`
 })
 
-// --- Stat cards ---------------------------------------------------------------------------
+// --- Top block: a tab list on the left and the open tab's details on the right ------------------
 const left = computed(() => user.balance - bidding.allocated)
 const over = computed(() => left.value < 0)
 const degree = computed(() => planner.checklist.totals)
-const stats = computed(() => [
-  { label: `${round.value.name} closes in`, value: countdown.value, sub: closesLabel.value, accent: 'border-t-warning!' },
-  { label: 'Balance', value: `e$ ${user.balance.toLocaleString()}`, sub: 'Available to bid', accent: 'border-t-primary!' },
+const latestQuiz = computed(() => quiz.latest)
+const quizLegacy = computed(() => latestQuiz.value?.rubricVersion === 'legacy-v1')
+const quizProvisional = computed(() => latestQuiz.value?.rankingBasis === 'scenario-provisional')
+const quizTop = computed(() => latestQuiz.value?.results.slice(0, 2) ?? [])
+const quizScore = (r) => (quizLegacy.value ? `${Math.round(r.pct)}%` : quizProvisional.value ? 'Provisional' : `${Math.round(r.alignmentIndex)} /100`)
+
+// accent: the colour bar on the left of each tab. Written out in full so Tailwind can see the class names.
+const accentClass = { warning: 'border-l-warning', primary: 'border-l-primary', success: 'border-l-success', destructive: 'border-l-destructive' }
+const sections = computed(() => [
+  { key: 'window', label: `${round.value.name} closes in`, value: countdown.value, sub: closesLabel.value, accent: 'warning' },
   {
-    label: 'Cart total',
-    value: `e$ ${fmtE(bidding.allocated)}`,
-    sub: over.value ? `e$ ${fmtE(-left.value)} over balance` : `e$ ${fmtE(left.value)} left after the round`,
-    danger: over.value,
-    accent: over.value ? 'border-t-destructive!' : 'border-t-success!',
+    key: 'wallet',
+    label: 'Balance & cart',
+    value: `e$ ${user.balance.toLocaleString()}`,
+    unit: 'balance',
+    sub: over.value ? `e$ ${fmtE(-left.value)} over balance` : `e$ ${fmtE(bidding.allocated)} in cart · e$ ${fmtE(left.value)} left`,
+    subDanger: over.value,
+    accent: over.value ? 'destructive' : 'success',
   },
   {
-    label: 'Degree',
-    value: planner.checklist.unavailable ? '—' : String(degree.value.cleared),
-    unit: planner.checklist.loading ? 'Loading requirements' : planner.checklist.unavailable ? 'Requirements unavailable' : `/ ${degree.value.required} courses cleared`,
-    sub: planner.checklist.unavailable ? planner.checklist.unavailableReason : planner.curriculumNotice || `${degree.value.inProgress} in progress · ${degree.value.planned} planned${degree.value.late ? ` · ${degree.value.late} behind` : ''}`,
+    key: 'calendar',
+    label: 'Bidding calendar',
+    value: bidding.bookedSections.length ? String(bidding.bookedSections.length) : '—',
+    unit: bidding.bookedSections.length ? (bidding.bookedSections.length === 1 ? 'module planned' : 'modules planned') : 'nothing in your cart yet',
+    sub: planner.checklist.unavailable ? 'Degree requirements unavailable' : `Degree: ${degree.value.cleared} / ${degree.value.required} courses cleared`,
     subDanger: degree.value.late > 0,
-    accent: 'border-t-primary!',
-    to: '/planner',
+    accent: 'primary',
+  },
+  {
+    key: 'quiz',
+    label: 'Track quiz',
+    value: quizTop.value[0] ? (quizTrackNames[quizTop.value[0].track] ?? quizTop.value[0].track) : 'Not taken yet',
+    compact: true,
+    sub: quizTop.value[0] ? `${quizScore(quizTop.value[0])} match · top track` : 'Find the track that suits you',
+    accent: 'primary',
+  },
+  {
+    key: 'rooms',
+    label: 'Collab rooms',
+    value: String(rooms.rooms.length),
+    unit: rooms.rooms.length === 1 ? 'room' : 'rooms',
+    sub: !rooms.rooms.length ? 'Vote on sections with friends' : roomsNeedingYou.value ? `${roomsNeedingYou.value} waiting for your pick` : 'You are all caught up',
+    subDanger: roomsNeedingYou.value > 0,
+    accent: 'primary',
   },
 ])
+
+// The open tab is kept in the address (?tab=cart) so a reload or the back button returns to it
+const keys = computed(() => sections.value.map((s) => s.key))
+const tabAlias = { balance: 'wallet', cart: 'wallet', degree: 'calendar' }
+const active = computed(() => {
+  const wanted = tabAlias[route.query.tab] ?? route.query.tab
+  return keys.value.includes(wanted) ? wanted : 'window'
+})
+function open(key) { router.replace({ query: { ...route.query, tab: key } }) }
+const tabButtons = ref([])
+// Up and Down arrows move through the tabs, the way a vertical tab list normally behaves
+async function onTabKey(event) {
+  const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key]
+  if (!step) return
+  event.preventDefault()
+  const next = keys.value[(keys.value.indexOf(active.value) + step + keys.value.length) % keys.value.length]
+  open(next)
+  await nextTick()
+  tabButtons.value[keys.value.indexOf(next)]?.focus()
+}
+
+// Window tab: where the round stands and what opens next (the full list of windows is further down the page)
+const termWindows = computed(() => windowsFor(bidding.round.term, now.value))
+const openWindow = computed(() => termWindows.value.find((w) => w.state === 'open'))
+const nextWindow = computed(() => termWindows.value.find((w) => w.state === 'upcoming'))
+
+// Calendar tab: booked sections laid out on the weekly grid
+function calendarCards(day, slot) {
+  return bidding.bookedSections.flatMap((section) => sectionMeetings(section)
+    .filter((m) => m.day === day && m.slot === slot)
+    .map((m) => ({ ...section, meeting: m })))
+}
+const calendarVariant = (section) => (bidding.isLocked(section.module) ? 'room' : bidding.clashes.has(section.id) ? 'clash' : 'booked')
+
+// Degree progress bar (along the bottom of the calendar tab)
+const degreePct = (n) => `${degree.value.required ? (n / degree.value.required) * 100 : 0}%`
+const degreeParts = computed(() => [
+  { label: 'Cleared', n: degree.value.cleared, bar: 'bg-success', dot: 'bg-success' },
+  { label: 'Exempted', n: degree.value.exempted, bar: 'bg-exempt', dot: 'bg-exempt' },
+  { label: 'In progress', n: degree.value.inProgress, bar: 'bg-warning', dot: 'bg-warning' },
+  { label: 'Planned', n: degree.value.planned, bar: 'bg-primary', dot: 'bg-primary' },
+  { label: 'Not in your plan yet', n: degree.value.todo, bar: 'bg-border', dot: 'bg-border', bare: true },
+].filter((p) => p.n > 0))
 
 // --- Schedule -----------------------------------------------------------------------------
 // TODO(backend): replace with GET /api/users/me/feed — assignment deadlines and quizzes.
@@ -106,23 +186,26 @@ const cart = computed(() =>
     .sort((a, b) => b.amount - a.amount),
 )
 const ratingPill = { safe: ['success', 'Safe'], competitive: ['warning', 'Competitive'], 'at-risk': ['destructive', 'At risk'] }
+const ratingCounts = computed(() => Object.entries(ratingPill).map(([key, [tone, label]]) => ({ key, tone, label, n: cart.value.filter((c) => c.rating === key).length })).filter((r) => r.n > 0))
 const withinPct = computed(() => `${Math.min(1, user.balance / Math.max(bidding.allocated, 1)) * 100}%`)
 const overPct = computed(() => `${over.value ? (1 - user.balance / bidding.allocated) * 100 : 0}%`)
 const spentPct = computed(() => `${Math.min(1, bidding.allocated / Math.max(user.balance, 1)) * 100}%`)
 
 // --- Bottom strip -------------------------------------------------------------------------
-const roomRows = computed(() =>
-  rooms.rooms.slice(0, 3).map((room) => {
-    const st = rooms.roomState(room)
-    const mine = (rooms.myVotes[room.id] ?? []).length > 0
-    const note = st.acceptedId
-      ? `You accepted ${sectionCode(st.acceptedId, room.module)}`
-      : st.allVoted
-        ? 'Everyone has voted · ready to accept'
-        : `${st.voted} of ${st.total} voted${mine ? '' : ' · you have not picked yet'}`
-    return { room, note }
-  }),
-)
+const roomRow = (room) => {
+  const st = rooms.roomState(room)
+  const mine = (rooms.myVotes[room.id] ?? []).length > 0
+  const note = st.acceptedId
+    ? `You accepted ${sectionCode(st.acceptedId, room.module)}`
+    : st.allVoted
+      ? 'Everyone has voted · ready to accept'
+      : `${st.voted} of ${st.total} voted${mine ? '' : ' · you have not picked yet'}`
+  // waiting on you: you have not picked a section and nothing has been accepted yet
+  return { room, note, needsYou: !st.acceptedId && !mine, voted: st.voted, total: st.total, accepted: !!st.acceptedId }
+}
+const roomRows = computed(() => rooms.rooms.slice(0, 3).map(roomRow))
+const roomCards = computed(() => rooms.rooms.map(roomRow))
+const roomsNeedingYou = computed(() => roomCards.value.filter((r) => r.needsYou).length)
 
 // Plan problems: prerequisites not met, and required courses past their recommended term
 const alerts = computed(() => {
@@ -175,23 +258,214 @@ const biddingWindows = computed(() => {
         <BaseButton to="/quiz">Take the track quiz</BaseButton>
       </section>
 
-      <!-- Stat cards -->
-      <div v-stagger="0.05" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"> <!-- motion: stat cards stagger in -->
-        <component
-          :is="s.to ? 'RouterLink' : 'div'"
-          v-for="s in stats"
-          :key="s.label"
-          :to="s.to"
-          class="card flex min-w-0 flex-col gap-1.5 border-t-[3px]! p-5 leading-normal"
-          :class="[s.accent, s.to && 'transition-shadow hover:shadow-md']"
-        >
-          <span class="text-overline text-muted-foreground">{{ s.label }}</span>
-          <span class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span class="max-w-full font-mono text-[22px] leading-none font-bold break-words xl:text-[28px]" :class="s.danger && 'text-destructive'">{{ s.value }}</span>
-            <span v-if="s.unit" class="text-[13px] text-muted-foreground">{{ s.unit }}</span>
-          </span>
-          <span class="text-[13px]" :class="s.danger || s.subDanger ? 'font-medium text-destructive' : 'text-muted-foreground'">{{ s.sub }}</span>
-        </component>
+      <!-- Top block: pick one on the left, see its details on the right -->
+      <div v-enter class="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[290px_minmax(0,1fr)]"> <!-- motion: fades in on mount -->
+        <!-- A vertical list on wide screens, a sideways strip on small ones -->
+        <div role="tablist" aria-label="Dashboard summary" aria-orientation="vertical" class="-mx-5 flex gap-3 overflow-x-auto lg:gap-2.5 px-5 pb-1 md:-mx-8 md:px-8 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
+          <button
+            v-for="(s, i) in sections"
+            :id="`tab-${s.key}`"
+            :key="s.key"
+            :ref="(el) => (tabButtons[i] = el)"
+            type="button"
+            role="tab"
+            :aria-selected="active === s.key"
+            :aria-controls="`panel-${s.key}`"
+            :tabindex="active === s.key ? 0 : -1"
+            class="flex min-w-[190px] shrink-0 flex-col justify-center gap-1 rounded-lg border border-l-[3px] border-border bg-card px-4 py-2 text-left leading-normal transition-[box-shadow,background-color,border-color] lg:min-w-0 lg:flex-1"
+            :class="[accentClass[s.accent], active === s.key ? 'bg-primary-tint shadow-md ring-1 ring-primary' : 'hover:border-primary/50 hover:shadow-sm']"
+            @click="open(s.key)"
+            @keydown="onTabKey"
+          >
+            <span class="text-overline text-muted-foreground">{{ s.label }}</span>
+            <span class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span
+                class="max-w-full break-words"
+                :class="[s.compact ? 'text-[16px] leading-snug font-semibold' : 'font-mono text-[20px] leading-none font-bold', s.danger && 'text-destructive']"
+              >{{ s.value }}</span>
+              <span v-if="s.unit" class="text-[12px] text-muted-foreground">{{ s.unit }}</span>
+            </span>
+            <span class="text-[12px]" :class="s.danger || s.subDanger ? 'font-medium text-destructive' : 'text-muted-foreground'">{{ s.sub }}</span>
+          </button>
+        </div>
+
+        <!-- The open tab -->
+        <section :id="`panel-${active}`" role="tabpanel" :aria-labelledby="`tab-${active}`" tabindex="0" class="card flex h-[460px] min-w-0 flex-col gap-4 overflow-y-auto p-5 [&>*]:shrink-0">
+          <!-- Window: the time left is the main thing on this tab -->
+          <template v-if="active === 'window'">
+            <header class="flex flex-col gap-1">
+              <p class="text-overline text-muted-foreground">Bidding window · {{ round.term }}</p>
+              <h2 class="text-h3">{{ round.name }}</h2>
+            </header>
+            <div class="flex flex-col gap-2" role="timer" :aria-label="countdown === 'Closed' ? 'This round has closed' : `${countdown} left to bid`">
+              <span class="font-mono text-[56px] leading-none font-bold tracking-tight sm:text-[80px] lg:text-[96px]" :class="countdown === 'Closed' && 'text-muted-foreground'">{{ countdown }}</span>
+              <span class="text-[15px] text-muted-foreground">{{ countdown === 'Closed' ? 'This round has closed.' : `left to bid · closes ${closesLabel} (Singapore time)` }}</span>
+            </div>
+            <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="flex flex-col gap-1 rounded-lg bg-muted p-4">
+                <dt class="text-overline text-muted-foreground">Open now</dt>
+                <dd class="text-[14px] font-semibold">{{ openWindow ? openWindow.name : 'No window open' }}</dd>
+                <dd v-if="openWindow" class="text-[13px] text-muted-foreground">{{ openWindow.when }}</dd>
+              </div>
+              <div class="flex flex-col gap-1 rounded-lg bg-muted p-4">
+                <dt class="text-overline text-muted-foreground">Up next</dt>
+                <dd class="text-[14px] font-semibold">{{ nextWindow ? nextWindow.name : 'Nothing scheduled' }}</dd>
+                <dd v-if="nextWindow" class="text-[13px] text-muted-foreground">{{ nextWindow.when }}</dd>
+              </div>
+            </dl>
+            <div v-if="termWindows.length" class="flex flex-col gap-2.5 border-t border-border pt-5">
+              <h3 class="text-overline text-muted-foreground">Term timeline</h3>
+              <div class="flex gap-1.5" role="img" :aria-label="`${termWindows.filter((w) => w.state === 'closed').length} of ${termWindows.length} bidding windows have closed`">
+                <span
+                  v-for="w in termWindows"
+                  :key="w.id"
+                  :title="`${w.name} · ${w.when}`"
+                  class="h-3 flex-1 rounded-full"
+                  :class="{ closed: 'bg-muted-foreground/40', open: 'bg-success', upcoming: 'bg-border' }[w.state]"
+                />
+              </div>
+              <p class="text-[12px] text-muted-foreground">{{ termWindows.filter((w) => w.state === 'closed').length }} of {{ termWindows.length }} windows closed. The full list is further down.</p>
+            </div>
+          </template>
+
+          <!-- Balance and cart -->
+          <template v-else-if="active === 'wallet'">
+            <header class="flex flex-wrap items-start justify-between gap-4">
+              <div class="flex flex-col gap-1">
+                <p class="text-overline text-muted-foreground">{{ round.name }} · your e$</p>
+                <h2 class="text-h3">Balance &amp; cart</h2>
+              </div>
+              <BaseButton to="/bidding">Review in Bidding Planner</BaseButton>
+            </header>
+            <dl class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div class="flex flex-col gap-1"><dt class="text-overline text-muted-foreground">Balance</dt><dd class="font-mono text-[26px] leading-none font-bold">e$ {{ user.balance.toLocaleString() }}</dd></div>
+              <div class="flex flex-col gap-1"><dt class="text-overline text-muted-foreground">In your cart</dt><dd class="font-mono text-[26px] leading-none font-bold">e$ {{ fmtE(bidding.allocated) }}</dd></div>
+              <div class="flex flex-col gap-1"><dt class="text-overline text-muted-foreground">{{ over ? 'Over balance' : 'Left after the round' }}</dt><dd class="font-mono text-[26px] leading-none font-bold" :class="over && 'text-destructive'">e$ {{ fmtE(over ? -left : left) }}</dd></div>
+            </dl>
+            <div class="flex h-3 overflow-hidden rounded-full bg-border" role="img" :aria-label="`${fmtE(bidding.allocated)} of ${user.balance} e$ in your cart`">
+              <template v-if="over">
+                <span class="bg-primary transition-[width] duration-500" :style="{ width: withinPct }" />
+                <span class="bg-destructive transition-[width] duration-500" :style="{ width: overPct }" />
+              </template>
+              <span v-else class="bg-primary transition-[width] duration-500" :style="{ width: spentPct }" />
+            </div>
+            <div class="flex flex-col gap-3 border-t border-border pt-4">
+              <div class="flex flex-wrap items-center gap-3">
+                <h3 class="text-overline text-muted-foreground">Your cart · {{ cart.length }} module{{ cart.length === 1 ? '' : 's' }}</h3>
+                <span v-for="r in ratingCounts" :key="r.key" class="flex items-center gap-1.5 text-[13px]"><StatusPill :tone="r.tone">{{ r.label }}</StatusPill><span class="font-mono font-semibold">{{ r.n }}</span></span>
+              </div>
+              <ul v-if="cart.length" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <li v-for="c in cart" :key="c.code">
+                  <RouterLink to="/bidding" class="flex h-full flex-col gap-1 rounded-xl border border-border bg-background p-3 transition-colors hover:border-primary/50">
+                    <div class="flex items-start justify-between gap-2">
+                      <span class="font-mono text-[14px] font-bold">{{ c.code }}</span>
+                      <StatusPill v-if="c.rating" :tone="ratingPill[c.rating][0]">{{ ratingPill[c.rating][1] }}</StatusPill>
+                    </div>
+                    <span class="truncate text-[12px] text-muted-foreground">{{ c.name }}</span>
+                    <span class="mt-auto font-mono text-[16px] font-bold whitespace-nowrap">e$ {{ fmtE(c.amount) }}</span>
+                  </RouterLink>
+                </li>
+              </ul>
+              <p v-else class="rounded-lg bg-muted p-4 text-[13px] text-muted-foreground">Your cart is empty. Add modules in the Bidding Planner.</p>
+            </div>
+          </template>
+
+          <!-- Bidding calendar, with the degree progress along the bottom -->
+          <template v-else-if="active === 'calendar'">
+            <header class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-h3">Bidding calendar <span class="text-[13px] font-normal text-muted-foreground">· {{ round.name }}, {{ round.term }}</span></h2>
+              <BaseButton variant="outline" to="/bidding">Open Bidding Planner</BaseButton>
+            </header>
+            <TimetableGrid short row-height="min-h-[42px]">
+              <template #cell="{ day, slot }">
+                <TimetableModuleCard
+                  v-for="c in calendarCards(day, slot)"
+                  :key="`${c.id}:${c.meeting.start}`"
+                  :code="c.module"
+                  :section="c.section"
+                  :variant="calendarVariant(c)"
+                />
+              </template>
+            </TimetableGrid>
+            <div class="mt-auto flex flex-col gap-2 border-t border-border pt-2">
+              <template v-if="!planner.checklist.unavailable">
+                <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <p class="text-[13px]"><span class="font-semibold">Degree progress</span> <span class="text-muted-foreground">· <span class="font-mono font-semibold text-foreground">{{ degree.cleared }}</span> / {{ degree.required }} courses cleared<template v-for="p in degreeParts.filter((x) => x.label !== 'Cleared' && !x.bare)" :key="p.label"> · {{ p.n }} {{ p.label.toLowerCase() }}</template></span></p>
+                  <RouterLink to="/planner" class="text-[12px] font-medium text-primary hover:underline">Open What-If Planner</RouterLink>
+                </div>
+                <div class="flex h-2.5 overflow-hidden rounded-full bg-border" role="img" :aria-label="`${degree.cleared} of ${degree.required} courses cleared`">
+                  <span v-for="p in degreeParts.filter((x) => !x.bare)" :key="p.label" :class="p.bar" class="transition-[width] duration-500" :style="{ width: degreePct(p.n) }" />
+                </div>
+              </template>
+              <p v-else class="text-[13px] text-muted-foreground">{{ planner.checklist.unavailableReason }}</p>
+            </div>
+          </template>
+
+          <!-- Quiz: the latest result, its chart and the two leading tracks -->
+          <template v-else-if="active === 'quiz'">
+            <header class="flex flex-wrap items-start justify-between gap-4">
+              <div class="flex flex-col gap-1">
+                <p class="text-overline text-muted-foreground">Track Finder</p>
+                <h2 class="text-h3">Your quiz results</h2>
+                <p class="text-[14px] text-muted-foreground">{{ latestQuiz ? 'Your latest result. A guide to explore, not a prediction.' : 'A short quiz suggests tracks to explore.' }}</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <BaseButton v-if="latestQuiz" :to="`/quiz/results?attempt=${latestQuiz.id}`">View full results</BaseButton>
+                <BaseButton :variant="latestQuiz ? 'outline' : 'primary'" to="/quiz">{{ latestQuiz ? 'Retake quiz' : 'Take the track quiz' }}</BaseButton>
+              </div>
+            </header>
+            <p v-if="quiz.loading && !latestQuiz" role="status" class="text-[13px] text-muted-foreground">Loading your result…</p>
+            <p v-else-if="!latestQuiz" class="rounded-lg bg-muted p-5 text-[14px] text-muted-foreground">{{ quiz.error || 'You have not taken the quiz yet. It takes a few minutes and suggests tracks and modules for you.' }}</p>
+            <template v-else>
+              <p v-if="isOlderResult(latestQuiz)" role="status" class="rounded-md bg-primary-tint px-4 py-2.5 text-[13px]">Saved under an earlier quiz version. Retake for an updated score.</p>
+              <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+              <div class="flex flex-col gap-3">
+                <article v-for="r in quizTop" :key="r.track" class="flex flex-col gap-1.5 rounded-xl border border-border p-4" :class="r.rank === 1 && 'border-primary'">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="text-[12px] font-medium text-muted-foreground">Rank {{ r.rank }}</span>
+                    <span class="font-mono text-[18px] font-semibold">{{ quizScore(r) }}</span>
+                  </div>
+                  <h3 class="text-[16px] leading-6 font-semibold">{{ quizTrackNames[r.track] ?? r.track }}</h3>
+                  <span class="text-[12px] text-muted-foreground">{{ quizLegacy ? 'Earlier match score' : quizProvisional ? 'Scenario preference ordering' : 'Quiz match score' }}</span>
+                </article>
+              </div>
+              <div v-if="!quizLegacy" class="flex flex-col gap-2">
+                <h3 class="text-overline text-muted-foreground">Score for every track</h3>
+                <TrackScoreChart :results="latestQuiz.results" :provisional="quizProvisional" />
+              </div>
+              </div>
+            </template>
+          </template>
+
+          <!-- Collab rooms: every room you are in, as a card -->
+          <template v-else>
+            <header class="flex flex-wrap items-start justify-between gap-4">
+              <div class="flex flex-col gap-1">
+                <p class="text-overline text-muted-foreground">Vote on sections together</p>
+                <h2 class="text-h3">Collab rooms</h2>
+                <p class="text-[14px]" :class="roomsNeedingYou ? 'font-semibold text-destructive' : 'text-muted-foreground'">{{ !roomCards.length ? 'You are not in any rooms yet.' : roomsNeedingYou ? `${roomsNeedingYou} room${roomsNeedingYou === 1 ? ' is' : 's are'} waiting for your pick` : 'You have picked in every room.' }}</p>
+              </div>
+              <BaseButton to="/rooms">Open Collab Rooms</BaseButton>
+            </header>
+            <ul v-if="roomCards.length" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <li v-for="r in roomCards" :key="r.room.id">
+                <RouterLink :to="`/rooms/${r.room.id}`" class="flex h-full flex-col gap-2 rounded-xl border border-border bg-background p-4 transition-colors hover:border-primary/50">
+                  <div class="flex items-start justify-between gap-2">
+                    <span class="font-mono text-[15px] font-bold">{{ r.room.module }}</span>
+                    <StatusPill :tone="r.accepted ? 'success' : r.needsYou ? 'warning' : 'info'">{{ r.accepted ? 'Accepted' : r.needsYou ? 'Your pick' : 'Voting' }}</StatusPill>
+                  </div>
+                  <span class="line-clamp-2 text-[14px] leading-snug font-semibold">{{ r.room.name }}</span>
+                  <span class="text-[13px] text-muted-foreground">{{ r.note }}</span>
+                  <div class="mt-auto flex items-center gap-2 pt-1" :aria-label="`${r.voted} of ${r.total} voted`">
+                    <span class="flex h-1.5 flex-1 overflow-hidden rounded-full bg-border"><span class="bg-primary transition-[width] duration-500" :style="{ width: `${r.total ? (r.voted / r.total) * 100 : 0}%` }" /></span>
+                    <span class="font-mono text-[12px] text-muted-foreground">{{ r.voted }}/{{ r.total }}</span>
+                  </div>
+                </RouterLink>
+              </li>
+            </ul>
+            <p v-else class="rounded-lg bg-muted p-5 text-[14px] text-muted-foreground">Create a room or join one with an invite code to vote on sections with friends.</p>
+          </template>
+        </section>
       </div>
 
       <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">

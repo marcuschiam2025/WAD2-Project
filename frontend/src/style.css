@@ -150,6 +150,12 @@
   button:disabled {
     cursor: not-allowed;
   }
+  /* Every scrollbar in the app (the page's own, lists, tables, panels) uses Tailwind 4.3's scrollbar utilities: thin,
+   * with a soft thumb and no track. The colours come from the theme, so dark mode follows without extra rules.
+   * scrollbar-width is not inherited, so it is set on every element rather than once on the page. */
+  * {
+    @apply scrollbar-thin scrollbar-thumb-muted-foreground/40 scrollbar-track-transparent;
+  }
   /* A native progress bar draws its empty track dark, which reads as full at 0 */
   progress {
     appearance: none;
