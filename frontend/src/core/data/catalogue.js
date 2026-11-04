@@ -37,6 +37,9 @@ export function moduleName(code) {
   return liveModules[code]?.title ?? code
 }
 
+// Tracks only an older curriculum has, so they stay out of the list above that new students choose from
+const olderTrackNames = { DCS: 'Digitalisation & Cloud Solutions' }
+
 export function trackName(code) {
-  return tracks.find((t) => t.code === code)?.name ?? code
+  return tracks.find((t) => t.code === code)?.name ?? olderTrackNames[code] ?? code
 }

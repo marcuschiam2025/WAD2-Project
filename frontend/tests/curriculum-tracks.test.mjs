@@ -33,3 +33,14 @@ test('tracksFor follows the curriculum and falls back to the sample list until i
     await server.close()
   }
 })
+
+test('a track only the 2023 curriculum has shows its name, not its code', async () => {
+  const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom', logLevel: 'error' })
+  try {
+    const { trackName, tracks } = await server.ssrLoadModule('/src/core/data/catalogue.js')
+    assert.equal(trackName('DCS'), 'Digitalisation & Cloud Solutions')
+    assert.equal(trackName('BA'), 'Business Analytics')
+    assert.equal(trackName('NOPE'), 'NOPE', 'an unknown code still shows something')
+    assert.equal(tracks.some((t) => t.code === 'DCS'), false, 'it stays out of the list new students choose from')
+  } finally { await server.close() }
+})

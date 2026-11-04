@@ -259,9 +259,9 @@ const biddingWindows = computed(() => {
       </section>
 
       <!-- Top block: pick one on the left, see its details on the right -->
-      <div v-enter class="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[290px_minmax(0,1fr)]"> <!-- motion: fades in on mount -->
+      <div v-enter class="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[290px_minmax(0,1fr)]"> <!-- motion: fades in on mount -->
         <!-- A vertical list on wide screens, a sideways strip on small ones -->
-        <div role="tablist" aria-label="Dashboard summary" aria-orientation="vertical" class="-mx-5 flex gap-3 overflow-x-auto lg:gap-2.5 px-5 pb-1 md:-mx-8 md:px-8 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
+        <div role="tablist" aria-label="Dashboard summary" aria-orientation="vertical" class="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-5 xl:flex xl:flex-col">
           <button
             v-for="(s, i) in sections"
             :id="`tab-${s.key}`"
@@ -272,7 +272,7 @@ const biddingWindows = computed(() => {
             :aria-selected="active === s.key"
             :aria-controls="`panel-${s.key}`"
             :tabindex="active === s.key ? 0 : -1"
-            class="flex min-w-[190px] shrink-0 flex-col justify-center gap-1 rounded-lg border border-l-[3px] border-border bg-card px-4 py-2 text-left leading-normal transition-[box-shadow,background-color,border-color] lg:min-w-0 lg:flex-1"
+            class="flex min-w-0 flex-col justify-center gap-1 max-md:last:col-span-2 rounded-lg border border-l-[3px] border-border bg-card px-4 py-2 text-left leading-normal transition-[box-shadow,background-color,border-color] xl:flex-1"
             :class="[accentClass[s.accent], active === s.key ? 'bg-primary-tint shadow-md ring-1 ring-primary' : 'hover:border-primary/50 hover:shadow-sm']"
             @click="open(s.key)"
             @keydown="onTabKey"
@@ -290,7 +290,7 @@ const biddingWindows = computed(() => {
         </div>
 
         <!-- The open tab -->
-        <section :id="`panel-${active}`" role="tabpanel" :aria-labelledby="`tab-${active}`" tabindex="0" class="card flex h-[460px] min-w-0 flex-col gap-4 overflow-y-auto p-5 [&>*]:shrink-0">
+        <section :id="`panel-${active}`" role="tabpanel" :aria-labelledby="`tab-${active}`" tabindex="0" class="card flex min-h-[460px] min-w-0 flex-col gap-4 p-5 xl:h-[460px] xl:overflow-y-auto [&>*]:shrink-0">
           <!-- Window: the time left is the main thing on this tab -->
           <template v-if="active === 'window'">
             <header class="flex flex-col gap-1">
@@ -376,7 +376,7 @@ const biddingWindows = computed(() => {
               <h2 class="text-h3">Bidding calendar <span class="text-[13px] font-normal text-muted-foreground">· {{ round.name }}, {{ round.term }}</span></h2>
               <BaseButton variant="outline" to="/bidding">Open Bidding Planner</BaseButton>
             </header>
-            <TimetableGrid short row-height="min-h-[42px]">
+            <TimetableGrid short row-height="min-h-[42px]" class="[&_.overflow-x-auto]:scrollbar-none">
               <template #cell="{ day, slot }">
                 <TimetableModuleCard
                   v-for="c in calendarCards(day, slot)"
@@ -468,7 +468,7 @@ const biddingWindows = computed(() => {
         </section>
       </div>
 
-      <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <div class="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div class="flex flex-col gap-4">
         <!-- Schedule -->
         <section v-enter="0.1" class="card flex flex-col p-5"> <!-- motion: schedule fades in, 100ms delay -->
@@ -532,7 +532,7 @@ const biddingWindows = computed(() => {
               Your cart is empty. Add modules in the Bidding Planner.
             </li>
           </ul>
-          <div class="flex gap-2 border-t border-border pt-3">
+          <div class="mt-auto flex gap-2 border-t border-border pt-3">
             <BaseButton to="/bidding" class="w-full sm:w-auto">Review in Bidding Planner</BaseButton>
           </div>
         </section>
