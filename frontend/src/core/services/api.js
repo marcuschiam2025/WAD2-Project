@@ -86,15 +86,11 @@ export const api = {
   // Catalogue
   majors: (school) => request('GET', `/majors${query({ school })}`),
   majorRequirements: (id) => request('GET', `/majors/${encodeURIComponent(id)}/requirements`),
-  tracks: (major) => request('GET', `/tracks${query({ major })}`),
   // { q, category, fulfils, school, limit }
   modules: (params = {}) => request('GET', `/modules${query(params)}`),
   module: (code) => request('GET', `/modules/${encodeURIComponent(code)}`),
 
   // Track Finder quiz
-  quizQuestions: () => request('GET', '/quiz/questions'),
-  submitQuiz: (answers) => request('POST', '/quiz/attempts', { answers }),
-  quizAttempts: () => request('GET', '/quiz/attempts'),
   quizQuestionsV2: () => request('GET', '/quiz/v2/questions'),
   submitQuizV2: (submission) => request('POST', '/quiz/v2/attempts', submission),
   quizAttemptsV2: () => request('GET', '/quiz/v2/attempts'),
@@ -115,10 +111,8 @@ export const api = {
   createRoom: (room) => request('POST', '/parties', room),
   joinRoom: (inviteCode) => request('POST', '/parties/join', { inviteCode }),
   leaveRoom: (id) => request('DELETE', `/parties/${id}/members/me`),
-  deleteRoom: (id) => request('DELETE', `/parties/${id}`),
   // The sections I'd be happy with (replaces my old vote) -> every member's votes
   vote: (id, sectionIds) => request('PUT', `/parties/${id}/votes`, { sectionIds }),
-  clearVotes: (id) => request('DELETE', `/parties/${id}/votes`),
   // The one section I'm going for; status: considering | bidding | enrolled
   setMySection: (id, sectionId, status = 'considering') => request('PUT', `/parties/${id}/my-section`, { sectionId, status }),
   clearMySection: (id) => request('DELETE', `/parties/${id}/my-section`),
@@ -126,8 +120,6 @@ export const api = {
   roomSections: (id) => request('GET', `/parties/${id}/sections`),
   // Owner only: remove a member and stop them rejoining (unban lets them back in)
   banRoomMember: (id, userId) => request('POST', `/parties/${id}/ban`, { userId }),
-  unbanRoomMember: (id, userId) => request('DELETE', `/parties/${id}/ban/${userId}`),
-  roomUpdates: (id, since) => request('GET', `/parties/${id}/updates?since=${since}`),
 
   // BOSS bidding
   round: () => request('GET', '/bidding/round'),
@@ -148,7 +140,6 @@ export const api = {
   saveCart: (cart) => request('PUT', '/bidding/cart', cart),
   dropFromCart: (moduleCode, planId, term) =>
     request('DELETE', `/bidding/cart/${moduleCode}${query({ planId, term })}`),
-  validateCart: (sectionIds) => request('POST', '/bidding/validate-cart', { sectionIds }),
 
   // Google Calendar
   // termStart (Monday of the first teaching week) is only needed for sections without teaching dates

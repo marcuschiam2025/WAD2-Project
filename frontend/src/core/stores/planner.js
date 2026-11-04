@@ -1,9 +1,8 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { modules, liveModules, requirementBuckets } from '../data/catalogue'
+import { liveModules } from '../data/catalogue'
 import { api } from '../services/api'
-import { buildChecklist } from '../utils/degreeChecklist'
-import { buildCurriculumChecklist } from '../utils/curriculumChecklist'
+import { buildCurriculumChecklist, effectiveCode } from '../utils/curriculumChecklist'
 import { layoutCurriculum } from '../utils/curriculumLayout'
 import { useCatalogueStore } from './catalogue'
 import { useRoomsStore } from './rooms'
@@ -15,10 +14,7 @@ export const MAX_MODULES_PER_SEM = 6
 // A semester has room for a module if it already holds it (a move) or is under the maximum
 export const hasRoom = (sem, code) => sem.modules.includes(code) || sem.modules.length < MAX_MODULES_PER_SEM
 
-// Exchange chips look like "CS412 → IS460"; the mapped SMU code is on the right.
-export function effectiveCode(entry) {
-  return entry.split('→').pop().trim()
-}
+export { effectiveCode }
 
 // Plans from GET /api/plans, in the shape the planner screens use (the backend's _id becomes id)
 function fromApi(p) {
@@ -200,18 +196,30 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   // Onboarding answers -> the student's existing plans (a brand-new student's first plan is built from them
-  // in firstPlan instead). Completed semesters and the current one get the modules entered in onboarding, the
-  // current semester and tracks are updated, and future semesters keep their modules minus any now marked as taken.
+  // in firstPlan instead). Modules entered on the form go into their semesters, and only the ones the student took
+  // off the form leave the plan: anything added in the planner stays. Tracks follow only if they changed on the form,
+  // so a plan's own What-If tracks survive other profile edits.
   function applyOnboarding(plan) {
     const p = user.profile
+    const before = p.previousDegree ?? {}
     const taken = p.takenBySem ?? {}
     const takenCodes = new Set(Object.values(taken).flat())
     if (p.currentSem && plan.semesters.some((s) => s.id === p.currentSem)) plan.currentSem = p.currentSem
     const now = semIndex(plan, plan.currentSem)
-    plan.semesters.forEach((s, i) => {
-      s.modules = i <= now ? [...(taken[s.id] ?? [])] : s.modules.filter((m) => !takenCodes.has(effectiveCode(m)))
+    const removed = new Set(Object.entries(before.takenBySem ?? {})
+      .filter(([id]) => { const i = semIndex(plan, id); return i >= 0 && i <= now })
+      .flatMap(([, codes]) => codes)
+      .filter((code) => !takenCodes.has(code)))
+    plan.semesters.forEach((s) => {
+      const here = taken[s.id] ?? []
+      s.modules = s.modules.filter((m) => {
+        const code = effectiveCode(m)
+        return !removed.has(code) && (!takenCodes.has(code) || here.includes(code))
+      })
+      here.filter((code) => !s.modules.some((m) => effectiveCode(m) === code)).forEach((code) => s.modules.push(code))
     })
-    if (plan.majorId) plan.tracks = (p.tracks ?? []).map(trackCode).slice(0, 2)
+    const tracks = (p.tracks ?? []).map(trackCode)
+    if (plan.majorId && tracks.join() !== (before.tracks ?? []).map(trackCode).join()) plan.tracks = tracks.slice(0, 2)
   }
   watch(
     () => online.value && user.onboarded && user.profile.appliedToPlans === false,
@@ -298,17 +306,16 @@ export const usePlannerStore = defineStore('planner', () => {
   }
 
   // Requisites as AND-of-OR groups: [['IS111', 'CS101'], ['IS217']] = (IS111 or CS101) and IS217.
-  // From the backend catalogue when it is loaded, otherwise from the sample catalogue.
+  // From the backend catalogue; a module it does not list has none.
   function requisites(code) {
     const live = liveModules[code]
     if (live) return { ...live, prereqs: live.prerequisites ?? [], coreqs: live.corequisites ?? [] }
-    const mod = modules[code]
-    return { ...mod, categories: mod?.category === 'track' ? ['IS_TRACK'] : [], prereqs: (mod?.prereqs ?? []).map((c) => [c]), coreqs: (mod?.coreqs ?? []).map((c) => [c]) }
+    return { categories: [], prereqs: [], coreqs: [] }
   }
 
-  // The module to suggest for an unmet group: one in the basket, then one the app knows, else the first
+  // The module to suggest for an unmet group: one in the basket, else the first
   const suggestFrom = (group) =>
-    group.find((c) => basket.value.includes(c)) ?? group.find((c) => modules[c]) ?? group[0]
+    group.find((c) => basket.value.includes(c)) ?? group[0]
 
   // Match the server's academic checks against the current, possibly unsaved plan.
   // Preserve AND-of-OR groups for explanations, with one suggested course per group for add actions.
@@ -328,7 +335,7 @@ export const usePlannerStore = defineStore('planner', () => {
     const coreqGroups = mod.coreqs.filter(group => !group.some(c => positions.has(c) && positions.get(c) <= target))
     const exclusions = (mod.mutuallyExclusive ?? []).filter(c => positions.has(c))
     const rules = (mod.prerequisiteRules ?? []).filter(rule => {
-      const count = [...positions].filter(([c, at]) => at < target && (liveModules[c] || modules[c]) &&
+      const count = [...positions].filter(([c, at]) => at < target && liveModules[c] &&
         (rule.countFrom !== 'TRACK' || requisites(c).categories?.includes('IS_TRACK'))).length
       return count < rule.n
     }).map(rule => `${rule.n} ${rule.countFrom === 'TRACK' ? 'track courses' : 'courses'} before this one`)
@@ -476,6 +483,20 @@ export const usePlannerStore = defineStore('planner', () => {
     plan.semesters.push(sem(nextSemId(plan), [], { loa }))
   }
 
+  // The last semester can go if it was added on top of the 8-semester roadmap. Its modules return to the basket.
+  const removableSemester = computed(() => {
+    const plan = activePlan.value
+    const last = plan.semesters.at(-1)
+    return last && !/^Y[1-4]S[12]$/.test(last.id) && last.id !== plan.currentSem ? last : null
+  })
+
+  function removeSemester() {
+    const last = removableSemester.value
+    if (!last) return
+    last.modules.map(effectiveCode).forEach(addToBasket)
+    activePlan.value.semesters.pop()
+  }
+
   function toggleExchange(semId) {
     const s = activePlan.value.semesters.find((x) => x.id === semId)
     s.exchange = !s.exchange
@@ -552,41 +573,9 @@ export const usePlannerStore = defineStore('planner', () => {
     return request
   }
 
-  // Requirement overview: every placed module sorted into a bucket.
-  // Track modules beyond the 4 needed overflow to IS Depth (single track) or Free Electives.
-  const requirements = computed(() => {
-    const plan = activePlan.value
-    const buckets = Object.fromEntries(requirementBuckets.map((b) => [b.key, []]))
-    const placed = plan.semesters.flatMap((s) => s.modules.map(effectiveCode))
-    const firstTrack = plan.tracks[0]
-    let trackCount = 0
-    placed.forEach((code) => {
-      const mod = modules[code]
-      if (!mod) return
-      if (mod.category === 'track') {
-        if (mod.tracks?.includes(firstTrack) && trackCount < 4) {
-          trackCount++
-          buckets.track.push(mod)
-        } else if (mod.tracks?.includes(firstTrack) && plan.tracks.length === 1) {
-          buckets.depth.push(mod)
-        } else {
-          buckets.free.push(mod)
-        }
-      } else {
-        buckets[mod.category].push(mod)
-      }
-    })
-    return requirementBuckets.map((b) => ({ ...b, modules: buckets[b.key], planned: buckets[b.key].length }))
-  })
 
-  const plannedCu = computed(() => requirements.value.reduce((a, b) => a + Math.min(b.planned, b.required), 0))
-  const requiredCu = computed(() => requirementBuckets.reduce((a, b) => a + b.required, 0))
-  // The backend's requirement check for the active plan (null offline, or when the plan has no major)
-  const activeCheck = computed(() => checks.value[activePlan.value.id] ?? null)
-
-  // Outstanding Modules: the 36 courses of the course progression (data/degree.js), matched against the backend's
-  // module catalogue (its tags, e.g. CORE:NUMERACY, and the track course lists) when it is loaded, else the sample one
-  const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModulesFor(activePlan.value.majorId) : modules))
+  // The backend's module catalogue in the shape the checklist matches against, empty until it has loaded
+  const checklistCatalogue = computed(() => (catalogue.online ? catalogue.checklistModulesFor(activePlan.value.majorId) : {}))
   const exempted = computed(() => user.profile.exempted ?? [])
   const curriculumNotice = computed(() => {
     const saved = activePlan.value.majorId
@@ -596,7 +585,7 @@ export const usePlannerStore = defineStore('planner', () => {
   })
   // Online, the checklist follows the plan's curriculum from the backend (GET /api/majors/:id/requirements), so edits
   // made in the admin panel show up here. curriculumLayout.js lists it under the course-progression headings and adds
-  // the recommended semesters. Offline, the fixed course-progression template (data/degree.js): 36 lines.
+  // the recommended semesters. Until the catalogue and curriculum have loaded, it reports itself unavailable.
   const checklist = computed(() => {
     const options = {
       exempted: exempted.value,
@@ -608,18 +597,17 @@ export const usePlannerStore = defineStore('planner', () => {
       const majorCode = catalogue.majors.find((m) => m._id === activePlan.value.majorId)?.majorCode ?? ''
       return layoutCurriculum(buildCurriculumChecklist(activePlan.value, checklistCatalogue.value, bundle, options), activePlan.value, bundle, { majorCode })
     }
-    if (catalogue.online) {
-      const unavailableReason = !activePlan.value.majorId
+    const stillLoading = catalogue.catalogueLoading || catalogue.loadingMajors.has(activePlan.value.majorId)
+    const unavailableReason = stillLoading
+      ? 'Loading your degree requirements…'
+      : !catalogue.online
+      ? 'The course catalogue has not loaded. Reload to retry; completion is unavailable until it loads.'
+      : !activePlan.value.majorId
         ? 'No curriculum is selected for this plan. Your major and intake year may not be supported yet; graduation progress is unavailable.'
         : bundle?.requirementsAvailable === false
           ? 'Graduation requirements for this plan’s curriculum are not available yet.'
           : 'Live curriculum requirements have not loaded for this plan. Reload to retry; completion is unavailable until they load.'
-      return { live: true, unavailable: true, unavailableReason, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
-    }
-    return buildChecklist(activePlan.value, checklistCatalogue.value, {
-      ...options,
-      trackReqs: catalogue.online ? catalogue.trackRequirementsFor(activePlan.value.majorId) : null,
-    })
+    return { unavailable: true, loading: stillLoading, unavailableReason, groups: [], other: [], totals: { required: 0, cleared: 0, exempted: 0, inProgress: 0, planned: 0, todo: 0, late: 0 } }
   })
 
   const hasAnyWarning = computed(() => {
@@ -637,7 +625,6 @@ export const usePlannerStore = defineStore('planner', () => {
     planActionPending,
     planActionError,
     savePlans,
-    activeCheck,
     checklist,
     curriculumNotice,
     checklistCatalogue,
@@ -648,9 +635,6 @@ export const usePlannerStore = defineStore('planner', () => {
     basketSaving,
     basketError,
     saveBasket,
-    requirements,
-    plannedCu,
-    requiredCu,
     hasAnyWarning,
     semIndex,
     semStatus,
@@ -663,6 +647,8 @@ export const usePlannerStore = defineStore('planner', () => {
     removeFromBasket,
     clearBasket,
     addSemester,
+    removableSemester,
+    removeSemester,
     toggleExchange,
     addPlan,
     deletePlan,

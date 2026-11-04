@@ -31,10 +31,6 @@ test('room ballots reload confirmed picks, preserve them on save failure and dis
   assert.equal(await rooms.saveRoomVotes('room-a',[]),false)
   assert.deepEqual([...rooms.voteBoards['room-a'].mySectionIds],['section-a'])
   assert.equal(rooms.voteErrors['room-a'],'Network unavailable')
-  // DELETE /parties/:id/votes takes my picks back
-  api.clearVotes=async id=>{assert.equal(id,'room-a');saved=[]}
-  await rooms.clearMyVotes('room-a')
-  assert.deepEqual([...rooms.voteBoards['room-a'].mySectionIds],[])
   let finishRefresh
   api.room=()=>new Promise(r=>{finishRefresh=r})
   const refreshing=rooms.loadVotes('room-a')

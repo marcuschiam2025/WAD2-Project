@@ -49,10 +49,6 @@
         {
           "id": "d",
           "label": "Explore how technology could reduce energy waste in a neighbourhood."
-        },
-        {
-          "id": "e",
-          "label": "None of these appeal to me yet."
         }
       ]
     },
@@ -103,10 +99,6 @@
         {
           "id": "d",
           "label": "Why a transport or healthcare service struggles to meet demand."
-        },
-        {
-          "id": "e",
-          "label": "None of these appeal to me yet."
         }
       ]
     },
@@ -182,10 +174,6 @@
         {
           "id": "d",
           "label": "Connect different groups' needs to the services and resources available."
-        },
-        {
-          "id": "e",
-          "label": "I’m not sure which I could contribute to yet."
         }
       ]
     },
@@ -236,10 +224,6 @@
         {
           "id": "d",
           "label": "The proposal may overlook needs in different places or communities."
-        },
-        {
-          "id": "e",
-          "label": "I’m not sure which I could contribute to yet."
         }
       ]
     },
@@ -315,10 +299,6 @@
         {
           "id": "d",
           "label": "Understand how different groups share the service and its resources."
-        },
-        {
-          "id": "e",
-          "label": "None of these appeal to me yet."
         }
       ]
     },
@@ -369,10 +349,6 @@
         {
           "id": "d",
           "label": "Improving one public service could use resources needed elsewhere in the community."
-        },
-        {
-          "id": "e",
-          "label": "None of these appeal to me yet."
         }
       ]
     },
@@ -448,10 +424,6 @@
         {
           "id": "d",
           "label": "A community uses transport, care, or shared resources more effectively."
-        },
-        {
-          "id": "e",
-          "label": "None of these appeal to me yet."
         }
       ]
     },
@@ -502,10 +474,6 @@
         {
           "id": "d",
           "label": "Help a city-facing team evaluate a planning, sustainability, or care service."
-        },
-        {
-          "id": "e",
-          "label": "None of these appeal to me yet."
         }
       ]
     },

@@ -35,14 +35,12 @@ test('Unsure is no longer an option on any rating', () => {
   assert.ok(result.issues.some((issue) => issue.questionId === 'I1' && issue.code === 'INVALID_OPTION'))
 })
 
-test('all three ratings cannot replace the required scenario; E counts as unanswered', () => {
+test('scenarios no longer offer a "None of these" option E', () => {
   const body = submission()
-  for (const answer of body.answers) {
-    if (['I2', 'I4'].includes(answer.questionId)) answer.optionId = 'e'
-  }
+  body.answers.find((answer) => answer.questionId === 'I2').optionId = 'e'
   const result = validateSubmissionV2(body, rubric)
-  assert.equal(result.status, 422)
-  assert.deepEqual(result.issues, [{ section: 'interests', code: 'SECTION_NEEDS_SCENARIO' }])
+  assert.equal(result.status, 400)
+  assert.ok(result.issues.some((issue) => issue.questionId === 'I2' && issue.code === 'INVALID_OPTION'))
 })
 
 test('rejects stale versions, unknown IDs, duplicates, missing entries and invalid options', () => {

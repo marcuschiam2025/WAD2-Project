@@ -5,6 +5,7 @@
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoomsStore } from '@core/stores/rooms'
 import { moduleName } from '@core/data/catalogue'
+import { termLabel } from '@core/data/bidding'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import RoomSectionCalendar from './RoomSectionCalendar.vue'
 const props = defineProps({ roomId: { type: String, required: true }, module: { type: String, required: true } })
@@ -51,7 +52,7 @@ onBeforeUnmount(() => clearInterval(timer))
       <div class="flex flex-col gap-0.5 leading-normal">
         <h2 id="room-voting-heading" class="text-h4">Modules for bid · {{ module }}</h2>
         <p class="text-[13px] text-muted-foreground">
-          <template v-if="board">{{ board.term }} · </template>
+          <template v-if="board">{{ termLabel(board.term) }} · </template>
           {{ submitted ? (sectionPicked ? "You've submitted these picks and picked a section, so your votes are locked." : "You've submitted these picks. Unselect them if you want to change your votes.") : "Pick every section you'd take. You can choose more than one." }}
         </p>
       </div>
@@ -67,7 +68,7 @@ onBeforeUnmount(() => clearInterval(timer))
     <template v-if="board">
       <p v-if="board.missingSectionIds?.length" class="text-[13px] text-destructive">Some previously selected sections are no longer available. Review and submit your picks again.</p>
       <p v-if="!board.rows.length" class="rounded-md bg-muted p-4 text-[13px]">
-        No sections are available for {{ module }} {{ moduleName(module) }} in {{ board.term }}. Voting opens when its section data is added.
+        No sections are available for {{ module }} {{ moduleName(module) }} in {{ termLabel(board.term) }}. Voting opens when its section data is added.
       </p>
       <template v-else>
         <RoomSectionCalendar :rows="board.rows" :selected="picks" :disabled="saving || submitted" @toggle="toggle" />

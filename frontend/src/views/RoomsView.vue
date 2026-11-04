@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoomsStore } from '@core/stores/rooms'
+import { sectionCode } from '@core/utils/clash'
 import { moduleName } from '@core/data/catalogue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -39,7 +40,7 @@ async function join() {
           <div v-if="room.summary" class="flex flex-col gap-2">
             <div class="flex items-center justify-between gap-2 text-xs"><span class="font-medium">{{ room.summary.status === 'confirmed' ? 'Section confirmed' : room.summary.status === 'ready' ? 'Ready for decision' : 'Voting' }}</span><span>{{ room.summary.votedCount }} / {{ room.summary.memberCount }} voted</span></div>
             <progress class="h-1.5 w-full accent-primary" :value="room.summary.votedCount" :max="room.summary.memberCount || 1" :aria-label="`${room.summary.votedCount} members voted`" />
-            <p v-if="room.summary.finalisedSection" class="text-xs text-primary">Chosen section: {{ room.summary.finalisedSection.split(':').at(-1) }}</p>
+            <p v-if="room.summary.finalisedSection" class="text-xs text-primary">Chosen section: {{ sectionCode(room.summary.finalisedSection, room.module) }}</p>
           </div>
           <p class="text-xs text-muted-foreground">Invite code <span class="font-mono font-semibold">{{ room.inviteCode }}</span></p>
         </RouterLink>

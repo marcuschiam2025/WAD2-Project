@@ -76,6 +76,7 @@ const hasExemptions = computed(() => exempted.value.length > 0 || freeExempt.val
 const emptySems = computed(() => doneSems.value.filter((id) => !placed.value[id].length))
 
 function unplace(code) {
+  if (picked.value === code) picked.value = null
   SEM_IDS.forEach((id) => (placed.value[id] = placed.value[id].filter((c) => c !== code)))
   basket.value = basket.value.filter((c) => c !== code)
 }
@@ -97,6 +98,18 @@ function drop(semId) {
   unplace(code)
   if (semId) placed.value[semId] = [...placed.value[semId], code]
   else basket.value = [...basket.value, code]
+}
+
+// Tap a module, then tap a semester: dragging doesn't work on touch screens
+const picked = ref(null)
+function pick(code) {
+  picked.value = picked.value === code ? null : code
+}
+function placePicked(semId) {
+  if (!picked.value) return
+  dragging.value = picked.value
+  picked.value = null
+  drop(semId)
 }
 
 // A semester that is no longer done or current gives its modules back to the basket.
@@ -258,13 +271,14 @@ const badge = (n) => [
 
         <p v-if="!currentSem" class="text-[13px] text-muted-foreground">Choose your semester above first.</p>
         <template v-else>
-          <ModuleSearchBox live :exclude="takenOrExempt" @pick="addModule" />
+          <ModuleSearchBox :exclude="takenOrExempt" @pick="addModule" />
 
           <!-- Basket: search results land here, then drag each one into its semester -->
           <div
             class="flex min-h-[64px] flex-col gap-2 rounded-lg border border-dashed border-border p-3"
             @dragover.prevent
             @drop.prevent="drop(null)"
+            @click="placePicked(null)"
           >
             <p class="text-overline text-muted-foreground">To place · {{ basket.length }}</p>
             <div v-if="basket.length" class="flex flex-wrap gap-2">
@@ -272,21 +286,28 @@ const badge = (n) => [
                 v-for="code in basket"
                 :key="code"
                 draggable="true"
-                class="flex cursor-grab items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] active:cursor-grabbing"
-                :class="dragging === code && 'opacity-40'"
+                role="button"
+                tabindex="0"
+                :aria-pressed="picked === code"
+                class="flex cursor-grab items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[13px] active:cursor-grabbing"
+                :class="[dragging === code && 'opacity-40', picked === code ? 'border-primary ring-2 ring-primary/30' : 'border-border']"
                 @dragstart="dragging = code"
                 @dragend="dragging = dragOver = null"
+                @click.stop="pick(code)"
+                @keydown.enter.self="pick(code)"
               >
                 <img :src="iconGrip" alt="" class="size-3" />
                 <span class="font-mono font-bold">{{ code }}</span>
                 <span class="max-w-[160px] truncate text-muted-foreground">{{ moduleName(code) }}</span>
-                <button type="button" :aria-label="`Remove ${code}`" @click="unplace(code)">
+                <button type="button" :aria-label="`Remove ${code}`" @click.stop="unplace(code)">
                   <img :src="iconRemove" alt="" class="size-3" />
                 </button>
               </div>
             </div>
-            <p v-else class="text-[13px] text-muted-foreground">Search above, then drag each module into the semester you took it.</p>
+            <p v-else class="text-[13px] text-muted-foreground">Search above, then drag each module into the semester you took it, or tap it and then tap the semester.</p>
           </div>
+
+          <p v-if="picked" role="status" class="rounded-md bg-primary-tint px-3 py-2 text-[13px]">Tap a semester to place {{ picked }}.</p>
 
           <!-- Done semesters and the current one: drop modules here -->
           <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -304,6 +325,7 @@ const badge = (n) => [
               @dragover.prevent="dragOver = id"
               @dragleave="dragOver = null"
               @drop.prevent="drop(id)"
+              @click="placePicked(id)"
             >
               <div class="flex items-center justify-between">
                 <span class="font-mono text-[12px] font-bold">{{ id }}</span>
@@ -315,17 +337,18 @@ const badge = (n) => [
                 :key="code"
                 draggable="true"
                 class="group relative flex cursor-grab flex-col rounded-sm bg-card px-2 py-1.5 leading-normal active:cursor-grabbing"
-                :class="dragging === code && 'opacity-40'"
+                :class="[dragging === code && 'opacity-40', picked === code && 'ring-2 ring-primary']"
                 @dragstart="dragging = code"
                 @dragend="dragging = dragOver = null"
+                @click.stop="picked && picked !== code ? placePicked(id) : pick(code)"
               >
                 <span class="font-mono text-[12px] font-bold">{{ code }}</span>
                 <span class="line-clamp-2 text-[11px] text-muted-foreground">{{ moduleName(code) }}</span>
                 <button
                   type="button"
                   :aria-label="`Move ${code} back to the basket`"
-                  class="absolute top-1 right-1.5 hidden text-[11px] text-muted-foreground group-hover:block hover:text-foreground"
-                  @click="backToBasket(code)"
+                  class="absolute top-1 right-1.5 text-[11px] text-muted-foreground hover:text-foreground lg:hidden lg:group-hover:block"
+                  @click.stop="backToBasket(code)"
                 >✕</button>
               </div>
               <p v-if="!placed[id].length && id === currentSem" class="m-auto text-center text-[11px] text-muted-foreground">
@@ -356,7 +379,7 @@ const badge = (n) => [
           <h2 class="text-h4">Are you exempted from any modules?</h2>
           <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Optional</span>
         </div>
-        <ModuleSearchBox live :exclude="takenOrExempt" placeholder="Search for a module you're exempted from" @pick="addExemption" />
+        <ModuleSearchBox :exclude="takenOrExempt" placeholder="Search for a module you're exempted from" @pick="addExemption" />
         <div v-if="exempted.length" class="flex flex-wrap gap-2">
           <span
             v-for="code in exempted"

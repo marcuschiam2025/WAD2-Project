@@ -14,11 +14,6 @@ function pairs(sections,predicate) {
 export const findClashes=sections=>pairs(sections,(a,b)=>meetings(a).some(x=>meetings(b).some(y=>x.day===y.day&&overlap(x,y))))
 export const findExamClashes=sections=>pairs(sections,(a,b)=>a.examPeriod&&b.examPeriod?examOverlap(a.examPeriod,b.examPeriod):!!a.exam&&!NO_EXAM_TIME.includes(a.exam)&&a.exam===b.exam)
 export const sectionMeetings=section=>meetings(section)
+// "COR-MGMT1302-G1" -> "G1". Module codes can hold hyphens, so strip the module rather than split on them.
+export const sectionCode=(id,module)=>id?.includes(':')?id.split(':').pop():id?.startsWith(`${module}-`)?id.slice(module.length+1):id
 
-const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-// "Mon 10:00–11:30 · Thu 10:00–11:30", or a note for work-study / SMU-X sections that have no fixed class time
-export function meetingLabel(section) {
- const list=section.sessions??(section.day==null?[]:meetings(section))
- if(!list.length) return 'No fixed class time'
- return list.map(m=>`${DAY_NAMES[m.day]} ${m.start}–${m.end}`).join(' · ')
-}

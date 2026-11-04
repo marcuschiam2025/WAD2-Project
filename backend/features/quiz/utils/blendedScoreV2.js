@@ -54,10 +54,10 @@ const REACH = (() => {
  */
 export function calculateMatchScores(themeRatings, responses) {
   const rated = centre(Object.fromEntries(THEMES.map((theme) => [theme, themeRatings[theme].index])))
-  const chosen = responses.filter(({ questionId, optionId }) => questionId in SCENARIO_MAPPINGS && optionId !== null && optionId !== 'e')
+  const chosen = responses.filter(({ questionId, optionId }) => questionId in SCENARIO_MAPPINGS && optionId !== null)
   const support = chosen.map(({ questionId, optionId }) => optionSupport(SCENARIO_MAPPINGS[questionId].options[optionId]))
   const scenarios = centre(Object.fromEntries(THEMES.map((theme) => [theme, mean(support.map((option) => option[theme]))])))
   const evidence = Object.fromEntries(THEMES.map((theme) => [theme, RATING_SHARE * rated[theme] + SCENARIO_SHARE * scenarios[theme]]))
-  // Answering "None of these" on some scenarios can edge past the all-answered reach, so keep the score on the scale
+  // Keep the score on the 0-100 scale
   return Object.fromEntries(TRACKS.map((track) => [track, Math.max(0, Math.min(100, 50 + 50 * dot(CONTRASTS[track], evidence) / REACH))]))
 }

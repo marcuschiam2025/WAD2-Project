@@ -180,7 +180,7 @@ export function layoutCurriculum(result, plan, bundle, { majorCode = '' } = {}) 
     return (ia === -1 ? ORDER.length : ia) - (ib === -1 ? ORDER.length : ib)
   })
   for (const g of ordered) {
-    g.slots.sort((a, b) => Number(!a.trackCode) - Number(!b.trackCode)) // track requirements first (stable)
+    g.slots.sort((a, b) => Number(a.requirement.level !== 'track') - Number(b.requirement.level !== 'track')) // track requirements first (stable)
     for (const status of ['cleared', 'exempted', 'inProgress', 'planned', 'todo']) g[status] = g.slots.filter((s) => s.status === status).length
   }
 
@@ -197,8 +197,6 @@ export function layoutCurriculum(result, plan, bundle, { majorCode = '' } = {}) 
     ...result,
     groups: ordered,
     other,
-    hasRecommendations: true,
-    byCredit: true,
     totals: {
       required: add('required'), cleared: add('cleared'), exempted: add('exempted'),
       inProgress: add('inProgress'), planned: add('planned'), todo: add('todo'), late,

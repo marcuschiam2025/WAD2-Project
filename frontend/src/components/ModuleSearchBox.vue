@@ -1,9 +1,9 @@
 <script setup>
 // Search box for modules: results float under it while you type, nothing is listed until then.
 // Emits `pick` with the chosen catalogue module. Modules in `exclude` (codes) are left out of the results.
-// `live` searches the backend's full module catalogue once it has loaded (the sample catalogue until then).
+// Searches the backend's full module catalogue once it has loaded.
 import { computed, onMounted, ref } from 'vue'
-import { modules, liveModules } from '@core/data/catalogue'
+import { liveModules } from '@core/data/catalogue'
 import { useCatalogueStore } from '@core/stores/catalogue'
 import iconSearch from '@/assets/figma/icon-search.svg'
 
@@ -11,17 +11,13 @@ const props = defineProps({
   exclude: { type: Array, default: () => [] },
   disabled: Boolean,
   placeholder: { type: String, default: 'Search by module code or name' },
-  live: Boolean,
 })
 const emit = defineEmits(['pick'])
 
 const catalogue = useCatalogueStore()
-onMounted(() => props.live && catalogue.load())
+onMounted(() => catalogue.load())
 const all = computed(() =>
-  (props.live && catalogue.online
-    ? Object.values(liveModules).filter(m => !m.archived).map((m) => ({ code: m._id, name: m.title }))
-    : Object.values(modules)
-  ).sort((a, b) => a.code.localeCompare(b.code)),
+  Object.values(liveModules).filter(m => !m.archived).map((m) => ({ code: m._id, name: m.title })).sort((a, b) => a.code.localeCompare(b.code)),
 )
 const query = ref('')
 const matches = computed(() => {

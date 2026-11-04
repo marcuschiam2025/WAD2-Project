@@ -26,7 +26,7 @@ const links = [
 const activeKey = computed(() => route.meta.nav ?? (route.path.startsWith('/quiz') ? 'quiz' : null))
 
 const menuOpen = ref(false)
-const navOpen = ref(false) // hamburger drawer below xl
+const navOpen = ref(false) // hamburger drawer below md
 const allLinks = computed(() => [...links, ...(user.profile.role === 'admin' ? [{ key: 'admin', label: 'Admin', to: '/admin' }] : [])])
 watch(() => route.fullPath, () => (navOpen.value = false))
 const menuRef = ref(null)
@@ -57,10 +57,10 @@ async function logOut() {
 <template>
   <header class="sticky top-0 z-40 border-b border-border bg-card">
    <div class="flex h-16 items-center justify-between gap-3 px-4 md:px-6">
-    <div class="flex shrink-0 items-center gap-3 xl:gap-8">
+    <div class="flex shrink-0 items-center gap-3 md:gap-4 xl:gap-8">
       <button
         type="button"
-        class="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-muted xl:hidden"
+        class="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-muted md:hidden"
         :aria-label="navOpen ? 'Close menu' : 'Open menu'"
         :aria-expanded="navOpen"
         @click.stop="navOpen = !navOpen"
@@ -70,13 +70,13 @@ async function logOut() {
           <path v-else d="M4 7h16M4 12h16M4 17h16" />
         </svg>
       </button>
-      <BrandLogo to="/dashboard" class="max-sm:[&>span]:hidden" />
-      <nav class="hidden items-start gap-6 xl:flex">
+      <BrandLogo to="/dashboard" class="max-lg:[&>span]:hidden" />
+      <nav class="hidden items-start gap-3 md:flex lg:gap-6" aria-label="Main">
         <RouterLink
           v-for="link in allLinks"
           :key="link.key"
           :to="link.to"
-          class="relative border-b-2 pt-[22px] pb-5 text-[14px] leading-normal whitespace-nowrap transition-colors"
+          class="relative border-b-2 pt-[22px] pb-5 text-[13px] leading-normal whitespace-nowrap transition-colors lg:text-[14px]"
           :class="
             activeKey === link.key
               ? 'border-primary font-medium text-primary'
@@ -88,11 +88,11 @@ async function logOut() {
       </nav>
     </div>
 
-    <div class="flex shrink-0 items-center gap-2 md:gap-4">
-      <!-- TODO(backend): balance comes from the user store; wire it to GET /api/users/me -->
-      <div class="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 leading-normal whitespace-nowrap">
+    <div class="flex shrink-0 items-center gap-2 lg:gap-4">
+      <!-- The student's whole balance: what is left after the cart is on the dashboard -->
+      <div title="Your e$ balance" class="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 leading-normal whitespace-nowrap">
         <span class="font-mono text-[12.5px] font-bold">e$ {{ user.balance.toLocaleString() }}</span>
-        <span class="hidden text-[12px] text-muted-foreground sm:inline">left</span>
+        <span class="hidden text-[12px] text-muted-foreground xl:inline">balance</span>
       </div>
       <div ref="notifRef" class="relative">
         <button
@@ -162,7 +162,7 @@ async function logOut() {
     </div>
    </div>
     <!-- Mobile / tablet nav drawer -->
-    <nav v-if="navOpen" class="flex flex-col border-t border-border px-4 py-2 md:px-6 xl:hidden" aria-label="Main">
+    <nav v-if="navOpen" class="flex flex-col border-t border-border px-4 py-2 md:hidden" aria-label="Main">
       <RouterLink
         v-for="link in allLinks"
         :key="link.key"

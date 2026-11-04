@@ -4,9 +4,9 @@ import { createServer } from 'vite'
 import { createPinia, setActivePinia } from 'pinia'
 
 const rating = { id: 'I1', type: 'rating', section: 'interests', options: ['1', '2', '4', '5'].map((id) => ({ id, label: id })) }
-const scenario = { id: 'I2', type: 'scenario', section: 'interests', options: ['a', 'b', 'c', 'd', 'e'].map((id) => ({ id, label: id })) }
+const scenario = { id: 'I2', type: 'scenario', section: 'interests', options: ['a', 'b', 'c', 'd'].map((id) => ({ id, label: id })) }
 
-test('every question must be answered, and "None of these" counts as an answer', async () => {
+test('every question must be answered before the quiz can be submitted', async () => {
   globalThis.sessionStorage = { getItem: () => null, setItem() {}, removeItem() {} }
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }
   const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' })
@@ -22,7 +22,7 @@ test('every question must be answered, and "None of these" counts as an answer',
     quiz.answer('4')
     assert.equal(quiz.firstBlank, 1)
     quiz.current = 1
-    quiz.answer('e')
+    quiz.answer('d')
     assert.equal(quiz.firstBlank, -1)
   } finally { await server.close() }
 })

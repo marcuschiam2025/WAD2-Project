@@ -48,11 +48,11 @@ const perDay = computed(() => {
       <li
         v-for="r in rows"
         :key="r.id"
-        class="grid grid-cols-[88px_1fr_auto] sm:grid-cols-[110px_1fr_auto] items-center gap-3 border-t border-border py-2 text-[13px] first:border-t-0"
+        class="grid grid-cols-[1fr_auto] sm:grid-cols-[110px_1fr_auto] items-center gap-3 border-t border-border py-2 text-[13px] first:border-t-0"
       >
         <span v-if="r.exam" class="font-medium">{{ dayLabel(r.exam.date) }}</span>
         <span v-else class="text-muted-foreground">—</span>
-        <span class="min-w-0 truncate">
+        <span class="order-first col-span-2 min-w-0 sm:order-none sm:col-span-1 sm:truncate">
           <span class="font-mono font-bold">{{ r.module }}</span>
           <span class="ml-2 text-muted-foreground">{{ moduleName(r.module) }}</span>
         </span>

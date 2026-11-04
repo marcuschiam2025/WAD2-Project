@@ -4,6 +4,7 @@ import { useRoomsStore } from '@core/stores/rooms'
 import { useUserStore } from '@core/stores/user'
 import { usePlannerStore } from '@core/stores/planner'
 import { useBiddingStore } from '@core/stores/bidding'
+import { termLabel } from '@core/data/bidding'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 const props = defineProps({ roomId: { type: String, required: true }, dirty: Boolean })
@@ -55,7 +56,7 @@ async function add() {
     <p v-if="dirty" class="text-xs text-muted-foreground">Save your votes before picking a section.</p>
     <template v-if="confirmed">
       <BaseButton to="/bidding">Review bidding</BaseButton>
-      <p class="text-xs text-muted-foreground">Your {{ confirmed.section.section }} pick appears automatically in bidding for {{ board.term }}. Review the amount and save your bids there. Your What-If plans stay unchanged.</p>
+      <p class="text-xs text-muted-foreground">Your {{ confirmed.section.section }} pick appears automatically in bidding for {{ termLabel(board.term) }}. Review the amount and save your bids there. Your What-If plans stay unchanged.</p>
       <BaseButton variant="outline" :disabled="dirty || rooms.voteSaving[roomId] || !planner.online" @click="openImport">Choose a bid cart</BaseButton>
     </template>
     <p v-if="feedback" role="status" class="text-xs text-success">{{ feedback }}</p>

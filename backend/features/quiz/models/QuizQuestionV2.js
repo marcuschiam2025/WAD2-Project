@@ -25,7 +25,7 @@ const quizQuestionV2Schema = new mongoose.Schema({
     type: [optionSchema],
     validate: {
       validator(options) {
-        const expected = this.type === 'rating' ? ['1', '2', '4', '5'] : ['a', 'b', 'c', 'd', 'e']
+        const expected = this.type === 'rating' ? ['1', '2', '4', '5'] : ['a', 'b', 'c', 'd']
         return options.length === expected.length && expected.every((id) => options.some((option) => option.id === id))
       },
       message: 'Options must contain the distinct IDs for the question type',

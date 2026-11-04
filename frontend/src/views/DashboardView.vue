@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useUserStore } from '@core/stores/user'
+import { sectionCode } from '@core/utils/clash'
 import { useBiddingStore } from '@core/stores/bidding'
 import { usePlannerStore, effectiveCode } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
@@ -58,7 +59,7 @@ const stats = computed(() => [
   {
     label: 'Degree',
     value: planner.checklist.unavailable ? '—' : String(degree.value.cleared),
-    unit: planner.checklist.unavailable ? 'Requirements unavailable' : `/ ${degree.value.required} courses cleared`,
+    unit: planner.checklist.loading ? 'Loading requirements' : planner.checklist.unavailable ? 'Requirements unavailable' : `/ ${degree.value.required} courses cleared`,
     sub: planner.checklist.unavailable ? planner.checklist.unavailableReason : planner.curriculumNotice || `${degree.value.inProgress} in progress · ${degree.value.planned} planned${degree.value.late ? ` · ${degree.value.late} behind` : ''}`,
     subDanger: degree.value.late > 0,
     accent: 'border-t-primary!',
@@ -114,7 +115,7 @@ const roomRows = computed(() =>
     const st = rooms.roomState(room)
     const mine = (rooms.myVotes[room.id] ?? []).length > 0
     const note = st.acceptedId
-      ? `You accepted ${st.acceptedId.split('-')[1]}`
+      ? `You accepted ${sectionCode(st.acceptedId, room.module)}`
       : st.allVoted
         ? 'Everyone has voted · ready to accept'
         : `${st.voted} of ${st.total} voted${mine ? '' : ' · you have not picked yet'}`
@@ -203,7 +204,7 @@ const biddingWindows = computed(() => [
                 type="button"
                 role="tab"
                 :aria-selected="tab === t[0]"
-                class="rounded-sm px-3 py-1 text-[13px] font-medium transition-colors"
+                class="rounded-sm px-3 py-1 text-[13px] font-medium transition-colors max-lg:min-h-11"
                 :class="tab === t[0] ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'"
                 @click="tab = t[0]"
               >{{ t[1] }}</button>
@@ -248,7 +249,7 @@ const biddingWindows = computed(() => [
                 <span class="font-mono font-bold">{{ c.code }}</span> <span class="text-muted-foreground">{{ c.name }}</span>
               </RouterLink>
               <StatusPill v-if="c.rating" :tone="ratingPill[c.rating][0]">{{ ratingPill[c.rating][1] }}</StatusPill>
-              <span class="w-[58px] text-right font-mono text-[14px] font-bold">e$ {{ fmtE(c.amount) }}</span>
+              <span class="min-w-[58px] shrink-0 text-right font-mono text-[14px] font-bold whitespace-nowrap">e$ {{ fmtE(c.amount) }}</span>
             </li>
             <li v-if="!cart.length" class="border-t border-border py-4 text-[13px] text-muted-foreground">
               Your cart is empty. Add modules in the Bidding Planner.

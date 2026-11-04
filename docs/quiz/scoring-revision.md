@@ -88,11 +88,12 @@ The assignment brief's AI-use boundary still applies: this is a conceptual revie
 | Ranking | The 12 ratings; scenarios only as context | All 20 questions, with ratings and scenarios counted equally |
 | Unsure rating | Option 3, which supplied no evidence | Removed. Ratings offer 1, 2, 4 and 5 |
 | Blank answers | Allowed, with at least three answers per section | Refused. Every question needs an answer |
+| Scenario option E | "None of these" or "I'm not sure", an answer with no evidence | Removed. Scenarios offer a, b, c and d |
 | Provisional results | When a theme had no informative rating | No longer happen for new attempts |
 | Scores shown | Rating alignment and scenario preference | One match score per track. Rating themes show High (67+), Medium (34-66) or Low (under 34), and those cut-offs are a judgment call |
 | Exact ties | Shared rank; list order chose the top two | Shared rank; a tie across the top two is shuffled once and saved |
 
-Scenario option E ("None of these" or "I'm not sure") stays. It counts as an answer but supplies no evidence, and each section still needs one other scenario choice. The six themes, questions, rating values, section weights, scenario mappings and track profiles are unchanged. Attempts already saved keep their original scores, and their results page invites a retake.
+Scenario option E ("None of these" or "I'm not sure") is removed, so every scenario gives evidence. The six themes, questions, rating values, section weights, scenario mappings and track profiles are unchanged. Attempts already saved keep their original scores, and their results page invites a retake.
 
 ### How the match score is calculated
 
@@ -111,7 +112,7 @@ The code is in `backend/features/quiz/utils/blendedScoreV2.js` and `scoreQuizV2.
 
 1. **Theme rating.** Ratings convert to 1=0, 2=25, 4=75, 5=100. Each theme is the section-weighted mean of its two ratings, as in v2-draft.
 2. **Centre the ratings.** Subtracting the student's own average leaves their pattern, so generous and harsh raters with the same pattern get the same score.
-3. **Scenario support.** Each chosen option gives its primary theme 100 and its supporting theme 25. Each theme's support is then averaged over the scenarios answered. Option E is left out.
+3. **Scenario support.** Each chosen option gives its primary theme 100 and its supporting theme 25. Each theme's support is then averaged over the scenarios answered.
 4. **Centre the support**, for the same reason as step 2.
 5. **Combine.** `BLEND_SCENARIO_SHARE` (0.5) splits the weight equally. `SCENARIO_SCALE` (0.75) then reduces the scenario side to 0.5 x 0.75 = 0.375, because one-of-four choices swing further than ratings.
 6. **Compare with each track.** Each track profile becomes a contrast: subtract its average weight, then scale it to length 1, so that no track can reach further than another. The track's raw score is the sum over themes of contrast x combined evidence.
@@ -145,6 +146,7 @@ All of this comes from simulated students with a known best track. It is a consi
 | Vague, very noisy ratings | 65.6% | 73.8% |
 | Scenario answers are pure noise | 76.9% | 71.0% |
 
+- The simulations above were run while scenario option E still existed, and have not been rerun without it.
 - The simulated students were built so that scenario answers reflect real preferences, which favours v2.1. The last row shows the cost if real students answer scenarios carelessly.
 - The 0.5 and 0.75 settings and the track profiles are judgment calls. No real student has been tested.
 - Top scores are lower than the old scale suggested. Simulated students' top scores had medians of 61-74, and random answers had a median of 61.

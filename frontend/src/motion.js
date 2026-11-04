@@ -40,11 +40,6 @@ export function overlayEnter(el, done) {
   else done()
 }
 
-export function overlayLeave(el, done) {
-  if (reduceMotion()) return done()
-  animate(el, { opacity: 0 }, { duration: 0.14 }).then(done)
-}
-
 // Side panels that open next to a list (slide out from the list's edge)
 export function slideEnter(el, done) {
   if (reduceMotion()) return done()

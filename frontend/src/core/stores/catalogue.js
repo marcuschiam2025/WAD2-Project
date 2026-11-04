@@ -12,19 +12,21 @@ const IS_CATEGORIES = ['IS', 'IS_TRACK', 'IS_RELATED']
 const FIXED_CODES = new Set(degreeGroups.flatMap((g) => g.slots).flatMap((s) => s.codes ?? []))
 
 // The backend's module and major catalogue. Loaded once; while the backend is unreachable,
-// liveModules stays empty and everything falls back to the sample catalogue in core/data.
+// liveModules stays empty, so module lists and searches come up empty.
 export const useCatalogueStore = defineStore('catalogue', () => {
   const online = ref(false)
   const majors = ref([])
   const details = reactive({}) // code -> GET /api/modules/:code (the list leaves descriptions out)
   const curricula = reactive({}) // curriculum id -> complete backend requirement bundle
-  const trackRequirementsFor = majorId => curricula[majorId]?.trackRequirements ?? {}
   const loadedMajors = new Set()
+  const catalogueLoading = ref(false)
+  const loadingMajors = reactive(new Set())
   let loading = null
 
   function load() {
     // The whole catalogue, including courses not offered in about 2 years (all: true): modules a student took
     // years ago must still be found. The planner's search leaves those out (see search below).
+    if (!loading) catalogueLoading.value = true
     loading ??= Promise.all([api.modules({ includeArchived: true, all: true }), api.majors()])
       .then(([mods, majorList]) => {
         mods.forEach((m) => (liveModules[m._id] = m))
@@ -34,6 +36,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
       .catch(() => {
         loading = null // try again next time
       })
+      .finally(() => (catalogueLoading.value = false))
     return loading
   }
 
@@ -50,24 +53,19 @@ export const useCatalogueStore = defineStore('catalogue', () => {
   async function loadMajor(majorId) {
     if (!majorId || loadedMajors.has(majorId)) return
     loadedMajors.add(majorId)
+    loadingMajors.add(majorId)
     try {
       const bundle = await api.majorRequirements(majorId)
       const { tracks } = bundle
       const lists = {}
-      const reqs = {}
       tracks.forEach((t) => {
         lists[t.trackCode] = [...new Set(t.requirements.flatMap((r) => r.modules ?? []))]
-        reqs[t.trackCode] = {
-          name: t.name,
-          reqs: [...t.requirements]
-            // the compulsory course first, then the list to pick from
-            .sort((a, b) => /compulsory/i.test(b.label) - /compulsory/i.test(a.label) || (a.order ?? 0) - (b.order ?? 0))
-            .map((r) => ({ id: r._id, label: r.label, codes: r.modules ?? [], count: r.rule === 'all' ? (r.modules ?? []).length : (r.n ?? r.cuRequired ?? 1) })),
-        }
       })
-      curricula[majorId] = { ...bundle, trackModules: lists, trackRequirements: reqs }
+      curricula[majorId] = { ...bundle, trackModules: lists }
     } catch {
       loadedMajors.delete(majorId)
+    } finally {
+      loadingMajors.delete(majorId)
     }
   }
 
@@ -90,7 +88,6 @@ export const useCatalogueStore = defineStore('catalogue', () => {
         code: m._id,
         name: m.title,
         cu: m.cu ?? 1,
-        live: true,
         archived: m.archived === true,
         category,
         tracks,
@@ -122,7 +119,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     return mods.map((m) => ({ code: m._id, name: m.title }))
   }
 
-  return { online, majors, details, curricula, trackRequirementsFor, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
+  return { online, catalogueLoading, loadingMajors, majors, details, curricula, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
 })
 
 // Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store

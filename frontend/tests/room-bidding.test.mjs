@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 
 test('explicit room handoff selects one cart and saved extra modules survive reload', async () => {
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }
-  const server = await createServer({ root: decodeURIComponent(new URL('..', import.meta.url).pathname), configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' })
+  const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' })
   try {
     const { useUserStore } = await server.ssrLoadModule('/src/core/stores/user.js')
     const { usePlannerStore } = await server.ssrLoadModule('/src/core/stores/planner.js')

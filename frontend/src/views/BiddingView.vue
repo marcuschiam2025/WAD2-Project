@@ -6,8 +6,8 @@ import { usePlannerStore } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { planLabel } from '@/trackLabels'
 import { moduleName } from '@core/data/catalogue'
-import { sectionMeetings } from '@core/utils/clash'
-import { sections } from '@core/data/bidding'
+import { sectionMeetings, sectionCode } from '@core/utils/clash'
+import { termLabel } from '@core/data/bidding'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
@@ -111,8 +111,16 @@ function onDragStart(e, s) {
 }
 
 function onDrop({ day, slot }) {
-  const target = sections.find((s) => s.module === dragging.value && sectionMeetings(s).some(m => m.day === day && m.slot === slot))
-  if (target) bidding.swapSection(target.module, target.id)
+  const code = dragging.value
+  // Several sections can share a time slot: never pick the one already booked
+  const target = bidding.sectionsFor(code).find((s) => bidding.booked[code] !== s.id && sectionMeetings(s).some(m => m.day === day && m.slot === slot))
+  if (target) bidding.swapSection(code, target.id)
+  dragging.value = null
+}
+
+// Dropped right on an alternative's card: that exact section
+function onCardDrop(s) {
+  if (s.option) bidding.swapSection(s.module, s.id)
   dragging.value = null
 }
 
@@ -136,7 +144,21 @@ const unscheduled = computed(() => {
   return [...booked, ...options]
 })
 
-const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-', ' ')).join(', '))
+const clashList = computed(() => bidding.bookedSections.filter((s) => bidding.clashes.has(s.id)).map((s) => `${s.module} ${s.section}`).join(', '))
+
+// Below xl the bid panel sits under the timetable. A selected card must stay in view to swap sections, so offer a
+// shortcut down to the panel instead of jumping there.
+const sidebarRef = ref(null)
+const panelInView = ref(false)
+let panelObserver
+watch(sidebarRef, (panel) => {
+  panelObserver?.disconnect()
+  if (!panel?.$el) return
+  panelObserver = new IntersectionObserver(([entry]) => (panelInView.value = entry.isIntersecting), { threshold: 0.25 })
+  panelObserver.observe(panel.$el)
+})
+onBeforeUnmount(() => panelObserver?.disconnect())
+const scrollToPanel = () => sidebarRef.value?.$el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 </script>
 
 <template>
@@ -157,7 +179,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
         <div class="flex flex-col gap-0.5">
           <h2 class="text-[17px] font-semibold">{{ semLabel }} timetable, imported from {{ bidding.plan.name }} in the What-If Planner</h2>
           <p class="text-[13px] text-muted-foreground">
-            Click a card to see its other sections, then click or drag onto one to swap. Other modules are locked. Click the card again, or anywhere else on the calendar, to deselect.
+            Tap a card to see its other sections, then tap or drag onto one to swap. Other modules are locked. Click the card again, or anywhere else on the calendar, to deselect.
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-4 text-[12px] text-muted-foreground">
@@ -172,7 +194,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
       <p v-if="bidding.loadError" role="alert" class="text-sm text-destructive">{{ bidding.loadError }} <button type="button" class="underline" @click="bidding.load()">Retry</button></p>
       <p v-if="bidding.roomConflicts.length" role="alert" class="text-sm text-destructive">You picked different sections for {{ bidding.roomConflicts.join(', ') }} in different rooms. Change your pick in those rooms before saving bids.</p>
       <p v-if="bidding.notOffered.length" role="status" class="text-sm text-muted-foreground">
-        Section data is not available for {{ bidding.notOffered.join(', ') }} in {{ bidding.round.term }}. Your modules remain in the degree plan.
+        Section data is not available for {{ bidding.notOffered.join(', ') }} in {{ termLabel(bidding.round.term) }}. Your modules remain in the degree plan.
       </p>
       <section v-if="bidding.unavailableSelections.length" class="card flex flex-col gap-4 border-destructive p-5" aria-labelledby="unavailable-sections-title">
         <div>
@@ -217,6 +239,7 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
                 :class="!s.option && s.module === bidding.selectedModule && !bidding.isLocked(s.module) && 'cursor-grab active:cursor-grabbing'"
                 @dragstart="onDragStart($event, s)"
                 @dragend="dragging = null"
+                @drop.stop.prevent="onCardDrop(s)"
                 @click="onCardClick($event, s)"
               >
                 <TimetableModuleCard
@@ -268,14 +291,14 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
           </div>
           </div>
           <p v-if="lockedFocus" class="text-[13px] leading-normal">
-            <span class="font-mono font-bold">{{ lockedFocus.module }} {{ lockedFocus.sectionId.split(':').pop() }}</span> is locked because
+            <span class="font-mono font-bold">{{ lockedFocus.module }} {{ sectionCode(lockedFocus.sectionId, lockedFocus.module) }}</span> is locked because
             you shared it in {{ lockedFocus.roomName }}<template v-if="friendsOf(lockedFocus.module).length">, alongside {{ friendsOf(lockedFocus.module).map((f) => f.name).join(', ') }}</template>. Change your section in the room to update it.
             <RouterLink :to="`/rooms/${lockedFocus.roomId}`" class="font-medium text-primary hover:underline">Open room</RouterLink>
           </p>
           <p v-if="bidding.fromRooms.length" class="text-[13px] text-muted-foreground">
             Your shared room picks:
             <template v-for="(d, i) in bidding.fromRooms" :key="d.roomId"
-              ><RouterLink :to="`/rooms/${d.roomId}`" class="font-medium text-primary hover:underline">{{ d.module }} {{ d.sectionId.split(':').pop() }} ({{ d.roomName }})</RouterLink
+              ><RouterLink :to="`/rooms/${d.roomId}`" class="font-medium text-primary hover:underline">{{ d.module }} {{ sectionCode(d.sectionId, d.module) }} ({{ d.roomName }})</RouterLink
               ><span v-if="i < bidding.fromRooms.length - 1">, </span></template
             >. Review the amounts and save your bids. Your What-If plans stay unchanged.
           </p>
@@ -289,7 +312,13 @@ const clashList = computed(() => [...bidding.clashes].map((id) => id.replace('-'
           <ExamSchedule :sections="bidding.bookedSections" />
         </div>
 
-        <BidSidebar :code="bidding.selectedModule" @close="bidding.selectedModule = null" />
+        <BidSidebar ref="sidebarRef" :code="bidding.selectedModule" @close="bidding.selectedModule = null" />
+        <button
+          v-if="bidding.selectedModule && !panelInView"
+          type="button"
+          class="fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-full bg-primary px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap text-primary-foreground shadow-md xl:hidden"
+          @click="scrollToPanel"
+        >View {{ bidding.selectedModule }} bid details ↓</button>
       </div>
     </main>
   </div>

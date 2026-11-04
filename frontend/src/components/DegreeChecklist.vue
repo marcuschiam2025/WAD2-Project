@@ -1,15 +1,15 @@
 <script setup>
 // What-If Planner / Degree checklist: only the courses still to clear (cleared = in a semester before the current one).
 // Click a course on the left -> a second column lists the modules you could take for it -> click one for its details.
-// The 36 lines follow the course progression; with the backend, the modules come from its catalogue
-// (e.g. Numeracy = any CORE:NUMERACY course, Managing Elective 2 = any CORE:MANAGING course).
+// The lines and the modules that fill them come from the backend's curriculum and catalogue.
 import { computed, ref, watch } from 'vue'
 import { usePlannerStore } from '@core/stores/planner'
 import { useUserStore } from '@core/stores/user'
 import { useCatalogueStore } from '@core/stores/catalogue'
-import { moduleName } from '@core/data/catalogue'
 import { bidHistory } from '@core/data/bidding'
-import { BASKETS, GRAD_LABELS, MARK_DONE } from '@core/data/degree'
+import { useBiddingStore } from '@core/stores/bidding'
+import { api } from '@core/services/api'
+import { MARK_DONE } from '@core/data/degree'
 import { candidatesFor } from '@core/utils/degreeChecklist'
 import { slideEnter, slideLeave } from '@/motion'
 import { semesterTone, semesterToneLabel } from '@/semesterTones'
@@ -20,11 +20,10 @@ import DegreeChecklistRow from '@/components/DegreeChecklistRow.vue'
 const planner = usePlannerStore()
 const user = useUserStore()
 const catalogue = useCatalogueStore()
+const bidding = useBiddingStore()
 const plan = computed(() => planner.activePlan)
 const checklist = computed(() => planner.checklist)
 const totals = computed(() => checklist.value.totals)
-// With the live curriculum the totals are courses (credits) once the layout has added them up; before that, requirements
-const unit = computed(() => (checklist.value.live && !checklist.value.byCredit ? 'requirements' : 'courses'))
 const pct = (n) => `${totals.value.required ? (n / totals.value.required) * 100 : 0}%`
 
 // Optional filters, remembered in this browser: hide the lines being taken this semester, and the ones planned
@@ -67,7 +66,7 @@ const left = computed(() => totals.value.inProgress + totals.value.planned + tot
 const selectedId = ref(null)
 const moduleKey = ref(null)
 const item = computed(() => sections.value.flatMap((s) => s.items).find((i) => i.id === selectedId.value) ?? null)
-// The modules that can fill a checklist line, from the backend catalogue (or the sample one offline)
+// The modules that can fill a checklist line, from the backend catalogue
 const candidatesOf = (i) => candidatesFor(i, plan.value, planner.checklistCatalogue, planner.exempted).filter(m => !planner.checklistCatalogue[m.code]?.archived || m.placement)
 
 const candidates = computed(() => (item.value ? candidatesOf(item.value) : []))
@@ -82,15 +81,21 @@ const selectedModule = computed(() => candidates.value.find((m) => m.key === mod
 
 // The list leaves descriptions out, so fetch the picked module from GET /api/modules/:code
 watch(selectedModule, (m) => {
-  if (m?.live) catalogue.loadDetail(m.code)
+  if (!m) return
+  catalogue.loadDetail(m.code)
+  if (!bidHistory[m.code]) api.bidHistory(m.code).then((rows) => (bidHistory[m.code] = rows.map(({ term, round, median, min }) => ({ term, round, median, min })))).catch(() => {})
 })
 const description = computed(() => {
   const m = selectedModule.value
-  if (!m?.live) return m?.description ?? 'Course description will be loaded from the module catalogue.'
-  const d = catalogue.details[m.code]
+  const d = m && catalogue.details[m.code]
   if (!d) return 'Loading the course description…'
   return d.description || 'No description in the catalogue yet.'
 })
+
+// Below lg the columns stack, so bring a panel that just opened into view
+function revealStacked(el) {
+  if (window.matchMedia('(max-width: 1023.98px)').matches) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
 
 function selectItem(i) {
   if (selectedId.value === i.id) {
@@ -133,14 +138,7 @@ function markDone(i) {
   moduleKey.value = null
 }
 
-const tags = (m) =>
-  m.live
-    ? [...m.categories.map((c) => CATEGORY_LABEL[c] ?? c), ...m.fulfils.map((f) => FULFILS_LABEL[f] ?? f)]
-    : [
-        ...(m.basket ? [`${BASKETS[m.basket]} basket`] : []),
-        ...(m.tracks ?? []),
-        ...(m.grad ?? []).map((g) => GRAD_LABELS[g]),
-      ]
+const tags = (m) => [...m.categories.map((c) => CATEGORY_LABEL[c] ?? c), ...m.fulfils.map((f) => FULFILS_LABEL[f] ?? f)]
 
 const placementPill = (p) =>
   !p
@@ -156,20 +154,19 @@ const placementPill = (p) =>
 const requisiteText = (groups) => groups.map((g) => g.join(' or ')).join(', and ') || 'None'
 const offeredText = (terms) => (terms.length ? `Term ${terms.map((t) => t.replace(/^T/, '')).join(' & ')}` : 'Not listed')
 
-const facts = (m) =>
-  m.live
-    ? [
-        { label: 'Offered', value: offeredText(m.termsOffered) },
-        { label: 'Median bid', value: bidHistory[m.code]?.length ? `e$ ${bidHistory[m.code][0].median}` : '—', mono: !!bidHistory[m.code]?.length },
-        { label: 'Prerequisites', value: requisiteText(m.prerequisites) },
-        { label: 'Co-requisites', value: requisiteText(m.corequisites) },
-      ]
-    : [
-  { label: 'Offered', value: m.offered ?? 'Term 1 & 2' },
-  { label: 'Median bid', value: m.medianBid ? `e$ ${m.medianBid}` : '—', mono: !!m.medianBid },
-  { label: 'Prerequisites', value: m.prereqs?.map((c) => `${c} ${moduleName(c)}`).join(', ') || 'None' },
-  { label: 'Co-requisites', value: m.coreqs?.map((c) => `${c} ${moduleName(c)}`).join(', ') || 'None' },
-      ]
+// The newest result for the current round if there is one, else the newest of any round
+function lastMedian(code) {
+  const rows = bidHistory[code] ?? []
+  const row = rows.find((r) => r.round === bidding.round.round) ?? rows[0]
+  return row ? `e$ ${row.median} · Round ${row.round}` : '—'
+}
+
+const facts = (m) => [
+  { label: 'Offered', value: offeredText(m.termsOffered) },
+  { label: 'Median bid', value: lastMedian(m.code), mono: !!bidHistory[m.code]?.length },
+  { label: 'Prerequisites', value: requisiteText(m.prerequisites) },
+  { label: 'Co-requisites', value: requisiteText(m.corequisites) },
+]
 
 const inBasket = computed(() => !!selectedModule.value && planner.basket.includes(selectedModule.value.code))
 const addLabel = computed(() => {
@@ -183,7 +180,7 @@ const addLabel = computed(() => {
     <div class="flex flex-col gap-0.5">
       <h2 class="text-[17px] font-semibold">Outstanding Modules</h2>
       <p class="text-[13px] text-muted-foreground">
-        {{ plan.name }} · {{ left }} of {{ totals.required }} {{ unit }} still to clear. Pick one to see what you can take for it.
+        {{ plan.name }} · {{ left }} of {{ totals.required }} courses still to clear. Pick one to see what you can take for it.
       </p>
     </div>
 
@@ -199,7 +196,7 @@ const addLabel = computed(() => {
         <StatusPill v-if="totals.exempted" tone="exempt">{{ totals.exempted }} exempted</StatusPill>
         <StatusPill tone="warning">{{ totals.inProgress }} in progress</StatusPill>
         <StatusPill tone="info">{{ totals.planned }} planned</StatusPill>
-        <StatusPill tone="neutral">{{ totals.todo }} {{ unit === 'requirements' ? 'still incomplete' : 'not in your plan yet' }}</StatusPill>
+        <StatusPill tone="neutral">{{ totals.todo }} not in your plan yet</StatusPill>
         <StatusPill v-if="totals.late" tone="destructive">{{ totals.late }} behind the recommended term</StatusPill>
         <div class="ml-auto flex flex-wrap items-center gap-2">
           <button
@@ -219,8 +216,7 @@ const addLabel = computed(() => {
           </button>
         </div>
       </div>
-      <p v-if="checklist.live && !checklist.hasRecommendations" class="text-[12px] text-muted-foreground">Partial requirements include some courses but still need more. No semester recommendations are specified for these requirements.</p>
-      <div v-else class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-muted-foreground">
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-muted-foreground">
         <span class="font-medium text-foreground">Semester tags</span>
         <span v-for="(label, tone) in semesterToneLabel" :key="tone" class="flex items-center gap-1.5">
           <span class="h-3 w-5 rounded-[4px] border" :class="semesterTone[tone]" /> {{ label }}
@@ -231,12 +227,12 @@ const addLabel = computed(() => {
 
     <p v-if="!sections.length" class="rounded-md bg-success-tint px-4 py-3 text-[13px] font-medium">
       <template v-if="left">Nothing to show: everything left is hidden by "Hide in progress" or "Hide planned". Turn a filter off to see it.</template>
-      <template v-else>All {{ totals.required }} {{ unit }} are cleared.</template>
+      <template v-else>All {{ totals.required }} courses are cleared.</template>
     </p>
 
-    <div v-else class="flex h-[560px] overflow-x-auto overflow-y-hidden rounded-lg border border-border">
+    <div v-else class="flex flex-col overflow-hidden rounded-lg border border-border lg:h-[560px] lg:flex-row">
       <!-- 1. Courses still to clear -->
-      <div class="w-[340px] shrink-0 overflow-y-auto border-r border-border">
+      <div class="max-h-[420px] w-full shrink-0 overflow-y-auto border-b border-border lg:max-h-none lg:w-[340px] lg:border-r lg:border-b-0">
         <div v-for="s in sections" :key="s.key">
           <div class="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-muted px-4 py-2">
             <h3 class="text-overline text-muted-foreground">{{ s.label }}</h3>
@@ -255,8 +251,8 @@ const addLabel = computed(() => {
       </div>
 
       <!-- 2. Options for the selected course (motion: slides out beside the list) -->
-      <Transition mode="out-in" :css="false" @enter="slideEnter" @leave="slideLeave">
-        <div v-if="item" :key="item.id" class="flex w-[300px] shrink-0 flex-col border-r border-border">
+      <Transition mode="out-in" :css="false" @enter="slideEnter" @leave="slideLeave" @after-enter="revealStacked">
+        <div v-if="item" :key="item.id" class="flex max-h-[420px] w-full shrink-0 flex-col border-b border-border lg:max-h-none lg:w-[300px] lg:border-r lg:border-b-0">
           <div class="flex flex-col gap-0.5 border-b border-border px-4 py-3 leading-normal">
             <p class="text-[14px] font-semibold">{{ item.label }}</p>
             <p class="text-[12px] text-muted-foreground">
@@ -296,18 +292,18 @@ const addLabel = computed(() => {
           </ul>
           <p v-else-if="candidates.length" class="px-4 py-4 text-[13px] text-muted-foreground">No course matches "{{ optionQuery }}".</p>
           <p v-else class="px-4 py-4 text-[13px] leading-normal text-muted-foreground">
-            {{ item.detail }}.<template v-if="item.rule === 'exposure'"> Mark a semester as an exchange in Plan settings to count this.</template>
+            {{ item.detail }}.<template v-if="item.requirement?.tag === 'CORE:GLOBAL_EXPOSURE'"> Mark a semester as an exchange in Plan settings to count this.</template>
           </p>
         </div>
       </Transition>
 
       <!-- 3. Details of the selected module -->
       <div class="min-w-0 flex-1 overflow-y-auto">
-        <Transition mode="out-in" :css="false" @enter="slideEnter" @leave="slideLeave">
+        <Transition mode="out-in" :css="false" @enter="slideEnter" @leave="slideLeave" @after-enter="revealStacked">
           <div v-if="selectedModule" :key="selectedModule.key" class="flex flex-col gap-4 p-6">
             <div class="flex flex-col gap-1.5">
               <p class="text-overline text-primary">
-                {{ selectedModule.code || item.label }}<template v-if="!selectedModule.stub"> · {{ selectedModule.cu ?? 1 }} CU</template>
+                {{ selectedModule.code || item.label }} · {{ selectedModule.cu ?? 1 }} CU
               </p>
               <h3 class="text-h3">{{ selectedModule.name }}</h3>
               <div class="flex flex-wrap items-center gap-2 pt-1">
@@ -320,21 +316,16 @@ const addLabel = computed(() => {
               </div>
             </div>
 
-            <template v-if="!selectedModule.stub">
-              <div class="flex flex-col gap-2">
-                <p class="text-[13px] font-semibold">Description</p>
-                <p class="rounded-lg bg-muted px-3.5 py-3 text-[14px] leading-[22px] whitespace-pre-line">{{ description }}</p>
+            <div class="flex flex-col gap-2">
+              <p class="text-[13px] font-semibold">Description</p>
+              <p class="rounded-lg bg-muted px-3.5 py-3 text-[14px] leading-[22px] whitespace-pre-line">{{ description }}</p>
+            </div>
+            <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div v-for="f in facts(selectedModule)" :key="f.label" class="flex flex-col gap-0.5 leading-normal">
+                <dt class="text-[12px] text-muted-foreground">{{ f.label }}</dt>
+                <dd class="text-[14px] font-medium" :class="f.mono && 'font-mono'">{{ f.value }}</dd>
               </div>
-              <dl class="grid grid-cols-2 gap-x-6 gap-y-3">
-                <div v-for="f in facts(selectedModule)" :key="f.label" class="flex flex-col gap-0.5 leading-normal">
-                  <dt class="text-[12px] text-muted-foreground">{{ f.label }}</dt>
-                  <dd class="text-[14px] font-medium" :class="f.mono && 'font-mono'">{{ f.value }}</dd>
-                </div>
-              </dl>
-            </template>
-            <p v-else class="rounded-lg bg-muted px-3.5 py-3 text-[14px] leading-[22px]">
-              Course details will be loaded from the module catalogue.
-            </p>
+            </dl>
 
             <div class="flex flex-col gap-1 rounded-lg border border-border px-3.5 py-3 leading-normal">
               <p class="text-overline text-muted-foreground">Counts as</p>
@@ -347,7 +338,7 @@ const addLabel = computed(() => {
 
             <div class="flex justify-end">
               <BaseButton
-                :disabled="selectedModule.stub || !!selectedModule.placement || inBasket"
+                :disabled="!!selectedModule.placement || inBasket"
                 @click="planner.addToBasket(selectedModule.code)"
               >
                 {{ addLabel }}
@@ -355,7 +346,7 @@ const addLabel = computed(() => {
             </div>
           </div>
           <div v-else key="hint" class="flex h-full items-center justify-center p-8 text-center text-[13px] leading-normal text-muted-foreground">
-            {{ item ? 'Pick a module to see more about it.' : 'Pick a course on the left to see what you can take for it.' }}
+            {{ item ? 'Pick a module to see more about it.' : 'Pick a course to see what you can take for it.' }}
           </div>
         </Transition>
       </div>

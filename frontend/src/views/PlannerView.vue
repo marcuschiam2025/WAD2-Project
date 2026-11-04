@@ -5,7 +5,8 @@ import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM, MAX_PLANS
 import { useRoomsStore } from '@core/stores/rooms'
 import { useBiddingStore } from '@core/stores/bidding'
 import { useCatalogueStore } from '@core/stores/catalogue'
-import { modules, moduleName, tracks, trackName } from '@core/data/catalogue'
+import { useUserStore } from '@core/stores/user'
+import { moduleName, trackName } from '@core/data/catalogue'
 import { planLabel } from '@/trackLabels'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -47,6 +48,11 @@ const planner = usePlannerStore()
 const rooms = useRoomsStore()
 const bidding = useBiddingStore()
 const catalogue = useCatalogueStore()
+const user = useUserStore()
+const overline = computed(() => {
+  const { major, intakeYear } = user.profile
+  return intakeYear ? `BSc ${major} · Class of ${Number(intakeYear) + 4}` : `BSc ${major}`
+})
 
 // Modules whose section was accepted in a collab room are locked and get their own colour. This only reads the student's
 // accepted section; it never edits the plan (rooms.decided stays empty on purpose).
@@ -89,7 +95,6 @@ const dragOver = ref(null) // semester id under the cursor while dragging
 const query = ref('')
 const expandedYears = ref([])
 
-const shortTrack = (c) => tracks.find((t) => t.code === c)?.short ?? c
 const status = (sem) => planner.semStatus(plan.value, sem.id)
 const nowSem = computed(() => plan.value.semesters.find((s) => s.id === plan.value.currentSem))
 
@@ -146,14 +151,6 @@ function place(code, semId) {
   return true
 }
 
-// Keyboard/touch alternative to dragging a basket module.
-function placeFromSelect(code, event) {
-  const semId = event.target.value
-  event.target.value = ''
-  if (!semId || !place(code, semId)) return
-  if (planner.hasWarning(plan.value, code, semId)) warning.value = { code, semId }
-}
-
 function onDragStart(e, code) {
   dragging.value = code
   e.dataTransfer.effectAllowed = 'move'
@@ -171,6 +168,30 @@ function dropOnSemester(sem) {
   if (!code || !canDrop(sem)) return
   if (!place(code, sem.id)) return
   if (planner.hasWarning(plan.value, code, sem.id)) warning.value = { code, semId: sem.id }
+}
+
+// Tap a module, then tap a semester: dragging doesn't work on touch screens
+const picked = ref(null)
+watch(() => planner.activePlanId, () => (picked.value = null))
+function pick(code) {
+  picked.value = picked.value === code ? null : code
+}
+function placePicked(sem) {
+  const code = picked.value
+  if (!code || !canDrop(sem)) return
+  picked.value = null
+  if (place(code, sem.id) && planner.hasWarning(plan.value, code, sem.id)) warning.value = { code, semId: sem.id }
+}
+function tapPlaced(event, code, sem) {
+  if (event.target.closest('button')) return
+  event.stopPropagation()
+  if (picked.value && picked.value !== code) placePicked(sem)
+  else if (status(sem) !== 'done' && !roomDecision(code)) pick(code)
+}
+// A module picked from a semester goes back to the basket
+function tapBasket() {
+  if (picked.value && !planner.basket.includes(picked.value)) planner.returnToBasket(picked.value)
+  picked.value = null
 }
 
 // Clearing the basket can be undone for a few seconds, in case it was a mis-click
@@ -223,10 +244,10 @@ function resolveWarning(action, target) {
 const q = computed(() => query.value.trim().toLowerCase())
 const matches = (m) => !q.value || m.code.toLowerCase().includes(q.value) || m.name.toLowerCase().includes(q.value)
 const basket = computed(() =>
-  planner.basket.map((code) => ({ ...modules[code], code, name: moduleName(code) })).filter(matches),
+  planner.basket.map((code) => ({ code, name: moduleName(code) })).filter(matches),
 )
 
-// Search: GET /api/modules?q=… when the backend is up (debounced), the sample catalogue otherwise
+// Search: GET /api/modules?q=… (debounced)
 const apiResults = ref([])
 let searchTimer
 watch(q, (text) => {
@@ -240,57 +261,25 @@ watch(q, (text) => {
 const searchResults = computed(() => {
   if (!q.value) return []
   const placed = new Set(plan.value.semesters.flatMap((s) => s.modules.map(effectiveCode)))
-  const pool = catalogue.online ? apiResults.value : Object.values(modules).filter(matches)
-  return pool.filter((m) => !placed.has(m.code) && !planner.basket.includes(m.code)).slice(0, 4)
+  return apiResults.value.filter((m) => !placed.has(m.code) && !planner.basket.includes(m.code)).slice(0, 4)
 })
 
 // --- Requirements strip --------------------------------------------------------------------
 // The Outstanding Modules checklist added up by area, so both always agree: one line = one course, split into
 // cleared (before the current semester), in progress (current semester) and planned (later semesters).
-const UNI_GROUPS = ['uni-cap', 'uni-com', 'uni-civ']
 const countSlots = (b) => {
-  // The live curriculum rows carry credit counts, so an area adds up course by course (a requirement 2 of 5 met counts 2)
-  if (b.slots.length && b.slots.every((x) => x.credit)) {
-    const add = (key) => Math.round(b.slots.reduce((n, x) => n + x.credit[key], 0) * 10) / 10
-    const [cleared, exempted, inProgress, planned] = ['cleared', 'exempted', 'inProgress', 'planned'].map(add)
-    return { key: b.key, label: b.label, required: add('required'), cleared, exempted, inProgress, planned, filled: cleared + exempted + inProgress + planned }
-  }
-  const count = (status) => b.slots.filter((x) => x.status === status).length
-  const cleared = count('cleared')
-  const exempted = count('exempted')
-  const inProgress = count('inProgress')
-  const planned = count('planned')
-  return { key: b.key, label: b.label, required: b.slots.length, cleared, exempted, inProgress, planned, filled: cleared + exempted + inProgress + planned }
+  // Each row carries credit counts, so an area adds up course by course (a requirement 2 of 5 met counts 2)
+  const add = (key) => Math.round(b.slots.reduce((n, x) => n + x.credit[key], 0) * 10) / 10
+  const [cleared, exempted, inProgress, planned] = ['cleared', 'exempted', 'inProgress', 'planned'].map(add)
+  return { key: b.key, label: b.label, required: add('required'), cleared, exempted, inProgress, planned, filled: cleared + exempted + inProgress + planned }
 }
 const requirements = computed(() => {
   const groups = planner.checklist.groups
-  // The live checklist (backend curriculum) is already grouped by area; the three University Core headings are one area
-  if (planner.checklist.live) {
-    const uni = groups.filter((g) => /^uni-|^core-/.test(g.key))
-    const rest = groups.filter((g) => g.slots.length && !uni.includes(g))
-    const merged = uni.length ? [{ key: 'uni', label: 'University core', slots: uni.flatMap((g) => g.slots) }] : []
-    return [...merged, ...rest].filter((g) => g.slots.length).map(countSlots)
-  }
-  const slotsOf = (keys) => groups.filter((g) => keys.includes(g.key)).flatMap((g) => g.slots)
-  const electives = slotsOf(['major-elective'])
-  // Track lines from the curriculum have ids like "track-PD-1"; one area per track (two for a double track)
-  const trackCodes = [...new Set(electives.filter((s) => s.rule === 'trackList').map((s) => s.id.split('-')[1]))]
-  const trackAreas = trackCodes.length
-    ? trackCodes.map((code, i) => ({
-        key: `track-${code}`,
-        label: `Track${trackCodes.length > 1 ? ` ${i + 1}` : ''} · ${shortTrack(code)}`,
-        slots: electives.filter((s) => s.id.startsWith(`track-${code}-`)),
-      }))
-    : [{ key: 'track', label: plan.value.tracks[0] ? `Track · ${shortTrack(plan.value.tracks[0])}` : 'Track (undecided)', slots: electives.filter((s) => s.rule === 'track') }]
-  return [
-    { key: 'uni', label: 'University core', slots: slotsOf(UNI_GROUPS) },
-    { key: 'major', label: 'IS core', slots: slotsOf(['major-core']) },
-    ...trackAreas,
-    { key: 'is-electives', label: 'IS electives', slots: electives.filter((s) => s.rule === 'anyIs') },
-    { key: 'free', label: 'Free electives', slots: slotsOf(['free']) },
-  ]
-    .filter((b) => b.slots.length)
-    .map(countSlots)
+  // Already grouped by area; the three University Core headings are one area
+  const uni = groups.filter((g) => /^uni-|^core-/.test(g.key))
+  const rest = groups.filter((g) => g.slots.length && !uni.includes(g))
+  const merged = uni.length ? [{ key: 'uni', label: 'University core', slots: uni.flatMap((g) => g.slots) }] : []
+  return [...merged, ...rest].filter((g) => g.slots.length).map(countSlots)
 })
 const inPlan = computed(() => {
   const t = planner.checklist.totals
@@ -304,7 +293,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
 
 <template>
   <div>
-    <PageHeader overline="BSc Information Systems · Class of 2027" title="What-If Planner">
+    <PageHeader :overline="overline" title="What-If Planner">
       <template #actions>
         <BaseButton variant="outline" size="lg" @click="planner.addSemester({ loa: true })">Add LOA term</BaseButton>
         <BaseButton size="lg" :disabled="!planner.online || planner.planActionPending" @click="addPlan">Add plan</BaseButton>
@@ -330,6 +319,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
           :class="dragging && !planner.basket.includes(dragging) && 'bg-primary-tint'"
           @dragover.prevent
           @drop.prevent="dropOnBasket"
+          @click="tapBasket"
         >
           <div class="flex flex-col gap-1">
             <div class="flex items-center justify-between">
@@ -339,7 +329,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                 <button
                   v-if="clearable"
                   type="button"
-                  class="rounded-sm px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground hover:bg-muted hover:text-destructive"
+                  class="rounded-sm px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground hover:bg-muted hover:text-destructive max-lg:min-h-11 max-lg:min-w-11 max-lg:px-3 max-lg:text-[13px]"
                   @click="clearBasket"
                 >Clear</button>
               </div>
@@ -364,25 +354,26 @@ const onTrack = computed(() => !planner.hasAnyWarning)
               :draggable="!roomDecision(m.code)"
               :title="roomDecision(m.code) ? `Accepted in ${roomDecision(m.code).roomName}. Undo it in the room to move it.` : undefined"
               class="group flex items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-[opacity,border-color]"
-              :class="[roomDecision(m.code) ? 'border-2 border-success bg-success-tint' : 'cursor-grab border-border hover:border-primary/50 active:cursor-grabbing', dragging === m.code && 'border-primary opacity-50']"
+              :class="[roomDecision(m.code) ? 'border-2 border-success bg-success-tint' : 'cursor-grab border-border hover:border-primary/50 active:cursor-grabbing', dragging === m.code && 'border-primary opacity-50', picked === m.code && 'border-primary ring-2 ring-primary/30']"
+              :role="roomDecision(m.code) ? undefined : 'button'"
+              :tabindex="roomDecision(m.code) ? undefined : 0"
+              :aria-pressed="roomDecision(m.code) ? undefined : picked === m.code"
               @dragstart="onDragStart($event, m.code)"
               @dragend="onDragEnd"
+              @click.stop="!roomDecision(m.code) && pick(m.code)"
+              @keydown.enter.self="!roomDecision(m.code) && pick(m.code)"
             >
               <img :src="iconGrip" alt="" class="size-3.5" />
               <div class="flex min-w-0 flex-1 flex-col leading-normal">
                 <span class="font-mono text-[13px] font-bold">{{ m.code }}</span>
-                <span class="truncate text-[12px] text-muted-foreground">{{ m.name }}</span>
-                <select :aria-label="`Place ${m.code} in semester`" :disabled="!!roomDecision(m.code)" class="mt-2 w-full rounded border border-border bg-card p-1 text-xs" @change="placeFromSelect(m.code, $event)" @mousedown.stop draggable="false">
-                  <option value="">Place in semester…</option>
-                  <option v-for="semester in plan.semesters.filter(canDrop)" :key="semester.id" :value="semester.id" :disabled="isFull(semester)">{{ semester.label }}{{ isFull(semester) ? ' (full)' : '' }}</option>
-                </select>
+                <span class="text-[12px] text-muted-foreground">{{ m.name }}</span>
               </div>
               <button
                 v-if="!roomDecision(m.code)"
                 type="button"
                 draggable="false"
                 :aria-label="`Remove ${m.code} from the basket`"
-                class="shrink-0 rounded-sm px-1 text-[12px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive focus-visible:opacity-100"
+                class="shrink-0 rounded-sm px-1 text-[12px] text-muted-foreground hover:text-destructive lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
                 @click.stop="planner.removeFromBasket(m.code)"
               >✕</button>
             </li>
@@ -409,7 +400,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
           <p v-if="!planner.basket.length" class="text-[12px] text-muted-foreground">
             Your basket is empty. Save modules from your track matches, or drag one back here.
           </p>
-          <p v-else class="text-[12px] text-muted-foreground">Drag a module onto a semester.</p>
+          <p v-else class="text-[12px] text-muted-foreground">Drag a module onto a semester, or tap it and then tap the semester.</p>
         </aside>
 
         <!-- Plans -->
@@ -438,14 +429,19 @@ const onTrack = computed(() => !planner.hasAnyWarning)
             </div>
             <div class="flex gap-2 pb-2">
               <BaseButton variant="outline" size="sm" @click="showSettings = true">Plan settings</BaseButton>
-              <BaseButton variant="secondary" size="sm" :disabled="importingToBidding" @click="importToBidding">{{ importingToBidding ? 'Saving plan…' : 'Import to Bidding Planner' }}</BaseButton>
+              <BaseButton variant="secondary" size="sm" :disabled="importingToBidding" @click="importToBidding">{{ importingToBidding ? 'Saving plan…' : 'View in Bidding Planner' }}</BaseButton>
             </div>
           </div>
 
           <p class="text-[13px] text-muted-foreground">
             Now: {{ nowSem?.label.replace('S', 'Sem ') }}
-            · 1st track: {{ trackName(plan.tracks[0]) }}
+            · 1st track: {{ plan.tracks[0] ? trackName(plan.tracks[0]) : 'Not decided' }}
             <template v-if="plan.tracks[1]"> · 2nd track: {{ trackName(plan.tracks[1]) }}</template>
+          </p>
+
+          <p v-if="picked" role="status" class="flex items-center justify-between gap-2 rounded-md bg-primary-tint px-3 py-2 text-[13px]">
+            Tap a semester to place {{ picked }}.
+            <button type="button" class="font-semibold text-primary hover:underline" @click="picked = null">Cancel</button>
           </p>
 
           <div class="flex gap-2.5 overflow-x-auto pb-1">
@@ -472,10 +468,12 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                   'border border-border bg-card': status(col.sem) === 'future' && !col.sem.loa,
                   'border border-border bg-muted': status(col.sem) === 'done',
                   'border border-dashed border-border bg-muted': col.sem.loa,
+                  'cursor-pointer ring-2 ring-primary/30': picked && canDrop(col.sem),
                 }"
                 @dragenter="canDrop(col.sem) && (dragOver = col.sem.id)"
                 @dragover.prevent
                 @drop.prevent="dropOnSemester(col.sem)"
+                @click.stop="placePicked(col.sem)"
               >
                 <div class="flex items-center justify-between px-0.5 font-mono text-[11px]">
                   <button
@@ -507,9 +505,11 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                         : 'bg-secondary',
                     status(col.sem) !== 'done' && !roomDecision(code) && 'cursor-grab',
                     dragging === code && 'opacity-40',
+                    picked === code && 'ring-2 ring-primary',
                   ]"
                   @dragstart="onDragStart($event, code)"
                   @dragend="onDragEnd"
+                  @click="tapPlaced($event, code, col.sem)"
                 >
                   <span class="flex items-center gap-1 font-mono text-[12px] font-bold">
                     {{ code }}
@@ -532,7 +532,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                     v-if="status(col.sem) !== 'done' && !roomDecision(code)"
                     type="button"
                     :aria-label="`Move ${code} back to basket`"
-                    class="absolute top-1 right-1.5 hidden text-[11px] text-muted-foreground group-hover:block hover:text-foreground"
+                    class="absolute top-1 right-1.5 text-[11px] text-muted-foreground hover:text-foreground lg:hidden lg:group-hover:block"
                     @click="planner.returnToBasket(code)"
                   >
                     ✕
@@ -582,7 +582,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
         <div class="flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
           <div class="flex items-center gap-3">
-            <span class="font-mono text-[13px] text-muted-foreground">{{ inPlan.filled }} / {{ inPlan.required }} {{ planner.checklist.live && !planner.checklist.byCredit ? 'requirements' : 'courses' }} in your plan</span>
+            <span class="font-mono text-[13px] text-muted-foreground">{{ inPlan.filled }} / {{ inPlan.required }} courses in your plan</span>
             <StatusPill v-if="onTrack" tone="success">On track</StatusPill>
             <StatusPill v-else tone="destructive">Prereq issues</StatusPill>
           </div>
@@ -607,7 +607,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
           <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-exempt" /> Exempted</span>
           <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-warning" /> In progress</span>
           <span class="flex items-center gap-1.5"><span class="h-2 w-4 rounded-full bg-primary" /> Planned</span>
-          <span>{{ planner.checklist.live && !planner.checklist.byCredit ? 'One requirement' : 'Counted in courses' }}: a requirement part met still counts the courses it has.</span>
+          <span>Counted in courses: a requirement part met still counts the courses it has.</span>
         </div>
       </section>
 

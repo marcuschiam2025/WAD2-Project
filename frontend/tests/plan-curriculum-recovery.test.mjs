@@ -63,6 +63,8 @@ test('catalogue failure prevents first-plan creation and reload retries safely',
   assert.equal(creations, 0, 'a failed catalogue must not create a plan with a null curriculum')
   assert.equal(planner.online, false)
   assert.match(planner.syncError, /catalogue/i)
+  assert.equal(planner.checklist.unavailable, true, 'a failed catalogue must not read as nothing cleared')
+  assert.match(planner.checklist.unavailableReason, /catalogue/i)
   catalogue.online = true
   await planner.reload()
   assert.equal(creations, 1)
