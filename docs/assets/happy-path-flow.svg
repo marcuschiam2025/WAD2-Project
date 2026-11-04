@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1280" width="100%" height="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: transparent;">
+  <defs>
+    <linearGradient id="card-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#182234" />
+    </linearGradient>
+    <linearGradient id="header-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <filter id="glow2" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+    
+    <!-- Arrowhead marker: Tip is at (10, 5), points along path direction -->
+    <marker id="arrow-down-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8" />
+    </marker>
+    <marker id="arrow-down-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#34d399" />
+    </marker>
+  </defs>
+
+  <!-- Transparent Background: No canvas rect! -->
+
+  <!-- Header Card (Ensures readability in light and dark mode) -->
+  <g transform="translate(100, 20)">
+    <rect width="800" height="75" rx="14" fill="url(#header-grad)" stroke="#334155" stroke-width="1.5" filter="url(#glow2)" />
+    <text x="30" y="36" fill="#f8fafc" font-size="20" font-weight="700">BidMaxxer — Happy Path Business Flow</text>
+    <text x="30" y="58" fill="#94a3b8" font-size="13">End-to-end student journey from onboarding to clash-free Google Calendar export</text>
+  </g>
+
+  <!-- STEP 1 -->
+  <g transform="translate(100, 115)">
+    <rect width="800" height="110" rx="14" fill="url(#card-grad)" stroke="#38bdf8" stroke-width="1.5" filter="url(#glow2)" />
+    <circle cx="55" cy="55" r="26" fill="#0284c7" />
+    <text x="55" y="62" fill="#ffffff" font-size="18" font-weight="700" text-anchor="middle">1</text>
+    <text x="105" y="42" fill="#38bdf8" font-size="16" font-weight="700">Google Sign-In &amp; Student Onboarding</text>
+    <text x="105" y="66" fill="#cbd5e1" font-size="13">• Authenticate with official SMU Google account (@smu.edu.sg)</text>
+    <text x="105" y="86" fill="#94a3b8" font-size="12">• Enter school, degree program, intake year, and completed/exempted CUs</text>
+  </g>
+  <!-- Downward Arrow 1 -> 2 -->
+  <path d="M 500 225 L 500 248" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow-down-blue)" />
+
+  <!-- STEP 2 -->
+  <g transform="translate(100, 255)">
+    <rect width="800" height="110" rx="14" fill="url(#card-grad)" stroke="#818cf8" stroke-width="1.5" filter="url(#glow2)" />
+    <circle cx="55" cy="55" r="26" fill="#4f46e5" />
+    <text x="55" y="62" fill="#ffffff" font-size="18" font-weight="700" text-anchor="middle">2</text>
+    <text x="105" y="42" fill="#a5b4fc" font-size="16" font-weight="700">Track Finder Quiz (20 Questions)</text>
+    <text x="105" y="66" fill="#cbd5e1" font-size="13">• 4 sections: Interests, Strengths, Working Style, Career Goals</text>
+    <text x="105" y="86" fill="#94a3b8" font-size="12">• Single-choice &amp; 5-point scale answers, live progress tracking, save-and-resume</text>
+  </g>
+  <!-- Downward Arrow 2 -> 3 -->
+  <path d="M 500 365 L 500 388" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow-down-blue)" />
+
+  <!-- STEP 3 -->
+  <g transform="translate(100, 395)">
+    <rect width="800" height="120" rx="14" fill="url(#card-grad)" stroke="#c084fc" stroke-width="1.5" filter="url(#glow2)" />
+    <circle cx="55" cy="60" r="26" fill="#9333ea" />
+    <text x="55" y="67" fill="#ffffff" font-size="18" font-weight="700" text-anchor="middle">3</text>
+    <text x="105" y="38" fill="#c084fc" font-size="16" font-weight="700">Track Match Results &amp; AI Recommendations</text>
+    <text x="105" y="60" fill="#cbd5e1" font-size="13">• Percentile fit breakdown across SMU tracks (Business Analytics, Product Dev, etc.)</text>
+    <text x="105" y="80" fill="#cbd5e1" font-size="13">• Gemini 3.8 Flash AI generates qualitative "Why this track" explanation</text>
+    <text x="105" y="99" fill="#94a3b8" font-size="12">• Top-2 track starter baskets filtered by met prerequisites → push to Planner</text>
+  </g>
+  <!-- Downward Arrow 3 -> 4 -->
+  <path d="M 500 515 L 500 538" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow-down-blue)" />
+
+  <!-- STEP 4 -->
+  <g transform="translate(100, 545)">
+    <rect width="800" height="120" rx="14" fill="url(#card-grad)" stroke="#34d399" stroke-width="1.5" filter="url(#glow2)" />
+    <circle cx="55" cy="60" r="26" fill="#059669" />
+    <text x="55" y="67" fill="#ffffff" font-size="18" font-weight="700" text-anchor="middle">4</text>
+    <text x="105" y="38" fill="#34d399" font-size="16" font-weight="700">Multi-Track What-If Degree Planner</text>
+    <text x="105" y="60" fill="#cbd5e1" font-size="13">• Compare up to 3 plans side-by-side (single track, double track, or switch)</text>
+    <text x="105" y="80" fill="#cbd5e1" font-size="13">• Drag and drop modules across 8 semesters + LOA / Exchange designations</text>
+    <text x="105" y="99" fill="#94a3b8" font-size="12">• Real-time CU progress bars per bucket + automatic prerequisite validation</text>
+  </g>
+  <!-- Downward Arrow 4 -> 5 -->
+  <path d="M 500 665 L 500 688" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow-down-blue)" />
+
+  <!-- STEP 5 -->
+  <g transform="translate(100, 695)">
+    <rect width="800" height="120" rx="14" fill="url(#card-grad)" stroke="#f59e0b" stroke-width="1.5" filter="url(#glow2)" />
+    <circle cx="55" cy="60" r="26" fill="#d97706" />
+    <text x="55" y="67" fill="#ffffff" font-size="18" font-weight="700" text-anchor="middle">5</text>
+    <text x="105" y="38" fill="#fbbf24" font-size="16" font-weight="700">Collaborative Plan Rooms (Parties)</text>
+    <text x="105" y="60" fill="#cbd5e1" font-size="13">• Create room for target module or join friends via 6-digit invite code</text>
+    <text x="105" y="80" fill="#cbd5e1" font-size="13">• Cast preference votes on course sections and coordinate shared terms</text>
+    <text x="105" y="99" fill="#94a3b8" font-size="12">• 10s short-polling updates ballots in near-real-time without manual refreshes</text>
+  </g>
+  <!-- Downward Arrow 5 -> 6 -->
+  <path d="M 500 815 L 500 838" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow-down-blue)" />
+
+  <!-- STEP 6 -->
+  <g transform="translate(100, 845)">
+    <rect width="800" height="150" rx="14" fill="url(#card-grad)" stroke="#38bdf8" stroke-width="1.5" filter="url(#glow2)" />
+    <circle cx="55" cy="75" r="26" fill="#0284c7" />
+    <text x="55" y="82" fill="#ffffff" font-size="18" font-weight="700" text-anchor="middle">6</text>
+    
+    <!-- Title & Status Badge -->
+    <text x="105" y="34" fill="#38bdf8" font-size="16" font-weight="700">BOSS Bidding Planner</text>
+    <rect x="290" y="17" width="375" height="22" rx="11" fill="#0284c7" fill-opacity="0.25" stroke="#38bdf8" stroke-width="1" />
+    <text x="477" y="32" fill="#7dd3fc" font-size="11" font-weight="600" text-anchor="middle">Incoming Semester Only • Whilst Bidding is Ongoing</text>
+
+    <!-- Sub-feature 1: Bidding Simulator -->
+    <text x="105" y="62" fill="#f8fafc" font-size="13" font-weight="600">• Bidding Simulator:</text>
+    <text x="245" y="62" fill="#cbd5e1" font-size="12.5">Allocate e$ budget with Safe, Competitive, or At-Risk bid badges; view co-bids</text>
+
+    <!-- Sub-feature 2: Timetable Clash Engine -->
+    <text x="105" y="86" fill="#f8fafc" font-size="13" font-weight="600">• Timetable Clash Engine:</text>
+    <text x="288" y="86" fill="#cbd5e1" font-size="12.5">Weekly timetable grid detecting lesson time clashes &amp; exam conflicts</text>
+
+    <!-- Explanatory Context Note -->
+    <rect x="105" y="103" width="670" height="32" rx="6" fill="#0f172a" stroke="#334155" />
+    <text x="118" y="123" fill="#94a3b8" font-size="11.5">Activated exclusively for the upcoming bidding semester during open BOSS rounds; earlier terms remain in Planner.</text>
+  </g>
+  <!-- Downward Arrow 6 -> 7 -->
+  <path d="M 500 995 L 500 1018" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow-down-blue)" />
+
+  <!-- STEP 7 -->
+  <g transform="translate(100, 1025)">
+    <rect width="800" height="110" rx="14" fill="url(#card-grad)" stroke="#f43f5e" stroke-width="1.5" filter="url(#glow2)" />
+    <circle cx="55" cy="55" r="26" fill="#e11d48" />
+    <text x="55" y="62" fill="#ffffff" font-size="18" font-weight="700" text-anchor="middle">7</text>
+    <text x="105" y="42" fill="#fb7185" font-size="16" font-weight="700">Final Timetable Export</text>
+    <text x="105" y="66" fill="#cbd5e1" font-size="13">• One-click export to Google Calendar via OAuth API v3</text>
+    <text x="105" y="86" fill="#94a3b8" font-size="12">• Download standardized .ics calendar file for Apple Calendar, Outlook, etc.</text>
+  </g>
+  <!-- Downward Arrow 7 -> Outcome -->
+  <path d="M 500 1135 L 500 1158" fill="none" stroke="#34d399" stroke-width="3" marker-end="url(#arrow-down-green)" />
+
+  <!-- OUTCOME -->
+  <g transform="translate(300, 1165)">
+    <rect width="400" height="50" rx="25" fill="#065f46" stroke="#34d399" stroke-width="1.5" filter="url(#glow2)" />
+    <text x="200" y="32" fill="#34d399" font-size="15" font-weight="700" text-anchor="middle">Clash-free semester schedule ready!</text>
+  </g>
+</svg>
