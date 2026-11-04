@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { scoreQuizV2, shuffleTieAcrossCutoff } from './scoreQuizV2.js'
-import { calculateScenarioPreferences } from './scenarioPreferencesV2.js'
-import { RATING_MAPPINGS, SCENARIO_MAPPINGS, SECTION_WEIGHTS, TRACK_PROFILES, SUPPORTING_THEME_WEIGHT } from '../content/rubric.v2.js'
+import { scoreQuizV2, shuffleTieAcrossCutoff } from '../scoreQuizV2.js'
+import { calculateScenarioPreferences } from '../scenarioPreferencesV2.js'
+import { RATING_MAPPINGS, SCENARIO_MAPPINGS, SECTION_WEIGHTS, TRACK_PROFILES, SUPPORTING_THEME_WEIGHT } from '../../content/rubric.v2.js'
 
 const content = JSON.parse(await readFile(new URL('../content/questions.v2-draft.json', import.meta.url), 'utf8'))
 const answers = (rating, scenario) => content.questions.map((q) => ({ questionId: q.id, optionId: q.type === 'rating' ? rating : scenario }))

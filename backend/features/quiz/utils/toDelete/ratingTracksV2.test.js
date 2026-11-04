@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { calculateRatingTracks } from './ratingTracksV2.js'
-import { THEMES, TRACK_PROFILES, RATING_MAPPINGS } from '../content/rubric.v2.js'
+import { calculateRatingTracks } from '../ratingTracksV2.js'
+import { THEMES, TRACK_PROFILES, RATING_MAPPINGS } from '../../content/rubric.v2.js'
 
 const responses = (optionId) => Object.keys(RATING_MAPPINGS).map((questionId) => ({ questionId, optionId }))
 

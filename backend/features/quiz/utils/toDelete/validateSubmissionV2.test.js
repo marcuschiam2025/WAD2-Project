@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { validateSubmissionV2 } from './validateSubmissionV2.js'
+import { validateSubmissionV2 } from '../validateSubmissionV2.js'
 
 const rubric = JSON.parse(await readFile(new URL('../content/questions.v2-draft.json', import.meta.url), 'utf8'))
 const submission = () => ({

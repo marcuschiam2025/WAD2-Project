@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
-import QuizAttempt from './models/QuizAttempt.js'
-import QuizSubmission from './models/QuizSubmission.js'
-import QuizHistoryLock from './models/QuizHistoryLock.js'
-import { persistSubmissionV2 } from './quiz.v2.storage.js'
+import QuizAttempt from '../models/QuizAttempt.js'
+import QuizSubmission from '../models/QuizSubmission.js'
+import QuizHistoryLock from '../models/QuizHistoryLock.js'
+import { persistSubmissionV2 } from '../quiz.v2.storage.js'
 
 // Explicit opt-in, hard-coded loopback server and unique disposable database.
 // Never reads MONGODB_URI or the project's .env file.
