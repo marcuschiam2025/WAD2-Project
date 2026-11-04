@@ -8,6 +8,7 @@ import { toSectionView } from "../bidding/utils/sectionView.js";
 import { unmetGroups } from "../planning/utils/requisites.js";
 import { httpError } from "../../middleware/errorHandler.js";
 import { prerequisitesBeforeTerm } from "./utils/eligibility.js";
+import { decisionSummary } from "./utils/decision.js";
 import {
   notify,
   displayName,
@@ -35,6 +36,16 @@ function partyTerm(value) {
 // The sections of the party's module in the party's term (any stored section format)
 async function partySections(party) {
   return loadSections({ term: party.termKey, modules: [party.module] });
+}
+
+// Just the ids of the party's sections, e.g. ["IS216-G1", "IS216-G2", ...]
+async function sectionIdsFor(party) {
+  const sections = await partySections(party);
+  const ids = [];
+  for (const section of sections) {
+    ids.push(section.sectionId);
+  }
+  return ids;
 }
 
 function isMember(party, userId) {
@@ -140,6 +151,9 @@ export async function joinParty(req, res) {
   }
   if (party.members.length >= party.maxMembers) {
     throw httpError(409, "This party is full");
+  }
+    if (party.locked) {
+    throw httpError(409, "This party is locked and not taking new members");
   }
 
   const missing = await missingPrereqs(req.user, party.module, party.termKey);
@@ -277,14 +291,14 @@ export async function banMember(req, res) {
 
 //currently no way to unban from front end yet
 // DELETE /api/parties/:id/ban/:userId — owner lifts a ban (the user can then rejoin with the code)
-// export async function unbanMember(req, res) {
-//   const party = req.party;
-//   party.banned = party.banned.filter(
-//     (bannedId) => !bannedId.equals(req.params.userId),
-//   );
-//   await party.save();
-//   res.json(party);
-// }
+export async function unbanMember(req, res) {
+  const party = req.party;
+  party.banned = party.banned.filter(
+    (bannedId) => !bannedId.equals(req.params.userId),
+  );
+  await party.save();
+  res.json(party);
+}
 
 // ---------------------------------------------------------------------------
 // Sections: votes and "my section"
@@ -414,4 +428,62 @@ export async function getSectionSummary(req, res) {
   }
 
   res.json(summary);
+}
+
+// GET /api/parties/:id/decision — where the vote stands: voting, ready or locked
+export async function getDecision(req, res) {
+  const party = req.party;
+  res.json(decisionSummary(party, await sectionIdsFor(party)));
+}
+
+
+// POST /api/parties/:id/lock { sectionId } — owner locks the party (once everyone has voted)
+export async function lockParty(req, res) {
+  const party = req.party
+  const sectionId = req.body.sectionId
+  if (!sectionId) {
+    throw httpError(400, 'sectionId is required')
+  }
+
+  //SEE IF WE WANT TO MAKE SURE EVERYONE VOTED BEFORE LOCKING:
+  // =====================
+  //   const summary = decisionSummary(party, await sectionIdsFor(party));
+  // if (!summary.allVoted) {
+  //   throw httpError(409, "Wait until everyone has voted before locking the party");
+  // }
+  // if (!summary.leaders.includes(sectionId)) {
+  //   throw httpError(400, `Choose one of the leading sections: ${summary.leaders.join(", ")}`);
+  // }
+  //=====================
+  party.locked = true
+  party.lockedSection = sectionId
+  party.lockedAt = new Date()
+  await party.save()
+
+  await notify(
+    otherMembers(party, req.user._id),
+    'party_vote_locked',
+    `${party.name} is locked: the group chose ${sectionId}`,
+    roomLink(party),
+  )
+
+  res.json(decisionSummary(party, await sectionIdsFor(party)))
+}
+
+// DELETE /api/parties/:id/lock — owner unlocks the party so it can change again
+export async function unlockParty(req, res) {
+  const party = req.party
+  party.locked = false
+  party.lockedSection = null
+  party.lockedAt = null
+  await party.save()
+
+  await notify(
+    otherMembers(party, req.user._id),
+    'party_vote_unlocked',
+    `${party.name} was unlocked: votes can change again`,
+    roomLink(party),
+  )
+
+  res.json(decisionSummary(party, await sectionIdsFor(party)))
 }

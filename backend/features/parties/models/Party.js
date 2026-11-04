@@ -12,9 +12,12 @@ const partySchema = new mongoose.Schema(
     termKey: { type: String, required: true, match: /^\d{4}-\d{2}_T(1|2|3A|3B)$/ }, // e.g. "2026-27_T2"
     inviteCode: { type: String, required: true, unique: true, uppercase: true }, // 6 characters, shared to join
     owner: { type: ObjectId, ref: "User", required: true },
-    maxMembers: { type: Number, default: MAX_PARTY_SIZE},
+    maxMembers: { type: Number, min: 2, max: MAX_PARTY_SIZE, default: MAX_PARTY_SIZE },
     members: [{ type: ObjectId, ref: "User" }], // includes the owner
     banned: [{ type: ObjectId, ref: "User" }],
+    locked: { type: Boolean, default: false },      // true = the party is frozen
+    lockedAt: { type: Date, default: null },        // when it was locked
+    lockedSection: { type: String, default: null }, // the section the owner chose, e.g. "IS216-G2"
 
     //votes is their vote not necessarily the section they bid for
     votes: [

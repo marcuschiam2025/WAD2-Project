@@ -39,3 +39,11 @@ export function requireOwner(req, res, next) {
   }
   next()
 }
+
+// Use after loadParty. Stops the request while the owner has locked the party.
+export function requireUnlocked(req, res, next) {
+  if (req.party.locked) {
+    throw httpError(409, 'This party is locked. Ask the party owner to unlock it first.')
+  }
+  next()
+}
