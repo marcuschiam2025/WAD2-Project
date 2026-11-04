@@ -3,6 +3,7 @@ import Module from './models/Module.js'
 import Major from './models/Major.js'
 import Track from './models/Track.js'
 import Requirement from './models/Requirement.js'
+import BidCart from '../bidding/models/BidCart.js'
 import { checkPlan as checkRequirements, effectiveCode } from './utils/requirementChecker.js'
 import { httpError } from '../../middleware/errorHandler.js'
 
@@ -256,6 +257,8 @@ export async function deletePlan(req, res) {
     throw httpError(409, 'You need at least one plan')
   }
 
+  // Delete the plan's bid carts first, so a failure here can't leave carts without a plan
+  await BidCart.deleteMany({ plan: plan._id })
   await plan.deleteOne()
 
   // Rename the remaining plans so they read Plan 1, Plan 2, ... again
