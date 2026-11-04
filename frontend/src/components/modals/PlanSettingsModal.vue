@@ -18,7 +18,11 @@ const plan = computed(() => planner.activePlan)
 const semesterOptions = computed(() =>
   plan.value.semesters.filter((s) => !s.loa).map((s) => ({ value: s.id, label: s.label.replace('S', 'Sem ') })),
 )
-const trackOptions = tracks.map((t) => ({ value: t.code, label: t.name }))
+// Only the tracks on this plan's curriculum
+const trackOptions = computed(() =>
+  catalogue.tracksFor(plan.value.majorId).map((t) => ({ value: t.code, label: t.name })),
+)
+const firstTrackOptions = computed(() => [{ value: '', label: 'Not decided' }, ...trackOptions.value])
 const secondTrackOptions = computed(() => [
   { value: '', label: 'None' },
   ...trackOptions.value.filter((o) => o.value !== plan.value.tracks[0]),
