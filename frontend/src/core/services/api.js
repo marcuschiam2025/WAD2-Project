@@ -95,6 +95,7 @@ export const api = {
   submitQuizV2: (submission) => request('POST', '/quiz/v2/attempts', submission),
   quizAttemptsV2: () => request('GET', '/quiz/v2/attempts'),
   quizModulesV2: (id) => request('GET', `/quiz/v2/attempts/${encodeURIComponent(id)}/recommendations`),
+  quizExplanationV2: (id) => request('GET', `/quiz/v2/attempts/${encodeURIComponent(id)}/explanation`),
 
   // What-If plans
   plans: () => request('GET', '/plans'),

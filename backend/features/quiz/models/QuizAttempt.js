@@ -42,6 +42,8 @@ const quizAttemptSchema = new mongoose.Schema(
     // this field from a client's request body.
     rubricSnapshot: { type: mongoose.Schema.Types.Mixed, select: false },
     resultSnapshot: mongoose.Schema.Types.Mixed,
+    // Gemini's explanation of the leading track(s), generated on first view and reused after that
+    aiExplanation: mongoose.Schema.Types.Mixed,
   },
   { timestamps: true },
 )

@@ -43,6 +43,9 @@ const loading = ref(true)
 const moduleSuggestions = ref(null)
 const moduleLoading = ref(false)
 const moduleError = ref('')
+const explanation = ref(null)
+const explanationLoading = ref(false)
+const explanationError = ref(null) // the ApiError code, or 'UNREACHABLE' when the server could not be reached
 const attempt = computed(() => quiz.attempts.find((a) => String(a.id) === String(route.query.attempt)) ?? (!route.query.attempt ? quiz.latest : null))
 const provisional = computed(() => attempt.value?.rankingBasis === 'scenario-provisional')
 const legacy = computed(() => attempt.value?.rubricVersion === 'legacy-v1')
@@ -75,6 +78,27 @@ async function loadModules() {
   } finally { if (attempt.value?.id === id) moduleLoading.value = false }
 }
 watch(() => attempt.value?.id, loadModules, { immediate: true })
+// The explanation only adds to the page; scores and modules never wait for it or depend on it
+let explanationFor = null
+async function loadExplanation() {
+  const id = attempt.value?.id
+  // A second click while this attempt is still loading would only send a duplicate request
+  if (explanationLoading.value && id === explanationFor) return
+  explanationFor = id
+  explanation.value = null
+  explanationError.value = null
+  if (!id || legacy.value) return
+  explanationLoading.value = true
+  try {
+    const result = await api.quizExplanationV2(id)
+    if (attempt.value?.id === id) explanation.value = result
+  } catch (error) {
+    if (attempt.value?.id === id) explanationError.value = error.status === 0 ? 'UNREACHABLE' : error.code ?? 'AI_FAILED'
+  } finally { if (attempt.value?.id === id) explanationLoading.value = false }
+}
+watch(() => attempt.value?.id, loadExplanation, { immediate: true })
+// A missing API key will not fix itself, so there is nothing to retry
+const explanationRetryable = computed(() => explanationError.value !== 'AI_UNAVAILABLE')
 const modulesFor = (track) => moduleSuggestions.value?.groups.find((group) => group.track === track)?.modules ?? []
 onMounted(async () => { await quiz.initialize(); loading.value = false })
 </script>
@@ -97,6 +121,38 @@ onMounted(async () => { await quiz.initialize(); loading.value = false })
           <p class="text-sm">Saved under an earlier quiz version. Retake for an updated score.</p>
           <BaseButton size="sm" variant="outline" :disabled="quiz.loading" @click="retake">Retake quiz</BaseButton>
         </div>
+
+        <section v-if="!legacy" class="card flex flex-col gap-4 p-6" aria-labelledby="quiz-ai-explanation">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 id="quiz-ai-explanation" class="text-sm font-semibold">{{ topResults.length === 1 ? 'Why this track?' : 'Why these tracks?' }}</h3>
+            <span class="text-xs text-muted-foreground">AI-generated · may be imperfect</span>
+          </div>
+          <div v-if="explanationLoading" role="status" class="flex flex-col gap-4 motion-safe:animate-pulse">
+            <span class="sr-only">Writing an explanation…</span>
+            <div aria-hidden="true" class="flex flex-col gap-2">
+              <div class="h-3.5 w-full rounded bg-muted" />
+              <div class="h-3.5 w-11/12 rounded bg-muted" />
+              <div class="h-3.5 w-2/3 rounded bg-muted" />
+            </div>
+            <div v-for="result in topResults" :key="result.track" aria-hidden="true" class="flex flex-col gap-2 border-t border-border pt-3">
+              <div class="h-3.5 w-1/3 rounded bg-muted" />
+              <div class="h-3.5 w-full rounded bg-muted" />
+              <div class="h-3.5 w-4/5 rounded bg-muted" />
+            </div>
+          </div>
+          <div v-else-if="explanationError" role="status" class="flex flex-col gap-2 rounded-md bg-muted p-3">
+            <p class="text-sm"><span class="font-medium">AI explanation unavailable right now.</span> Your results below are still based on all of your answers, so you can rely on them as a starting point for choosing which tracks to explore.</p>
+            <p v-if="explanationError === 'AI_BUSY'" class="text-xs text-muted-foreground">The AI service is busy — try again in a minute.</p>
+            <BaseButton v-if="explanationRetryable" class="self-start" variant="link" :disabled="explanationLoading" @click="loadExplanation">Try again</BaseButton>
+          </div>
+          <template v-else-if="explanation">
+            <p class="text-sm leading-6">{{ explanation.summary }}</p>
+            <div v-for="item in explanation.tracks" :key="item.track" class="border-t border-border pt-3">
+              <h4 class="text-sm font-semibold">{{ quizTrackNames[item.track] ?? item.track }}</h4>
+              <p class="mt-1 text-sm leading-6 text-muted-foreground">{{ item.reasoning }}</p>
+            </div>
+          </template>
+        </section>
 
         <div class="grid gap-4 md:grid-cols-2">
           <section v-for="(result, index) in topResults" :key="result.track" class="card flex flex-col gap-3 border-primary p-6">
