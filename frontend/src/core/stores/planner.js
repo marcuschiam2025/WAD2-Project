@@ -218,10 +218,11 @@ export const usePlannerStore = defineStore('planner', () => {
       })
       here.filter((code) => !s.modules.some((m) => effectiveCode(m) === code)).forEach((code) => s.modules.push(code))
     })
-    if (plan.majorId) {
+    const tracks = (p.tracks ?? []).map(trackCode)
+    if (plan.majorId && tracks.join() !== (before.tracks ?? []).map(trackCode).join()) {
       // A plan can stay on another curriculum after the intake changes, so keep only the tracks it has
       const available = catalogue.tracksFor(plan.majorId).map((t) => t.code)
-      plan.tracks = (p.tracks ?? []).map(trackCode).filter((code) => available.includes(code)).slice(0, 2)
+      plan.tracks = tracks.filter((code) => available.includes(code)).slice(0, 2)
     }
   }
   watch(

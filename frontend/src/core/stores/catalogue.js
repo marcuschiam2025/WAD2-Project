@@ -131,7 +131,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     return mods.map((m) => ({ code: m._id, name: m.title }))
   }
 
-  return { online, majors, details, curricula, trackRequirementsFor, tracksFor, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
+  return { online, catalogueLoading, loadingMajors, majors, details, curricula, tracksFor, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
 })
 
 // Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store
