@@ -129,7 +129,7 @@ onMounted(async () => { await quiz.initialize(); loading.value = false })
         <p v-if="moduleLoading" role="status" class="text-xs text-muted-foreground">Finding modules to explore…</p>
         <div v-if="moduleError" class="flex flex-wrap items-center gap-3 text-sm" role="status"><p>{{ moduleError }}</p><BaseButton variant="link" @click="loadModules">Retry modules</BaseButton></div>
         <p v-if="moduleSuggestions" class="text-xs text-muted-foreground">
-          {{ moduleSuggestions.intakeStatus === 'unsupported' ? 'This module guide covers AY2025 onwards. Check the curriculum for your intake.' : 'Shared IS AY2025 catalogue · Recorded prerequisites checked; other course rules and current offerings need checking in OASIS/BOSS.' }}
+          {{ moduleSuggestions.intakeStatus === 'unsupported' ? 'This module guide covers AY2024 onwards. Check the curriculum for your intake.' : 'Shared IS AY2024 onwards catalogue · Recorded prerequisites checked; other course rules and current offerings need checking in OASIS/BOSS.' }}
           <a :href="moduleSuggestions.sourceUrl" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">Official SMU curriculum ↗</a>
         </p>
 

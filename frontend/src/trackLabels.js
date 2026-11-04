@@ -2,7 +2,7 @@
 // TODO(backend): drop this once the track catalogue carries its own tab label.
 import { tracks } from '@core/data/catalogue'
 
-const tags = { BA: 'BA', SMCT: 'Smart-City', FT: 'Fintech', PD: 'Product Dev' }
+const tags = { BA: 'BA', SMCT: 'Smart-City', FT: 'Fintech', PD: 'Product Dev', DCS: 'Digital & Cloud' }
 
 export const trackTag = (code) => tags[code] ?? tracks.find((t) => t.code === code)?.short ?? code
 

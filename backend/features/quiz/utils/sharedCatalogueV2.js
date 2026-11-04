@@ -19,9 +19,10 @@ export function createSharedCatalogueLoader({
   return async (attempt, { completedModules = [], intakeYear } = {}) => {
     const base = {
       catalogueVersion: 'shared-mongodb-BSC-IS_AY2025', catalogueSource: 'mongodb',
-      intakeFrom: 2025, sourceUrl, eligibilityStatus: 'partial-check', modules: [],
+      intakeFrom: 2024, sourceUrl, eligibilityStatus: 'partial-check', modules: [],
     }
-    if (Number.isInteger(intakeYear) && intakeYear < 2025) return base
+    // BSC-IS_AY2025 also covers the 2024 intake, whose curriculum is the same
+    if (Number.isInteger(intakeYear) && intakeYear < 2024) return base
     const top = attempt.results.slice(0, 2).map(({ track }) => codeFor(track))
     const foundTracks = await tracks({ majorId: 'BSC-IS_AY2025', trackCode: { $in: top } })
     const rules = await requirements({ ownerId: { $in: foundTracks.map((t) => t._id) }, level: 'track' })

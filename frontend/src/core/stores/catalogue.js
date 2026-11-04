@@ -1,7 +1,7 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { reactive, ref } from 'vue'
 import { api } from '../services/api'
-import { liveModules } from '../data/catalogue'
+import { liveModules, tracks as sampleTracks } from '../data/catalogue'
 import { degreeGroups } from '../data/degree'
 
 // Catalogue tags -> the basket and graduation keys the degree checklist uses
@@ -71,6 +71,18 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     }
   }
 
+  // The tracks a student on this curriculum can choose. The sample list stands in until it has loaded.
+  // Tracks the sample list doesn't describe (DCS, only on the 2023 curriculum) use the backend's name and description.
+  function tracksFor(majorId) {
+    const loaded = curricula[majorId]?.tracks
+    if (!loaded) return sampleTracks
+    const described = sampleTracks.filter((t) => loaded.some((l) => l.trackCode === t.code))
+    const others = loaded
+      .filter((l) => !sampleTracks.some((t) => t.code === l.trackCode))
+      .map((l) => ({ code: l.trackCode, name: l.name, short: l.name, blurb: l.description ?? '' }))
+    return [...described, ...others]
+  }
+
   // The backend catalogue in the shape the degree checklist matches against (see utils/degreeChecklist.js):
   //   category  track (in a track's list) | depth (another IS / IS related course) | major-core | free
   //   basket    managing | tss | cmw (university core baskets)      grad  sustainability | sg-asia
@@ -122,7 +134,7 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     return mods.map((m) => ({ code: m._id, name: m.title }))
   }
 
-  return { online, majors, details, curricula, trackRequirementsFor, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
+  return { online, majors, details, curricula, trackRequirementsFor, tracksFor, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
 })
 
 // Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store

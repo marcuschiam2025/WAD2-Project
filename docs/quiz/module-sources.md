@@ -47,7 +47,7 @@ GET `/api/quiz/v2/attempts/:id/recommendations` looks up the saved attempt **for
 4. Returns up to three courses per track. No LLM is involved. Module relevance does not alter quiz scores or ranks.
 5. Gives a factual explanation. A personal connection is mentioned only when an observed tagged rating index is at least 75; otherwise it says the course is listed in the track. This threshold is an editorial explanation rule, not an eligibility cutoff.
 
-An intake before 2025 returns no suggestions from this guide. Missing intake is explicitly unconfirmed; the UI labels the guide AY2025 onwards. Even an intake within scope is not an eligibility confirmation. No separate admission-course or timetable checks are implemented.
+An intake before 2024 returns no suggestions from this guide. Missing intake is explicitly unconfirmed; the UI labels the guide AY2024 onwards. Even an intake within scope is not an eligibility confirmation. No separate admission-course or timetable checks are implemented.
 
 The frontend displays short summaries and official links on the two track cards. Reasons are collapsed under Why these modules, alongside the existing collapsed analysis. Recommendation failures do not hide saved quiz results and have a separate retry control. Recommendations are computed from the current catalogue version, not frozen into historical quiz result snapshots; the response includes catalogueVersion and retrievedAt.
 

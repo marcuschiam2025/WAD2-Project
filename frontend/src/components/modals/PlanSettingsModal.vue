@@ -3,7 +3,7 @@
 // Not a separate Figma frame — it holds the controls the V2 planner moved behind the "Plan settings" button.
 import { computed } from 'vue'
 import { usePlannerStore } from '@core/stores/planner'
-import { tracks } from '@core/data/catalogue'
+import { useCatalogueStore } from '@core/stores/catalogue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import SelectField from '@/components/ui/SelectField.vue'
@@ -12,15 +12,19 @@ import iconX from '@/assets/figma/icon-x.svg'
 
 const emit = defineEmits(['close'])
 const planner = usePlannerStore()
+const catalogue = useCatalogueStore()
 const plan = computed(() => planner.activePlan)
 
 const semesterOptions = computed(() =>
   plan.value.semesters.filter((s) => !s.loa).map((s) => ({ value: s.id, label: s.label.replace('S', 'Sem ') })),
 )
-const trackOptions = tracks.map((t) => ({ value: t.code, label: t.name }))
+// Only the tracks on this plan's curriculum
+const trackOptions = computed(() =>
+  catalogue.tracksFor(plan.value.majorId).map((t) => ({ value: t.code, label: t.name })),
+)
 const secondTrackOptions = computed(() => [
   { value: '', label: 'None' },
-  ...trackOptions.filter((o) => o.value !== plan.value.tracks[0]),
+  ...trackOptions.value.filter((o) => o.value !== plan.value.tracks[0]),
 ])
 const firstTrack = computed({
   get: () => plan.value.tracks[0],
