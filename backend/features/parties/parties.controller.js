@@ -248,6 +248,8 @@ export async function banMember(req, res) {
     throw httpError(400, "The owner cannot ban themselves");
   }
 
+  const bannedUser = await User.findById(userId).select("name");
+  const bannedName = displayName(bannedUser?.name)||"Member";
   removeUserFromParty(party, userId);
 
   const alreadyBanned = party.banned.some((bannedId) =>
@@ -266,7 +268,7 @@ export async function banMember(req, res) {
   await notify(
     otherMembers(party, req.user._id),
     'party_member_removed',
-    `${displayName(bannedUser?.name)} was removed from ${party.name}`,
+    `${bannedName} was removed from ${party.name}`,
     roomLink(party),
   )
 
