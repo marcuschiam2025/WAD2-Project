@@ -41,8 +41,10 @@ export const useBiddingStore = defineStore('bidding', () => {
   const roomConflicts = computed(() => [...new Set(roomPicks.value.map(d => d.module))].filter(code => new Set(roomPicks.value.filter(d => d.module === code).map(d => d.sectionId)).size > 1))
   const fromRooms = computed(() => roomPicks.value.filter(d => !roomConflicts.value.includes(d.module) && sections.some(s => s.id === d.sectionId && s.module === d.module && !s.archived && liveSections.has(s.id))))
   const roomCodes = computed(() => fromRooms.value.map(d => d.module))
+  // The What-If plan decides what is bid for; a room pick adds its module only while you are still in that room.
+  // A saved cart entry counts only while its module is in the plan semester, so one you removed there stays out.
   const planCodes = computed(() => [
-    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))), ...roomCodes.value, ...Object.keys(chosen.value[plan.value.id] ?? {})]),
+    ...new Set([...inTarget.value.filter((c) => sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))), ...roomCodes.value, ...Object.keys(chosen.value[plan.value.id] ?? {}).filter((c) => inTarget.value.includes(c))]),
   ])
   const notOffered = computed(() => inTarget.value.filter((c) => !sections.some((s) => s.module === c && !s.archived && liveSections.has(s.id))))
 

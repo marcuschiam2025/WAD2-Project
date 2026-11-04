@@ -11,7 +11,7 @@ defineProps({
     <span class="my-[-12px] w-[3px] shrink-0 self-stretch" :class="tone === 'info' ? 'bg-primary' : 'bg-destructive'" />
     <div class="flex min-w-0 flex-1 flex-col gap-1 leading-normal">
       <p class="text-overline" :class="tone === 'info' ? 'text-primary' : 'text-destructive'">{{ label }}</p>
-      <p class="text-[14px] leading-[22px]"><slot /></p>
+      <div class="text-[14px] leading-[22px]"><slot /></div>
     </div>
     <slot name="action" />
   </div>
