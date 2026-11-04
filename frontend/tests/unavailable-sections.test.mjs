@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 import { createPinia, setActivePinia } from 'pinia'
 
-test('unavailable saved sections retain their IDs and amounts until explicitly replaced or removed', async () => {
+test('unavailable saved sections retain their IDs and amounts until explicitly replaced, and cart-only modules outside the plan stay out', async () => {
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }
   const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' })
   try {
@@ -28,11 +28,10 @@ test('unavailable saved sections retain their IDs and amounts until explicitly r
     api.dropFromCart = async (...args) => { drops.push(args) }
     const bidding = useBiddingStore(); await bidding.load()
     assert.equal(bidding.booked.IS216, missing, 'do not silently replace G9 with G1')
-    assert.equal(bidding.booked.IS999, gone, 'retain a saved module even when it has no sections and is outside the degree plan')
+    assert.equal(bidding.booked.IS999, undefined, 'a saved module that is no longer in the What-If semester is not shown')
     assert.equal(bidding.bids.IS216, 25)
-    assert.equal(bidding.bids.IS999, 30)
     assert.equal(bidding.booked.IS112, newModule.id, 'new unsaved modules may still use their default section')
-    assert.deepEqual(bidding.unavailableSelections.map(s => s.sectionId).sort(), [missing, gone].sort())
+    assert.deepEqual(bidding.unavailableSelections.map(s => s.sectionId), [missing])
     assert.deepEqual(bidding.bookedSections.map(s => s.id), [newModule.id], 'missing sections cannot reach timetable or clash calculations')
     assert.equal(bidding.clashes.size, 0)
     assert.equal(await bidding.save(), false)
@@ -41,10 +40,6 @@ test('unavailable saved sections retain their IDs and amounts until explicitly r
     bidding.swapSection('IS216', alternative.id)
     assert.equal(bidding.booked.IS216, alternative.id)
     assert.equal(bidding.bids.IS216, 25, 'replacing a section preserves the saved bid')
-    assert.equal(await bidding.save(), false, 'the entirely missing module still blocks saving')
-    bidding.dropModule('IS999')
-    assert.deepEqual(drops, [['IS999', 'p1', term]])
-    assert.equal(bidding.booked.IS999, undefined)
     assert.deepEqual(bidding.unavailableSelections, [])
     assert.equal(await bidding.save(), true)
     assert.deepEqual(writes[0].items, [{ module: 'IS216', sectionId: alternative.id, amount: 25 }, { module: 'IS112', sectionId: newModule.id, amount: 10 }])

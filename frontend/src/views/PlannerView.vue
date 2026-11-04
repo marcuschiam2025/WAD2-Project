@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM, MAX_PLANS } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
@@ -88,6 +88,21 @@ const roomOnly = computed(() => {
 const tabsRef = ref(null)
 const showPlanLimit = ref(false)
 const showSettings = ref(false)
+// A save usually takes a few milliseconds. Flashing "Saving…" for that long reads as a glitch, so only show it for a slow one.
+function whenSlow(flag, ms = 600) {
+  const shown = ref(false)
+  let timer
+  watch(flag, (on) => {
+    clearTimeout(timer)
+    if (on) timer = setTimeout(() => (shown.value = true), ms)
+    else shown.value = false
+  }, { immediate: true })
+  onBeforeUnmount(() => clearTimeout(timer))
+  return shown
+}
+const slowPlansSave = whenSlow(() => planner.plansSaving)
+const slowBasketSave = whenSlow(() => planner.basketSaving)
+
 const warning = ref(null) // { code, semId }
 const fullSem = ref(null) // semester that refused a module because it already holds the maximum
 const dragging = ref(null)
@@ -301,7 +316,6 @@ const onTrack = computed(() => !planner.hasAnyWarning)
     </PageHeader>
 
     <main class="flex flex-col gap-6 px-5 md:px-8 lg:px-16 pt-8 pb-12">
-      <p v-if="planner.plansSaving" role="status" class="text-sm text-muted-foreground">Saving semester changes…</p>
       <p v-if="planner.planActionError" role="alert" class="text-sm text-destructive">Plan update failed: {{ planner.planActionError }}</p>
       <p v-if="handoffError" role="alert" class="text-sm text-destructive">{{ handoffError }}</p>
       <!-- The backend refused a save (or the plans could not be loaded) -->
@@ -335,7 +349,6 @@ const onTrack = computed(() => !planner.hasAnyWarning)
               </div>
             </div>
             <p class="text-[12px] text-muted-foreground">Saved from Match Results and search.</p>
-            <p v-if="planner.basketSaving" role="status" class="text-xs text-muted-foreground">Saving basket…</p>
             <div v-if="planner.basketError" role="alert" class="text-xs text-destructive">
               <p>Basket not saved: {{ planner.basketError }}</p>
               <BaseButton size="sm" variant="link" :disabled="planner.basketSaving" @click="retryBasket">Retry saving</BaseButton>
@@ -462,7 +475,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
               <!-- Semester -->
               <div
                 v-else
-                class="flex min-h-[330px] min-w-[140px] flex-1 flex-col gap-2 rounded-md p-2 transition-colors"
+                class="relative flex min-h-[330px] min-w-[140px] flex-1 flex-col gap-2 rounded-md p-2 transition-colors"
                 :class="{
                   'border-[1.5px] border-primary bg-card': status(col.sem) === 'now',
                   'border border-border bg-card': status(col.sem) === 'future' && !col.sem.loa,
@@ -554,9 +567,10 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                   </div>
                 </template>
 
+                <!-- Floats over the column's bottom edge: taking up space would stretch every column while hovering -->
                 <div
                   v-if="dragging && dragOver === col.sem.id && !col.sem.modules.includes(dragging)"
-                  class="flex justify-center rounded-sm border-[1.5px] border-dashed px-2 py-2.5 text-[11.5px] font-medium"
+                  class="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex justify-center rounded-sm border-[1.5px] border-dashed bg-card px-2 py-2.5 text-[11.5px] font-medium shadow-sm"
                   :class="isFull(col.sem) ? 'border-destructive text-destructive' : 'border-primary text-primary'"
                 >
                   {{ isFull(col.sem) ? `Full: ${MAX_MODULES_PER_SEM} modules max` : `Drop ${dragging} here` }}
@@ -633,9 +647,22 @@ const onTrack = computed(() => !planner.hasAnyWarning)
       @add-coreq="resolveWarning('coreq', $event)"
       @move-next="resolveWarning('move')"
     />
+    <!-- Floats, so it never pushes the planner around -->
+    <Transition name="fade">
+      <p v-if="slowPlansSave || slowBasketSave" role="status" class="pointer-events-none fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-full border border-border bg-card px-4 py-2 text-[13px] text-muted-foreground shadow-md">
+        {{ slowPlansSave ? 'Saving semester changes…' : 'Saving basket…' }}
+      </p>
+    </Transition>
     <SemesterFullModal v-if="fullSem" :sem-label="fullSem.label" :max="MAX_MODULES_PER_SEM" @close="fullSem = null" />
     <DeletePlanModal v-if="planToDelete" :plan-name="planToDelete.name" @close="planToDelete = null" @confirm="confirmDelete" />
     <PlanLimitModal v-if="showPlanLimit" @close="showPlanLimit = false" @go-to-plans="goToPlans" />
     <PlanSettingsModal v-if="showSettings" @close="showSettings = false" />
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active { transition: opacity 0.15s; }
+.fade-enter-from,
+.fade-leave-to { opacity: 0; }
+</style>

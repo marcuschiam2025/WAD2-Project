@@ -27,21 +27,28 @@ const emit = defineEmits(['close', 'add-prereq', 'add-coreq', 'move-next'])
     <p class="text-[14px] leading-[22px] text-muted-foreground">
       {{ code }} {{ moduleName(code) }} has these academic warnings in your plan:
     </p>
-    <NoticeRow v-for="(p, i) in prereqs" :key="p" label="Prerequisite">
-      Take {{ (prereqGroups[i] ?? [p]).join(' or ') }} in an earlier semester.
-      <template v-if="prevSemLabel" #action>
-        <BaseButton variant="outline" size="sm" @click="emit('add-prereq', p)">
-          <img :src="iconPlus" alt="" class="size-3.5" /> Add to {{ prevSemLabel }}
-        </BaseButton>
-      </template>
+    <!-- One row per unmet requirement, listing every module that would satisfy it with its own add button -->
+    <NoticeRow v-for="(group, i) in prereqGroups" :key="'pre-' + group.join()" label="Prerequisite">
+      Take {{ group.length > 1 ? 'one of these' : 'this' }} in an earlier semester{{ prevSemLabel ? '' : ' (no earlier semester is open to add it to)' }}:
+      <ul class="mt-2 flex flex-col gap-2">
+        <li v-for="c in group" :key="c" class="flex items-center justify-between gap-3">
+          <span class="min-w-0"><span class="font-mono font-semibold">{{ c }}</span> <span class="text-muted-foreground">{{ moduleName(c) }}</span></span>
+          <BaseButton v-if="prevSemLabel" variant="outline" size="sm" :aria-label="`Add ${c} to ${prevSemLabel}`" @click="emit('add-prereq', c)">
+            <img :src="iconPlus" alt="" class="size-3.5" /> Add to {{ prevSemLabel }}
+          </BaseButton>
+        </li>
+      </ul>
     </NoticeRow>
-    <NoticeRow v-for="(c, i) in coreqs" :key="c" label="Corequisite" tone="info">
-      Take {{ (coreqGroups[i] ?? [c]).join(' or ') }} in the same or an earlier semester.
-      <template #action>
-        <BaseButton variant="outline" size="sm" @click="emit('add-coreq', c)">
-          <img :src="iconPlus" alt="" class="size-3.5" /> Add to {{ semLabel }}
-        </BaseButton>
-      </template>
+    <NoticeRow v-for="group in coreqGroups" :key="'co-' + group.join()" label="Corequisite" tone="info">
+      Take {{ group.length > 1 ? 'one of these' : 'this' }} in the same or an earlier semester:
+      <ul class="mt-2 flex flex-col gap-2">
+        <li v-for="c in group" :key="c" class="flex items-center justify-between gap-3">
+          <span class="min-w-0"><span class="font-mono font-semibold">{{ c }}</span> <span class="text-muted-foreground">{{ moduleName(c) }}</span></span>
+          <BaseButton variant="outline" size="sm" :aria-label="`Add ${c} to ${semLabel}`" @click="emit('add-coreq', c)">
+            <img :src="iconPlus" alt="" class="size-3.5" /> Add to {{ semLabel }}
+          </BaseButton>
+        </li>
+      </ul>
     </NoticeRow>
     <NoticeRow v-for="c in exclusions" :key="`exclusion-${c}`" label="Exclusion">
       This module excludes {{ c }} {{ moduleName(c) }}, which is in your plan or exemptions. Review the conflicting courses.

@@ -73,3 +73,19 @@ test('the warning dialog renders exclusion, count and offering reasons instead o
     assert.doesNotMatch(html, /undefined/)
   } finally { await server.close() }
 })
+
+test('the warning dialog lists every module that satisfies a prerequisite or corequisite, each with its own add button', async () => {
+  const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' })
+  try {
+    const { default: Warning } = await server.ssrLoadModule('/src/components/modals/PrereqWarningModal.vue')
+    const render = async props => { const context = {}; await renderToString(createSSRApp(Warning, { code: 'CS465', semLabel: 'Y3 · S2', ...props }), context); return context.teleports.body }
+    const html = await render({ prevSemLabel: 'Y3 · S1', prereqGroups: [['CS201', 'IS115'], ['IS112']], coreqGroups: [['IS999']] })
+    for (const c of ['CS201', 'IS115', 'IS112']) assert.match(html, new RegExp(`Add ${c} to Y3 · S1`), `${c} gets its own add button for the earlier semester`)
+    assert.match(html, /Add IS999 to Y3 · S2/, 'a corequisite is added to the same semester')
+    assert.match(html, /one of these/)
+    const closed = await render({ prevSemLabel: '', prereqGroups: [['CS201']] })
+    assert.match(closed, /CS201/)
+    assert.doesNotMatch(closed, /Add CS201 to/, 'no add button when there is no open earlier semester')
+    assert.match(closed, /no earlier semester is open/)
+  } finally { await server.close() }
+})

@@ -20,7 +20,6 @@ const bidCartSchema = new mongoose.Schema(
   { timestamps: true },
 )
 
-// One cart per plan per term. Carts saved before this change have no plan and need migrating.
 bidCartSchema.index({ user: 1, plan: 1, term: 1 }, { unique: true })
 
 export default mongoose.model('BidCart', bidCartSchema)
