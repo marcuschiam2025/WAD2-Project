@@ -447,13 +447,13 @@ export async function lockParty(req, res) {
 
   //SEE IF WE WANT TO MAKE SURE EVERYONE VOTED BEFORE LOCKING:
   // =====================
-  //   const summary = decisionSummary(party, await sectionIdsFor(party));
-  // if (!summary.allVoted) {
-  //   throw httpError(409, "Wait until everyone has voted before locking the party");
-  // }
-  // if (!summary.leaders.includes(sectionId)) {
-  //   throw httpError(400, `Choose one of the leading sections: ${summary.leaders.join(", ")}`);
-  // }
+    const summary = decisionSummary(party, await sectionIdsFor(party));
+  if (!summary.allVoted) {
+    throw httpError(409, "Wait until everyone has voted before locking the party");
+  }
+  if (!summary.leaders.includes(sectionId)) {
+    throw httpError(400, `Choose one of the leading sections: ${summary.leaders.join(", ")}`);
+  }
   //=====================
   party.locked = true
   party.lockedSection = sectionId
