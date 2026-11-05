@@ -599,6 +599,15 @@ const onTrack = computed(() => !planner.hasAnyWarning);
               placeholder="Search modules..."
               class="min-w-0 flex-1 bg-transparent text-[13px] outline-none"
             />
+            <button
+              v-show="query"
+              type="button"
+              aria-label="Clear search"
+              class="flex size-4 shrink-0 items-center justify-center rounded-full bg-muted/60 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              @click.prevent="query = ''"
+            >
+              ✕
+            </button>
           </label>
 
           <ul v-stagger class="flex flex-col gap-2">
