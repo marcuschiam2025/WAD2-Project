@@ -69,6 +69,10 @@ const roundOptions = computed(() => [
   { value: 'all', label: 'All rounds' },
 ]);
 const filtered = computed(() => estimateHistory(history.value, round.value, bidding.round.term));
+// A module with no past results at all (new, or not offered in earlier terms) has nothing to rate a bid against
+const noBidData = computed(() => !history.value.length);
+// It has results, but none from earlier terms in the round picked
+const noRoundData = computed(() => history.value.length > 0 && canEstimateBid(round.value, bidding.round.term) && !filtered.value.length);
 // The backend's reference bid for the booked section (GET /api/bidding/reference-bid): past results with the
 // same instructors, class times and round, falling back to the same instructors at any time, then to the whole
 // module (matchLevel says which). If the section isn't on the server, the module's (GET /api/bidding/reference).
@@ -296,7 +300,15 @@ watch(
               >
             </label>
 
-            <div class="flex flex-col gap-2">
+            <!-- No past results: say so instead of showing a meter that means nothing -->
+            <div v-if="noBidData" role="status" class="flex flex-col gap-1 rounded-md bg-muted px-3 py-2.5 text-[13px] leading-normal">
+              <p class="font-semibold">No bid data for {{ code }}</p>
+              <p class="text-muted-foreground">
+                It may be a new module, or it was not offered in earlier terms, so there are no past results to rate your
+                bid against. You can still enter a bid, but there is no rating or suggested amount.
+              </p>
+            </div>
+            <div v-else class="flex flex-col gap-2">
               <div class="relative flex gap-1">
                 <span class="h-1.5 flex-1 rounded-full bg-destructive" />
                 <span class="h-1.5 flex-1 rounded-full bg-warning" />
@@ -312,6 +324,10 @@ watch(
               </div>
             </div>
 
+            <p v-if="noRoundData" role="status" class="text-[13px] leading-normal text-muted-foreground">
+              No past results for {{ code }} in Round {{ round }} from earlier terms, so there is no estimate. Try another
+              round or choose All rounds to see what it has.
+            </p>
             <div v-if="verdict" class="flex items-start gap-2">
               <StatusPill :tone="pill[verdict.rating][0]">{{ pill[verdict.rating][1] }}</StatusPill>
               <p class="flex-1 text-[13px] leading-[18px] text-muted-foreground">{{ verdictText }}</p>
@@ -343,8 +359,8 @@ watch(
               {{ matchNote }}
             </p>
 
-            <SelectField v-model="round" label="BOSS round" :options="roundOptions" />
-            <p v-if="round === 'all'" class="text-[12px] text-muted-foreground">
+            <SelectField v-if="!noBidData" v-model="round" label="BOSS round" :options="roundOptions" />
+            <p v-if="!noBidData && round === 'all'" class="text-[12px] text-muted-foreground">
               Choose a single round for a bid estimate. All rounds remain available in History.
             </p>
             <p class="text-[11.5px] text-muted-foreground">
@@ -370,7 +386,7 @@ watch(
               </div>
             </div>
             <p v-if="!history.length" class="text-[13px] text-muted-foreground">
-              No bid history for this module yet.
+              No bid history for this module yet. It may be new, or not offered in earlier terms.
             </p>
           </template>
         </div>

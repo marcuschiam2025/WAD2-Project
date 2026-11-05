@@ -160,7 +160,7 @@ const verdictText = computed(() => {
       <BaseButton size="sm" variant="outline" @click="loadHistory">Try again</BaseButton>
     </div>
     <p v-else-if="!history.length" class="rounded-md bg-muted p-4 text-[13px]">
-      No BOSS results are recorded for {{ module }} yet.
+      No BOSS results are recorded for {{ module }} yet. It may be a new module, or it was not offered in earlier terms, so there is nothing to simulate a bid against.
     </p>
 
     <template v-else>

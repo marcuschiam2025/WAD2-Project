@@ -241,14 +241,14 @@ onMounted(async () => {
           <button
             v-if="!legacy && !assistantOpen && !wide"
             type="button"
-            class="fixed right-5 bottom-5 z-40 flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-[14px] font-semibold text-primary-foreground shadow-lg transition-[background-color,transform] hover:bg-primary-hover active:scale-[0.98]"
+            class="fixed right-4 bottom-4 z-40 flex items-center gap-2 rounded-full bg-primary py-2 pr-4 pl-2 text-[14px] font-semibold text-primary-foreground shadow-lg transition-[background-color,transform] hover:bg-primary-hover active:scale-[0.98]"
             :aria-label="`Open explanation: ${topResults.length === 1 ? 'Why this track?' : 'Why these tracks?'}`"
             @click="assistantOpen = true"
           >
             <span class="rounded-full bg-primary-foreground p-0.5" aria-hidden="true"
               ><AssistantFace :size="28"
             /></span>
-            {{ topResults.length === 1 ? 'Why this track?' : 'Why these tracks?' }}
+            Why?
             <span
               v-if="explanationLoading"
               class="size-2 animate-pulse rounded-full bg-primary-foreground/70"
