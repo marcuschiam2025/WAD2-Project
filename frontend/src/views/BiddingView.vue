@@ -100,14 +100,58 @@ const round = computed(() => {
 
 // Alternative sections only appear for the module that has been clicked (selected)
 function cardsAt(day, slot) {
-  const focus = bidding.selectedModule
-  const expand = (rows, option) => rows.flatMap(s => sectionMeetings(s)
-    .filter(m => m.day === day && m.slot === slot)
-    .map(m => ({ ...s, meeting: m, venueShort: m.venue || s.venueShort, option })))
-  const options = focus && !bidding.isLocked(focus)
-    ? bidding.sectionsFor(focus).filter(s => bidding.booked[focus] !== s.id)
-    : []
-  return [...expand(bidding.bookedSections, false), ...expand(options, true)]
+  const focus = bidding.selectedModule;
+
+  // 1. Helper function using loops and .filter()
+  function expand(rows, isOption) {
+    const result = [];
+    
+    for (const section of rows) {
+      // You mentioned .filter() is okay to use!
+      const matchingMeetings = sectionMeetings(section).filter(m => m.day === day && m.slot === slot);
+      
+      // Instead of .map() and .flatMap(), we just loop through the filtered results
+      for (const meeting of matchingMeetings) {
+        result.push({
+          ...section, // Copy the existing section data
+          meeting: meeting,
+          venueShort: meeting.venue ? meeting.venue : section.venueShort,
+          option: isOption
+        });
+      }
+    }
+    
+    return result;
+  }
+
+  // 2. Get the alternative options (using .filter as well)
+  let options = [];
+  if (focus && !bidding.isLocked(focus)) {
+    options = bidding.sectionsFor(focus).filter(s => bidding.booked[focus] !== s.id);
+  }
+
+  // 3. Process both groups
+  const bookedCards = expand(bidding.bookedSections, false);
+  const optionCards = expand(options, true);
+  
+  // 4. Combine them into one array
+  const finalCards = bookedCards.concat(optionCards);
+
+  // 5. Sort alphabetically to fix the jumping/swapping bug
+  finalCards.sort(function(a, b) {
+    // First, compare the module codes (e.g., COR3301 vs IS214)
+    if (a.module < b.module) return -1;
+    if (a.module > b.module) return 1;
+    
+    // If the modules are exactly the same (both are IS214), 
+    // use the section as a tie-breaker (e.g., G8 vs G18)
+    if (a.section < b.section) return -1;
+    if (a.section > b.section) return 1;
+    
+    return 0;
+  });
+
+  return finalCards;
 }
 
 // While a module is selected, everything except it and its alternatives is greyed out
