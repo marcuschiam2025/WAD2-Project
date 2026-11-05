@@ -19,9 +19,9 @@ const fields = [
 const fail = (message) => {
   throw httpError(400, message);
 };
+const CODE = /^[A-Z][A-Z0-9._-]{1,39}$/;
 export function moduleCode(value) {
-  if (typeof value !== 'string' || !/^[A-Z][A-Z0-9._-]{1,39}$/.test(value))
-    fail('Use an uppercase module code, for example IS216');
+  if (typeof value !== 'string' || !CODE.test(value)) fail('Use an uppercase module code, for example IS216');
   return value;
 }
 function text(value, name, max, required = false) {
@@ -33,6 +33,11 @@ function strings(value, name, max = 100, length = 100) {
   const result = value.map((v) => text(v, name, length, true));
   if (new Set(result).size !== result.length) fail(`Duplicate values in ${name}`);
   return result;
+}
+// Says which field and value are wrong: the code being saved may be fine while a requisite isn't
+function requisiteCode(value, field) {
+  if (!CODE.test(value))
+    fail(`${field}: "${value}" is not a module code. Separate codes with commas, for example IS111, CS101`);
 }
 export function validateModuleInput(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail('Module details are required');
@@ -47,7 +52,7 @@ export function validateModuleInput(input) {
   out.description = text(input.description ?? '', 'description', 20000);
   for (const key of ['categories', 'fulfils', 'mutuallyExclusive', 'requisiteNotes', 'termsOffered'])
     out[key] = strings(input[key] ?? [], key, 100, key === 'requisiteNotes' ? 2000 : 100);
-  out.mutuallyExclusive.forEach(moduleCode);
+  out.mutuallyExclusive.forEach((code) => requisiteCode(code, 'mutuallyExclusive'));
   if (out.termsOffered.some((t) => !['T1', 'T2', 'T3'].includes(t)))
     fail('Terms offered must be T1, T2 or T3');
   for (const key of ['prerequisites', 'corequisites']) {
@@ -56,7 +61,7 @@ export function validateModuleInput(input) {
     out[key] = groups.map((group) => {
       const codes = strings(group, key, 50, 40);
       if (!codes.length) fail(`Empty ${key} group`);
-      codes.forEach(moduleCode);
+      codes.forEach((code) => requisiteCode(code, key));
       return codes;
     });
   }
@@ -107,9 +112,18 @@ export function createModuleEditor({ change, read, knownCodes, schoolExists, ins
             ]),
           ];
           if (refs.includes(code)) fail('A module cannot reference itself');
-          const known = new Set(await knownCodes(refs, session));
-          const missing = refs.filter((ref) => !known.has(ref));
-          if (missing.length) fail(`Unknown module codes: ${missing.join(', ')}`);
+          // Seeded requisites can name retired courses (STAT101, IS200). Those stay valid on the module that already
+          // has them, or it could never be saved again; only a newly added code has to exist in the catalogue.
+          const existing = new Set([
+            ...(before?.prerequisites ?? []).flat(),
+            ...(before?.corequisites ?? []).flat(),
+            ...(before?.mutuallyExclusive ?? []),
+          ]);
+          const added = refs.filter((ref) => !existing.has(ref));
+          const known = new Set(await knownCodes(added, session));
+          const missing = added.filter((ref) => !known.has(ref));
+          if (missing.length)
+            fail(`These module codes are not in the catalogue: ${missing.join(', ')}. Add them first.`);
           if (data.schoolId && !(await schoolExists(data.schoolId, session))) fail('Unknown school');
           const after = creating
             ? await insert({ _id: code, ...data, revision: 0 }, session)

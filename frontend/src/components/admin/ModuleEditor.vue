@@ -40,11 +40,17 @@ const split = (value) =>
     .split(',')
     .map((v) => v.trim())
     .filter(Boolean);
+// Module codes are uppercase, and course sheets often write alternatives as IS111/CS101
+const codes = (value) =>
+  value
+    .split(/[,/]/)
+    .map((v) => v.trim().toUpperCase())
+    .filter(Boolean);
 const groups = (value) =>
   value
     .split('\n')
     .filter((line) => line.trim())
-    .map(split);
+    .map(codes);
 const lines = (value) =>
   value
     .split('\n')
@@ -62,7 +68,7 @@ function payload() {
     fulfils: split(f.fulfils),
     prerequisites: groups(f.prerequisites),
     corequisites: groups(f.corequisites),
-    mutuallyExclusive: split(f.mutuallyExclusive),
+    mutuallyExclusive: codes(f.mutuallyExclusive),
     requisiteNotes: lines(f.requisiteNotes),
     termsOffered: split(f.termsOffered),
     prerequisiteRules: f.trackCount === '' ? [] : [{ countFrom: 'TRACK', n: Number(f.trackCount) }],
@@ -420,6 +426,8 @@ onBeforeUnmount(() => {
         </fieldset>
         <div v-if="review" class="rounded-md border border-primary bg-muted p-4 text-sm">
           <h4 class="font-semibold">Review {{ form.code }}</h4>
+          <!-- The save button sits below a long form, out of sight of the error at the top of the section -->
+          <p v-if="error" role="alert" class="mt-2 text-destructive">{{ error }}</p>
           <p class="mt-2">{{ form.title }} · {{ form.cu }} CU</p>
           <p class="mt-2">
             This saves all the fields above to the shared catalogue and records your change in staff history.
