@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": { "node": "24.x" },
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -18,7 +20,9 @@
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.6",
     "@vitejs/plugin-vue": "^6.0.8",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.0"

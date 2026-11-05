@@ -1,0 +1,34 @@
+import { test, expect } from './fixtures';
+
+test('bid-over-balance', async ({ page, browser }) => {
+  const context1 = await browser.newContext({ storageState: 'playwright/.auth/student-b.json' });
+  const page1 = await context1.newPage();
+  await page.goto('http://localhost:5173/rooms/new');
+  await page.getByRole('textbox', { name: 'Party name' }).fill('E2E CS204 budget room');
+  await page.getByRole('textbox', { name: 'Module code' }).fill('CS204');
+  await page.getByRole('button', { name: 'CS204 · Computer Networks' }).click();
+  await page.getByRole('button', { name: 'Create room' }).click();
+  await expect(page).toHaveURL(/\/rooms\/[a-f0-9]{24}$/);
+  const inviteCode = await page.locator('span.select-all').first().innerText();
+  await page1.goto('http://localhost:5173/rooms');
+  await page1.getByRole('button', { name: 'Join with code' }).click();
+  await page1.getByRole('textbox', { name: 'Room invite code' }).fill(inviteCode);
+  await page1.getByRole('button', { name: 'Join', exact: true }).click();
+  await expect(page1).toHaveURL(/\/rooms\/[a-f0-9]{24}$/);
+  await page.getByRole('checkbox', { name: 'CS204 G3, Monday' }).click();
+  await page.getByRole('button', { name: 'Submit my picks' }).click();
+  await page1.getByRole('checkbox', { name: 'CS204 G3, Monday' }).click();
+  await page1.getByRole('button', { name: 'Submit my picks' }).click();
+  await expect(page.getByLabel('Section ranking').getByRole('listitem').filter({ hasText: 'G3' }).first()).toContainText('2 votes', { timeout: 15000 });
+  await page.getByRole('button', { name: 'Lock this section' }).click();
+  await page.getByRole('button', { name: 'Lock section', exact: true }).click();
+  await expect(page.getByText('G3 is locked for everyone.')).toBeVisible();
+  await page.getByRole('link', { name: 'Bidding Planner', exact: true }).click();
+  await page.getByRole('button', { name: 'CS204 G3' }).click();
+  await page.getByRole('spinbutton', { name: 'Bid amount in e$' }).click();
+  await page.getByRole('spinbutton', { name: 'Bid amount in e$' }).fill('107');
+  await expect(page.getByRole('alert').filter({ hasText: 'Your bids total e$' })).toContainText('Lower a bid to save. A room lock added');
+  await expect(page.getByRole('link', { name: 'CS204 (E2E CS204 budget room)' })).toBeVisible();
+  await page.getByRole('button', { name: 'Save plan' }).click();
+  await expect(page.getByText('Your bids exceed your available balance by e$')).toBeVisible();
+});

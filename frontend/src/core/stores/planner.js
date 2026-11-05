@@ -422,7 +422,13 @@ export const usePlannerStore = defineStore('planner', () => {
     const coreqGroups = mod.coreqs.filter(
       (group) => !group.some((c) => positions.has(c) && positions.get(c) <= target),
     );
-    const exclusions = (mod.mutuallyExclusive ?? []).filter((c) => positions.has(c));
+    // Exclusions go both ways: the catalogue sometimes records a pair on only one of the two modules. This module's own
+    // list first, then any placed or exempted module whose list names this one (sorted, as the server does).
+    const ownExclusions = (mod.mutuallyExclusive ?? []).filter((c) => positions.has(c));
+    const reverseExclusions = [...positions.keys()]
+      .filter((c) => c !== code && !ownExclusions.includes(c) && (requisites(c).mutuallyExclusive ?? []).includes(code))
+      .sort();
+    const exclusions = [...ownExclusions, ...reverseExclusions];
     const rules = (mod.prerequisiteRules ?? [])
       .filter((rule) => {
         const count = [...positions].filter(

@@ -219,13 +219,22 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue, e
       (code) => positionOf[code] !== undefined && positionOf[code] <= here,
     );
 
-    // Courses it can't be taken together with
+    // Courses it can't be taken together with. Exclusions go both ways: the catalogue sometimes records a pair on
+    // only one of the two modules, so also flag any placed module whose own list names this one.
     const exclusions = [];
     for (const code of mod.mutuallyExclusive ?? []) {
       if (placed.has(code)) {
         exclusions.push(code);
       }
     }
+    const reverse = [];
+    for (const code of placed) {
+      const other = catalogue[code];
+      if (code !== placement.code && !exclusions.includes(code) && (other?.mutuallyExclusive ?? []).includes(placement.code)) {
+        reverse.push(code);
+      }
+    }
+    exclusions.push(...reverse.sort());
 
     // Rules like "2 track courses before this one"
     const rules = [];
