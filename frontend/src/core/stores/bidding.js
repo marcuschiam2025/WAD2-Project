@@ -339,11 +339,11 @@ export const useBiddingStore = defineStore('bidding', () => {
     liveSections.clear()
   }, { flush: 'sync' })
 
-  // "Monday 08:15–11:30 · Thursday 08:15–11:30"; work-study and SMU-X sections have no weekly classes
+  // "Monday 08:15-11:30 · Thursday 08:15-11:30"; work-study and SMU-X sections have no weekly classes
   function slotLabel(s) {
     const list = sectionMeetings(s)
     if (!list.length) return 'No fixed class time'
-    return list.map(meeting => `${days[meeting.day]} ${meeting.start}–${meeting.end}`).join(' · ')
+    return list.map(meeting => `${days[meeting.day]} ${meeting.start}-${meeting.end}`).join(' · ')
   }
 
   return {

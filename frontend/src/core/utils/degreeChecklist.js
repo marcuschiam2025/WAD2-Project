@@ -8,7 +8,7 @@ const semNum = (id) => {
   return (y - 1) * 2 + s
 }
 
-const windowLabel = ([a, b]) => (a === b ? a : `${a}–${b}`)
+const windowLabel = ([a, b]) => (a === b ? a : `${a}-${b}`)
 const idsIn = ([a, b]) => SEM_IDS.filter((id) => semNum(id) >= semNum(a) && semNum(id) <= semNum(b))
 
 // A semester before the current one is done, the current one is being taken, later ones are planned

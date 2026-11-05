@@ -1,5 +1,5 @@
 <script setup>
-// v2 Components / Avatar — initials circle. `you` adds the primary ring marking the signed-in student.
+// v2 Components / Avatar - initials circle. `you` adds the primary ring marking the signed-in student.
 defineProps({
   initials: { type: String, required: true },
   size: { type: Number, default: 24 }, // 24 | 32 | 40 | 64

@@ -92,7 +92,7 @@ onBeforeUnmount(() => clearInterval(timer))
               <span class="flex min-w-0 flex-1 flex-col gap-1">
                 <span class="font-semibold">{{ row.section.module }} · {{ row.section.section }}</span>
                 <span class="text-sm">{{ row.section.prof || 'Instructor not listed' }}</span>
-                <span v-for="meeting in row.section.sessions" :key="`${meeting.day}:${meeting.start}`" class="text-sm text-muted-foreground">{{ ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][meeting.day] }} {{ meeting.start }}–{{ meeting.end }}<span v-if="meeting.venue"> · {{ meeting.venue }}</span></span>
+                <span v-for="meeting in row.section.sessions" :key="`${meeting.day}:${meeting.start}`" class="text-sm text-muted-foreground">{{ ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][meeting.day] }} {{ meeting.start }}-{{ meeting.end }}<span v-if="meeting.venue"> · {{ meeting.venue }}</span></span>
                 <span class="text-xs text-muted-foreground">Exam: {{ row.section.exam }}</span>
                 <span class="mt-1 text-xs">{{ row.count }} {{ row.count === 1 ? 'vote' : 'votes' }}<span v-if="row.voters.length"> · {{ row.voters.map(person => person.name).join(', ') }}</span></span>
               </span>

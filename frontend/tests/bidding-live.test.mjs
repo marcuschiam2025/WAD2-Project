@@ -34,6 +34,6 @@ test('live multi-meeting sections drive clashes, minimum bids, saved carts and h
   assert.equal(await bidding.save(),true)
   assert.equal(saved.term,'2026-27_T1')
   assert.equal(saved.items.find(item=>item.module==='IS111').sectionId,c.id)
-  assert.equal(bidding.slotLabel(a),'Thursday 12:00–13:30 · Friday 12:00–13:30')
+  assert.equal(bidding.slotLabel(a),'Thursday 12:00-13:30 · Friday 12:00-13:30')
  } finally {await server.close()}
 })

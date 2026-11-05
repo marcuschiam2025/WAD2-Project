@@ -1,5 +1,5 @@
 <script setup>
-// One bar per track: the single score the track was ranked on, 0–100, best first.
+// One bar per track: the single score the track was ranked on, 0-100, best first.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip } from 'chart.js'
 import { quizTrackNames } from '@core/stores/quiz'
@@ -75,7 +75,7 @@ onBeforeUnmount(() => chart?.destroy())
         <tbody>
           <tr v-for="row in rows" :key="row.label" class="border-t border-border">
             <th class="py-1 pr-3 font-normal text-foreground">{{ row.label }}</th>
-            <td class="py-1 font-mono">{{ row.score ?? '—' }}</td>
+            <td class="py-1 font-mono">{{ row.score ?? '-' }}</td>
           </tr>
         </tbody>
       </table>

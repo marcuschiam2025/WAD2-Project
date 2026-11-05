@@ -33,7 +33,7 @@ test('the exam schedule shows dates and start times without end-time warnings', 
     assert.match(html, /13:00/)
     assert.match(html, /same day/)
     assert.match(html, /Check the official exam schedule/)
-    assert.doesNotMatch(html, /End time unconfirmed|cannot rule out|15:00|09:00–null|· clash/)
+    assert.doesNotMatch(html, /End time unconfirmed|cannot rule out|15:00|09:00-null|· clash/)
     const clashing = await renderToString(createSSRApp(Schedule, { sections: [section, { ...section, id: 'simultaneous', module: 'IS213' }] }))
     assert.match(clashing, /· clash/, 'simultaneous exams must still be flagged')
   } finally { await server.close() }

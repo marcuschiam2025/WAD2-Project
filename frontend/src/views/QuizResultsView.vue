@@ -88,8 +88,8 @@ const contrasting = computed(() => {
 const topResults = computed(() => attempt.value?.results.slice(0, 2) ?? [])
 const otherResults = computed(() => attempt.value?.results.slice(2) ?? [])
 const pickedAtRandom = computed(() => blended.value && tieRunsPastShown(attempt.value?.results))
-const summaryNote = computed(() => legacy.value ? 'Saved using the earlier quiz format.' : provisional.value ? 'Based on scenario choices; more rating evidence is needed.' : pickedAtRandom.value ? 'More tracks are tied than we can show here, so these were picked at random. Compare all four below.' : tied.value ? 'The leading tracks are tied. Display order does not break the tie.' : close.value ? 'Your leading tracks are close—explore both.' : 'Two starting points based on your answers.')
-const display = (value) => typeof value === 'number' ? Math.round(value) : '—'
+const summaryNote = computed(() => legacy.value ? 'Saved using the earlier quiz format.' : provisional.value ? 'Based on scenario choices; more rating evidence is needed.' : pickedAtRandom.value ? 'More tracks are tied than we can show here, so these were picked at random. Compare all four below.' : tied.value ? 'The leading tracks are tied. Display order does not break the tie.' : close.value ? 'Your leading tracks are close - explore both.' : 'Two starting points based on your answers.')
+const display = (value) => typeof value === 'number' ? Math.round(value) : '-'
 function retake() { if (quiz.hasDraft && !window.confirm('Replace your unfinished quiz with a new attempt?')) return; quiz.start(); router.push('/quiz/attempt') }
 async function loadModules() {
   const id = attempt.value?.id

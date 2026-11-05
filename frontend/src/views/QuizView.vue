@@ -37,7 +37,7 @@ function start() {
       <div v-if="quiz.error" role="alert" class="card p-5"><p>{{ quiz.error }}</p><BaseButton class="mt-3" variant="outline" @click="quiz.initialize">Retry loading</BaseButton></div>
       <section class="card flex flex-col gap-4 p-6">
         <h2 class="text-h3">20 questions. Four perspectives.</h2>
-        <p class="text-sm text-muted-foreground">Designed for Year 1–2 Information Systems students. Allow about five minutes; we’re still checking this timing with students.</p>
+        <p class="text-sm text-muted-foreground">Designed for Year 1-2 Information Systems students. Allow about five minutes; we’re still checking this timing with students.</p>
         <div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div v-for="label in ['Interests', 'Current confidence', 'Working style', 'Career goals']" :key="label" class="rounded-md bg-muted p-3">{{ label }}<span class="mt-1 block text-xs text-muted-foreground">5 questions</span></div></div>
         <p class="text-sm">Answer every question.</p>
         <p class="text-sm text-muted-foreground">Retake whenever you like. Only your latest two completed results are kept; completing another attempt replaces the oldest. Your planner stays unchanged.</p>
