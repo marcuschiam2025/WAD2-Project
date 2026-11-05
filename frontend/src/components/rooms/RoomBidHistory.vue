@@ -24,6 +24,6 @@ async function load() {
     <p v-if="loading" role="status" class="mt-3 text-sm">Loading history…</p>
     <div v-else-if="error" class="mt-3"><p role="alert" class="text-sm text-destructive">{{ error }}</p><button class="mt-2 rounded-md border border-border px-3 py-2 text-sm" @click="load">Try again</button></div>
     <p v-else-if="loaded && !history.length" class="mt-3 text-sm text-muted-foreground">No historical bid results are recorded for this module yet.</p>
-    <div v-else-if="history.length" class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b border-border"><th class="py-2">Term</th><th>Round</th><th>Minimum (e$)</th><th>Median (e$)</th></tr></thead><tbody><tr v-for="(entry, i) in history" :key="i" class="border-b border-border last:border-0"><td class="py-3">{{ entry.term }}</td><td>{{ entry.round }}</td><td>{{ entry.min ?? '—' }}</td><td>{{ entry.median ?? '—' }}</td></tr></tbody></table></div>
+    <div v-else-if="history.length" class="mt-4 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b border-border"><th class="py-2">Term</th><th>Round</th><th>Minimum (e$)</th><th>Median (e$)</th></tr></thead><tbody><tr v-for="(entry, i) in history" :key="i" class="border-b border-border last:border-0"><td class="py-3">{{ entry.term }}</td><td>{{ entry.round }}</td><td>{{ entry.min ?? '-' }}</td><td>{{ entry.median ?? '-' }}</td></tr></tbody></table></div>
   </details>
 </template>

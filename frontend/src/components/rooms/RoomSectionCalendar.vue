@@ -52,7 +52,7 @@ const visibleDays = computed(() => days.map((name, day) => ({ name, day })).filt
               {{ event.section.section }}<span v-if="selected.includes(event.section.id)" aria-hidden="true">✓</span>
             </span>
             <span class="truncate">{{ event.section.prof || 'Instructor not listed' }}</span>
-            <span>{{ time.start }}–{{ time.end }}<template v-if="event.meeting.venue"> · {{ event.meeting.venue }}</template></span>
+            <span>{{ time.start }}-{{ time.end }}<template v-if="event.meeting.venue"> · {{ event.meeting.venue }}</template></span>
             <span class="mt-0.5 flex flex-col leading-normal">
               <span class="font-semibold">{{ event.count }} {{ event.count === 1 ? 'vote' : 'votes' }}</span>
               <span class="opacity-80">{{ event.voters.length ? event.voters.map(person => person.name).join(', ') : 'Nobody yet' }}</span>

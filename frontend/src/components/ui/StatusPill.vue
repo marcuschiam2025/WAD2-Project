@@ -1,5 +1,5 @@
 <script setup>
-// v2 Components / Pill — tinted status chip with a leading dot (neutral has no dot)
+// v2 Components / Pill - tinted status chip with a leading dot (neutral has no dot)
 import dotSuccess from '@/assets/v2/dot-success.svg'
 import dotWarning from '@/assets/v2/dot-warning.svg'
 import dotDestructive from '@/assets/v2/dot-destructive.svg'

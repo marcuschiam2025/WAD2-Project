@@ -1,5 +1,5 @@
 <script setup>
-// Bordered row with a coloured accent bar, overline label and message — used inside AlertModal.
+// Bordered row with a coloured accent bar, overline label and message - used inside AlertModal.
 defineProps({
   label: { type: String, required: true },
   tone: { type: String, default: 'danger' }, // danger | info

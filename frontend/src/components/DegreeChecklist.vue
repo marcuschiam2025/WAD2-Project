@@ -158,7 +158,7 @@ const offeredText = (terms) => (terms.length ? `Term ${terms.map((t) => t.replac
 function lastMedian(code) {
   const rows = bidHistory[code] ?? []
   const row = rows.find((r) => r.round === bidding.round.round) ?? rows[0]
-  return row ? `e$ ${row.median} · Round ${row.round}` : '—'
+  return row ? `e$ ${row.median} · Round ${row.round}` : '-'
 }
 
 const facts = (m) => [

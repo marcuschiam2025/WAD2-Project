@@ -123,7 +123,7 @@ onBeforeUnmount(() => { generation++; window.removeEventListener('beforeunload',
       </div>
       <form v-if="form" class="space-y-4" @submit.prevent="review = true">
         <h3 class="font-semibold">{{ creating ? 'Create module' : `Edit ${form.code}` }}</h3>
-        <p v-if="form.archived" class="rounded-md bg-muted p-3 text-sm">Archived — hidden from module discovery. Existing records remain readable.</p>
+        <p v-if="form.archived" class="rounded-md bg-muted p-3 text-sm">Archived - hidden from module discovery. Existing records remain readable.</p>
         <fieldset :disabled="busy || review || !!operation" class="space-y-4 disabled:opacity-70">
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="block text-sm">Module code<input v-model="form.code" :readonly="!creating" required pattern="[A-Z][A-Z0-9._\-]{1,39}" maxlength="40" class="mt-1 block w-full rounded-md border border-border bg-background p-2"/><span class="mt-1 block text-xs text-muted-foreground">Code is fixed after creation.</span></label>

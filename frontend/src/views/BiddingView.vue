@@ -267,7 +267,7 @@ const scrollToPanel = () => sidebarRef.value?.$el.scrollIntoView({ behavior: 'sm
                   :code="s.module"
                   :section="s.section"
                   :name="moduleName(s.module)"
-                  :meta="`${s.meeting.start}–${s.meeting.end} · ${s.profShort} · ${s.venueShort}`"
+                  :meta="`${s.meeting.start}-${s.meeting.end} · ${s.profShort} · ${s.venueShort}`"
                   :variant="variantFor(s)"
                   :class="[isDimmed(s) && 'opacity-30 grayscale', bidding.isLocked(s.module) && bidding.selectedModule === s.module && 'ring-2 ring-success ring-offset-2']"
                 >

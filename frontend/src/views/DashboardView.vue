@@ -138,7 +138,7 @@ const sections = computed(() => [
     label: "Bidding calendar",
     value: bidding.bookedSections.length
       ? String(bidding.bookedSections.length)
-      : "—",
+      : "-",
     unit: bidding.bookedSections.length
       ? bidding.bookedSections.length === 1
         ? "module planned"
@@ -269,7 +269,7 @@ const degreeParts = computed(() =>
 );
 
 // --- Schedule -----------------------------------------------------------------------------
-// TODO(backend): replace with GET /api/users/me/feed — assignment deadlines and quizzes.
+// TODO(backend): replace with GET /api/users/me/feed - assignment deadlines and quizzes.
 // The bidding cart is a planning source, not evidence of confirmed enrolment.
 // Every bidding window of the term that opens or closes from now on, as schedule entries (the next-7-days tab keeps the
 // ones within a week). A term with no listed windows falls back to the open round's closing time.

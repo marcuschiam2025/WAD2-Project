@@ -133,7 +133,7 @@ function useSuggested() {
   bid.value = reference.value.suggested
 }
 
-// Marker position on the At risk / Competitive / Safe meter (0–100%)
+// Marker position on the At risk / Competitive / Safe meter (0-100%)
 const markerPct = computed(() => {
   const v = verdict.value
   if (!v) return null

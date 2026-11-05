@@ -16,7 +16,7 @@ const records = computed(() => bundle.value ? [
   ...bundle.value.tracks.map(row => ({ ...row, kind: 'track', display: row.name, scope: `Track · ${row.trackCode}` })),
   ...bundle.value.requirements.map(row => ({ ...row, kind: 'requirement', display: row.label, scope: row.level === 'track' ? `Track rule · ${bundle.value.tracks.find(t => t._id === row.ownerId)?.trackCode ?? row.ownerId}` : `${row.level === 'core' ? 'Core' : 'Major'} requirement` })),
 ] : [])
-const intakeLabel = major => `${major.intakeFrom}${major.intakeTo ? `–${major.intakeTo}` : ' onwards'}`
+const intakeLabel = major => `${major.intakeFrom}${major.intakeTo ? `-${major.intakeTo}` : ' onwards'}`
 function discardAllowed() { return !dirty.value || window.confirm('Discard unsaved curriculum changes?') }
 function fill(row) { return { ...copy(row), heading: row.heading ?? '', order: row.order ?? 0, countsToward: row.countsToward ?? 'NONE', cuRequired: row.cuRequired ?? 0, modules: (row.modules ?? []).join(', '), categories: (row.categories ?? []).join(', '), n: row.n ?? 1, tag: row.tag ?? '', autoFulfilled: row.autoFulfilled === true, description: row.description ?? '', source: row.source ?? '', lastChecked: row.lastChecked?.slice(0, 10) ?? '' } }
 async function run(action) {

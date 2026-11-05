@@ -55,19 +55,19 @@ test('track requirements are named after their track and listed first under the 
 
 test('each row carries the recommended semesters from the course progression, for the hover tag', () => {
   // Technology Solutioning lists IS114 (Y1S1) and IS210 (Y2S1): the window spans both
-  assert.equal(row('TECH').rec.label, 'Y1S1–Y2S1')
+  assert.equal(row('TECH').rec.label, 'Y1S1-Y2S1')
   assert.deepEqual(row('TECH').rec.ids, ['Y1S1', 'Y1S2', 'Y2S1'])
   // a tagged basket row uses its basket's window
-  assert.equal(row('MANAGING').rec.label, 'Y1S1–Y4S1')
+  assert.equal(row('MANAGING').rec.label, 'Y1S1-Y4S1')
   // electives use the progression's elective and free elective windows
-  assert.equal(row('IS_ELECT').rec.label, 'Y3S1–Y4S2')
-  assert.equal(row('FREE').rec.label, 'Y2S2–Y4S2')
+  assert.equal(row('IS_ELECT').rec.label, 'Y3S1-Y4S2')
+  assert.equal(row('FREE').rec.label, 'Y2S2-Y4S2')
   assert.ok(laid.other.every((r) => r.rec && r.chip))
 })
 
 test('a todo row shows its recommended semester; a row already planned shows where it sits', () => {
   assert.equal(row('MANAGING').status, 'todo')
-  assert.equal(row('MANAGING').chip.text, 'Y2S1', 'recommended window Y1S1–Y4S1 already open: current semester')
+  assert.equal(row('MANAGING').chip.text, 'Y2S1', 'recommended window Y1S1-Y4S1 already open: current semester')
   assert.equal(row('BA_PICK').status, 'todo')
   assert.equal(row('TECH').status, 'inProgress')
   assert.equal(row('TECH').chip.tone, 'inProgress')
@@ -107,7 +107,7 @@ test('exemptions and free elective exemptions count as exempted credit, not clea
 })
 
 test('"behind the recommended term" counts the courses still to take whose window has already passed', () => {
-  // Writing is recommended for Y1S1–Y1S2; this student is in Y2S1 and has not taken it
+  // Writing is recommended for Y1S1-Y1S2; this student is in Y2S1 and has not taken it
   const behind = { ...plan, semesters: [sem('Y1S1', ['IS114']), sem('Y1S2', []), sem('Y2S1', ['IS210']), sem('Y2S2', []), sem('Y3S1', [])] }
   const result = layoutCurriculum(buildCurriculumChecklist(behind, catalogue, bundle), behind, bundle, { majorCode: 'BSC-IS' })
   const lateRows = [...result.groups.flatMap((g) => g.slots), ...result.other].filter((r) => r.urgency === 'late')

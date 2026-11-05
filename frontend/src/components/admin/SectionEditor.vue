@@ -113,7 +113,7 @@ onBeforeUnmount(() => { generation++; window.removeEventListener('beforeunload',
       <form v-if="form" class="space-y-4" @submit.prevent="review = true">
         <h3 class="font-semibold">{{ creating ? 'Create section' : `Edit ${form.sectionCode}` }} · {{ form.moduleCode }} · {{ form.termKey }}</h3>
         <p v-if="form.legacyExamNote" class="rounded-md bg-muted p-3 text-sm">Existing exam note: {{ form.legacyExamNote }}. Enter the exam date and times below before saving.</p>
-        <p v-if="form.archived" class="rounded-md bg-muted p-3 text-sm">Archived — unavailable for new votes and bid saves. Existing saved records are retained.</p>
+        <p v-if="form.archived" class="rounded-md bg-muted p-3 text-sm">Archived - unavailable for new votes and bid saves. Existing saved records are retained.</p>
         <fieldset :disabled="busy || review || !!operation" class="space-y-4 disabled:opacity-70">
           <div class="grid gap-4 sm:grid-cols-2"><label class="block text-sm">Section code<input v-model="form.sectionCode" required :readonly="!creating" placeholder="G1" pattern="[A-Z0-9][A-Z0-9_\-]{0,19}" maxlength="20" class="mt-1 block w-full rounded-md border border-border bg-background p-2"/></label><label class="block text-sm">Capacity<input v-model="form.capacity" type="number" min="1" max="10000" step="1" placeholder="Unknown" class="mt-1 block w-full rounded-md border border-border bg-background p-2"/></label></div>
           <label class="block text-sm">Instructor<input v-model="form.instructor" maxlength="200" class="mt-1 block w-full rounded-md border border-border bg-background p-2"/></label>

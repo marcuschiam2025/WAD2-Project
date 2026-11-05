@@ -100,7 +100,7 @@ const verdict = computed(() => {
 const suggested = computed(() => (canEstimateBid(round.value, props.term) && reference.value?.basedOn ? reference.value.suggested : null))
 const pill = { safe: ['success', 'Safe'], competitive: ['warning', 'Competitive'], 'at-risk': ['destructive', 'At risk'] }
 
-// Marker on the At risk / Competitive / Safe meter (0–100%)
+// Marker on the At risk / Competitive / Safe meter (0-100%)
 const markerPct = computed(() => {
   const v = verdict.value
   if (!v) return null
@@ -192,7 +192,7 @@ const verdictText = computed(() => {
           <span>{{ h.term }}</span>
           <span class="font-mono font-medium">e$ {{ h.median }}</span>
           <span class="font-mono font-medium">e$ {{ h.min }}</span>
-          <span class="font-mono">{{ h.demand ?? '—' }} / {{ h.vacancies ?? '—' }}</span>
+          <span class="font-mono">{{ h.demand ?? '-' }} / {{ h.vacancies ?? '-' }}</span>
         </div>
       </div>
       <p class="text-[11.5px] text-muted-foreground">Results are for the whole module, not one section. A suggestion only, not a guarantee of allocation.</p>

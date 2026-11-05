@@ -1,5 +1,5 @@
 <script setup>
-// v2 Components / Timetable Card — module card inside a timetable cell.
+// v2 Components / Timetable Card - module card inside a timetable cell.
 // booked = green accent; selected = opened in the sidebar; option = alternative section (dashed);
 // clash = overlaps another booking; room = section accepted in a collab room (locked);
 // chosen / chosen-success = filled slot picked in a collab room.
