@@ -53,6 +53,7 @@ const showRead = ref(false);
 const nextNotifications = ref(null);
 const notificationsLoading = ref(false);
 const notificationsError = ref('');
+const readingNotifications = ref(new Set());
 let notificationRequest = 0;
 
 const filteredNotifications = computed(() => {
@@ -148,22 +149,29 @@ watch(notifOpen, (open) => {
 });
 
 async function handleNotifClick(n) {
-  // Mark as read locally and sync with backend if unread
-  // 1. Close dropdown
-  notifOpen.value = false
-
-  // 2. Mark notification as read locally and sync with DB if unread
+  const id = n._id || n.id
+  if (readingNotifications.value.has(id)) return
+  notificationsError.value = ''
   if (!n.read) {
-    n.read = true
+    readingNotifications.value.add(id)
     try {
-      await api.markNotificationRead(n._id || n.id)
-      unreadCount.value = Math.max(0, unreadCount.value - 1)
+      await api.markNotificationRead(id)
+      const current = notifications.value.find(item => (item._id || item.id) === id)
+      if (current && !current.read) {
+        current.read = true
+        unreadCount.value = Math.max(0, unreadCount.value - 1)
+      }
+      n.read = true
+      // A refresh racing this update must not restore the old unread state or count.
+      if (notificationsLoading.value || !current) await loadNotifications()
     } catch (error) {
+      notificationsError.value = 'Could not mark this notification as read. Please try again.'
       console.error("Failed to mark notification as read:", error)
-    }
+      return
+    } finally { readingNotifications.value.delete(id) }
   }
 
-  // 3. Navigate to the squad collab room path
+  notifOpen.value = false
   if (n.link) {
     router.push(n.link)
   }
@@ -347,6 +355,7 @@ async function logOut() {
                 <li
                   v-for="n in filteredNotifications"
                   :key="n._id || n.id"
+                  :aria-busy="readingNotifications.has(n._id || n.id)"
                   class="flex flex-col rounded-md p-2 text-[13px] transition-colors hover:bg-muted cursor-pointer"
                   :class="
                     !n.read
@@ -356,6 +365,7 @@ async function logOut() {
                   @click="handleNotifClick(n)"
                 >
                   <span class="leading-snug">{{ n.message || n.text }}</span>
+                  <span v-if="readingNotifications.has(n._id || n.id)" class="mt-1 text-[11px] text-muted-foreground">Marking as read…</span>
                   <span
                     v-if="n.createdAt"
                     class="mt-1 text-[11px] text-muted-foreground font-normal"
