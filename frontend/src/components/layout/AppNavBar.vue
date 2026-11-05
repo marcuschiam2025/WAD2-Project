@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch,nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@core/stores/user";
 import { useThemeStore } from "@core/stores/theme";
@@ -61,6 +61,54 @@ const filteredNotifications = computed(() => {
   return list.sort((a, b) => Number(a.read) - Number(b.read))
 })
 
+const isEditing = ref(false);
+const creditInput = ref(null);
+
+const startEdit = async () => {
+  isEditing.value = true;
+  await nextTick(); 
+  creditInput.value.focus();
+};
+
+// const saveEdit = async () => {
+//   if (!isEditing.value) return;
+//   isEditing.value = false;
+  
+//   const newBalance = Number(parseFloat(user.balance).toFixed(2));
+  
+//   try {
+//     // This calls the existing save() method in your user.js store
+//     await user.save({ balance: newBalance });
+//   } catch (error) {
+//     console.error("Failed to save balance:", error);
+//     // You could display an error toast here if needed
+//   }
+// };
+const saveEdit = async () => {
+  if (!isEditing.value) return;
+  isEditing.value = false;
+  
+  // 1. Safely parse the text input into a float
+  let parsedValue = parseFloat(user.balance);
+  
+  // 2. If they left it blank or typed gibberish, default to 0
+  if (isNaN(parsedValue) || parsedValue < 0) {
+    parsedValue = 0;
+  }
+  
+  // 3. Format strictly to 2 decimal places
+  const newBalance = Number(parsedValue.toFixed(2));
+  
+  // 4. Optimistically update the UI to show the clean number
+  user.balance = newBalance;
+  
+  try {
+    // 5. Send the valid number to the backend
+    await user.save({ balance: newBalance }); 
+  } catch (error) {
+    console.error("Failed to save balance:", error);
+  }
+};
 
 const unreadCount = computed(
   () => notifications.value.filter((n) => !n.read).length,
@@ -182,7 +230,7 @@ async function logOut() {
 
       <div class="flex shrink-0 items-center gap-2 lg:gap-4">
         <!-- The student's whole balance: what is left after the cart is on the dashboard -->
-        <div
+        <!-- <div
           title="Your e$ balance"
           class="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 leading-normal whitespace-nowrap"
         >
@@ -192,7 +240,48 @@ async function logOut() {
           <span class="hidden text-[12px] text-muted-foreground xl:inline"
             >balance</span
           >
-        </div>
+        </div> -->
+        
+        <div class="flex shrink-0 items-center gap-2 lg:gap-4">
+    <!-- The student's whole balance -->
+    <div
+      title="Your e$ balance"
+      class="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 leading-normal whitespace-nowrap cursor-pointer hover:bg-secondary/80 transition-colors"
+      @click="startEdit"
+    >
+      <!-- Display Mode -->
+      <span 
+        v-if="!isEditing" 
+        class="font-mono text-[12.5px] font-bold"
+      >
+        e$ {{ user.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+      </span>
+
+      <!-- Edit Mode -->
+      <!-- <input 
+        v-else 
+        ref="creditInput" 
+        v-model.number="user.balance" 
+        @blur="saveEdit" 
+        @keyup.enter="saveEdit" 
+        type="number"
+        step="0.01"
+        class="font-mono text-[12.5px] font-bold bg-transparent outline-none border-b border-foreground/30 w-16 text-foreground"
+      /> -->
+      <input 
+  v-else 
+  ref="creditInput" 
+  v-model="user.balance" 
+  @blur="saveEdit" 
+  @keyup.enter="saveEdit" 
+  type="text"
+  class="font-mono text-[12.5px] font-bold bg-transparent outline-none border-b border-foreground/30 w-16 text-foreground"
+/>
+      <span class="hidden text-[12px] text-muted-foreground xl:inline">
+        balance
+      </span>
+    </div>
+  </div>
         <div ref="notifRef" class="relative">
           <button
             type="button"

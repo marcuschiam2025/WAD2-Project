@@ -94,6 +94,6 @@ export const useUserStore = defineStore('user', () => {
   async function unmarkDone(id) {
     try { await save({ markedDone: (profile.value.markedDone ?? []).filter(done => done !== id) }) } catch (failure) { error.value = failure.message }
   }
-  return { isSignedIn, uid, onboarded, profile, balance, consents, error, busy, initialize, signIn, signOut, completeOnboarding, markDone, unmarkDone }
+  return { isSignedIn, uid, onboarded, profile, balance, consents, error, busy, initialize, signIn, signOut, completeOnboarding, markDone, unmarkDone, save }
 })
 if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useUserStore, import.meta.hot))
