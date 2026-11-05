@@ -1,10 +1,10 @@
 // Builds a room's vote board from GET /api/parties/:id and GET /api/parties/:id/sections. Pure functions.
 // The counting rules match backend/features/parties/utils/decision.js.
 
-export const idOf = (value) => String(value?._id ?? value)
+export const idOf = (value) => String(value?._id ?? value);
 
 // What the party admin may lock: nothing until everyone has voted, then only the section(s) with the most votes
-export const lockableSections = (board) => (board && !board.locked && board.allVoted ? board.leaders : [])
+export const lockableSections = (board) => (board && !board.locked && board.allVoted ? board.leaders : []);
 
 /**
  * @param {object} party    the party (members, owner, votes, locked, lockedSection, termKey), members populated
@@ -12,27 +12,36 @@ export const lockableSections = (board) => (board && !board.locked && board.allV
  * @param {string} myId     the signed-in student's user id
  */
 export function buildRoomBoard(party, summary, myId) {
-  const members = (party.members ?? []).map((member) => ({ _id: idOf(member), name: member?.name || 'Member' }))
-  const memberIds = members.map((member) => member._id)
-  const validIds = new Set(summary.map((row) => row.section.id))
+  const members = (party.members ?? []).map((member) => ({
+    _id: idOf(member),
+    name: member?.name || 'Member',
+  }));
+  const memberIds = members.map((member) => member._id);
+  const validIds = new Set(summary.map((row) => row.section.id));
 
   // Each member's ballot, keeping only sections still offered in the party's term
-  const ballots = new Map()
+  const ballots = new Map();
   for (const ballot of party.votes ?? []) {
-    const id = idOf(ballot.user)
-    if (memberIds.includes(id)) ballots.set(id, [...new Set(ballot.sectionIds.filter((sectionId) => validIds.has(sectionId)))])
+    const id = idOf(ballot.user);
+    if (memberIds.includes(id))
+      ballots.set(id, [...new Set(ballot.sectionIds.filter((sectionId) => validIds.has(sectionId)))]);
   }
-  const myBallot = (party.votes ?? []).find((ballot) => idOf(ballot.user) === myId)?.sectionIds ?? []
+  const myBallot = (party.votes ?? []).find((ballot) => idOf(ballot.user) === myId)?.sectionIds ?? [];
 
-  const waitingIds = memberIds.filter((id) => !ballots.get(id)?.length)
-  const counts = new Map(summary.map((row) => [row.section.id, 0]))
-  for (const picks of ballots.values()) for (const id of picks) counts.set(id, counts.get(id) + 1)
-  const top = Math.max(0, ...counts.values())
-  const leaders = top ? [...counts].filter(([, count]) => count === top).map(([id]) => id).sort() : []
-  const allVoted = memberIds.length > 0 && waitingIds.length === 0
+  const waitingIds = memberIds.filter((id) => !ballots.get(id)?.length);
+  const counts = new Map(summary.map((row) => [row.section.id, 0]));
+  for (const picks of ballots.values()) for (const id of picks) counts.set(id, counts.get(id) + 1);
+  const top = Math.max(0, ...counts.values());
+  const leaders = top
+    ? [...counts]
+        .filter(([, count]) => count === top)
+        .map(([id]) => id)
+        .sort()
+    : [];
+  const allVoted = memberIds.length > 0 && waitingIds.length === 0;
 
   // The party admin locks one section for the whole room
-  const locked = !!party.locked
+  const locked = !!party.locked;
 
   return {
     term: party.termKey,
@@ -46,14 +55,16 @@ export function buildRoomBoard(party, summary, myId) {
     leaders,
     tie: leaders.length > 1,
     locked,
-    lockedSection: locked ? party.lockedSection ?? null : null,
+    lockedSection: locked ? (party.lockedSection ?? null) : null,
     status: locked ? 'locked' : allVoted ? 'ready' : 'voting',
     mySectionIds: myBallot.filter((id) => validIds.has(id)),
     missingSectionIds: myBallot.filter((id) => !validIds.has(id)),
     rows: summary.map((row) => ({
       section: row.section,
       count: counts.get(row.section.id) ?? 0,
-      voters: (row.voters ?? []).filter(Boolean).map((voter) => ({ _id: idOf(voter), name: voter.name || 'Member' })),
+      voters: (row.voters ?? [])
+        .filter(Boolean)
+        .map((voter) => ({ _id: idOf(voter), name: voter.name || 'Member' })),
     })),
-  }
+  };
 }

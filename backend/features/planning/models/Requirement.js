@@ -1,13 +1,13 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
-export const REQUIREMENT_RULES = ['all', 'chooseN', 'basket', 'anyFromCategory', 'flag']
+export const REQUIREMENT_RULES = ['all', 'chooseN', 'basket', 'anyFromCategory', 'flag'];
 
 // One graduation rule of a major (level core / major) or of one of its tracks (level track).
-//   all             — take every course in `modules`
-//   chooseN         — take `n` of `modules`
-//   basket          — `cuRequired` CU of courses whose `fulfils` includes `tag`
-//   anyFromCategory — `cuRequired` CU of courses in any of `categories` (ANY = any course)
-//   flag            — non-credit: some course carrying `tag` (or `autoFulfilled`)
+//   all             : take every course in `modules`
+//   chooseN         : take `n` of `modules`
+//   basket          : `cuRequired` CU of courses whose `fulfils` includes `tag`
+//   anyFromCategory : `cuRequired` CU of courses in any of `categories` (ANY = any course)
+//   flag            : non-credit: some course carrying `tag` (or `autoFulfilled`)
 const requirementSchema = new mongoose.Schema(
   {
     revision: { type: Number, default: 0 },
@@ -27,6 +27,6 @@ const requirementSchema = new mongoose.Schema(
     autoFulfilled: Boolean,
   },
   { versionKey: false }, // seeded initially; staff edits are audited
-)
+);
 
-export default mongoose.model('Requirement', requirementSchema, 'requirements')
+export default mongoose.model('Requirement', requirementSchema, 'requirements');

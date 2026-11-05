@@ -3,149 +3,161 @@
 // current one), modules exempted from (optional), e-credits.
 // mode 'onboarding': a blank form for a new student. mode 'edit': the profile page's inline editor, prefilled with
 // the saved answers. Saving calls user.completeOnboarding, which also updates every What-If plan.
-import { computed, ref, watch } from 'vue'
-import { useUserStore } from '@core/stores/user'
-import { usePlannerStore, effectiveCode, MAX_LOA_TERMS, INTERNSHIP_CODE } from '@core/stores/planner'
-import { useCatalogueStore } from '@core/stores/catalogue'
-import { moduleName } from '@core/data/catalogue'
-import { SEM_IDS } from '@core/data/degree'
-import BaseButton from '@/components/ui/BaseButton.vue'
-import SelectMenu from '@/components/ui/SelectMenu.vue'
-import ModuleSearchBox from '@/components/ModuleSearchBox.vue'
-import iconRemove from '@/assets/figma/icon-remove.svg'
-import iconGrip from '@/assets/figma/icon-grip.svg'
+import { computed, ref, watch } from 'vue';
+import { useUserStore } from '@core/stores/user';
+import { usePlannerStore, effectiveCode, MAX_LOA_TERMS, INTERNSHIP_CODE } from '@core/stores/planner';
+import { useCatalogueStore } from '@core/stores/catalogue';
+import { moduleName } from '@core/data/catalogue';
+import { SEM_IDS } from '@core/data/degree';
+import BaseButton from '@/components/ui/BaseButton.vue';
+import SelectMenu from '@/components/ui/SelectMenu.vue';
+import ModuleSearchBox from '@/components/ModuleSearchBox.vue';
+import iconRemove from '@/assets/figma/icon-remove.svg';
+import iconGrip from '@/assets/figma/icon-grip.svg';
 
-const props = defineProps({ mode: { type: String, default: 'onboarding' } }) // onboarding | edit
-const emit = defineEmits(['saved', 'cancel'])
-const user = useUserStore()
-const planner = usePlannerStore()
+const props = defineProps({ mode: { type: String, default: 'onboarding' } }); // onboarding | edit
+const emit = defineEmits(['saved', 'cancel']);
+const user = useUserStore();
+const planner = usePlannerStore();
 
 // Editing from the profile page: start from what the student saved before
-const editing = props.mode === 'edit'
-const saved = editing ? user.profile : {}
+const editing = props.mode === 'edit';
+const saved = editing ? user.profile : {};
 // Track codes saved before the catalogue used the backend's codes
-const savedTracks = (saved.tracks ?? []).map((c) => (c === 'SMT' ? 'SMCT' : c))
+const savedTracks = (saved.tracks ?? []).map((c) => (c === 'SMT' ? 'SMCT' : c));
 
-const MAX_TRACKS = 2
+const MAX_TRACKS = 2;
 // TODO(backend): programmes come from GET /api/programmes. Only Information Systems is open for now.
-const programmes = [{ value: 'Information Systems', label: 'BSc Information Systems' }]
+const programmes = [{ value: 'Information Systems', label: 'BSc Information Systems' }];
 
-const major = ref(programmes[0].value)
-const selectedTracks = ref(savedTracks)
-const undecided = ref(editing && !savedTracks.length) // wants to take the track quiz instead of picking now
-const currentSem = ref(saved.currentSem ?? null)
-const eCredits = ref(editing ? String(user.balance) : '')
+const major = ref(programmes[0].value);
+const selectedTracks = ref(savedTracks);
+const undecided = ref(editing && !savedTracks.length); // wants to take the track quiz instead of picking now
+const currentSem = ref(saved.currentSem ?? null);
+const eCredits = ref(editing ? String(user.balance) : '');
 
 function toggleTrack(code) {
-  undecided.value = false
-  if (selectedTracks.value.includes(code)) selectedTracks.value = selectedTracks.value.filter((c) => c !== code)
-  else if (selectedTracks.value.length < MAX_TRACKS) selectedTracks.value = [...selectedTracks.value, code]
+  undecided.value = false;
+  if (selectedTracks.value.includes(code))
+    selectedTracks.value = selectedTracks.value.filter((c) => c !== code);
+  else if (selectedTracks.value.length < MAX_TRACKS) selectedTracks.value = [...selectedTracks.value, code];
 }
 
 function toggleUndecided() {
-  undecided.value = !undecided.value
-  if (undecided.value) selectedTracks.value = []
+  undecided.value = !undecided.value;
+  if (undecided.value) selectedTracks.value = [];
 }
 
 // Modules already taken: search adds them to the basket, then drag each into the semester it was taken in.
 // Only semesters before the current one are open, because those are the ones that are done.
-const basket = ref([])
-const placed = ref(Object.fromEntries(SEM_IDS.map((id) => [id, [...(saved.takenBySem?.[id] ?? [])]])))
-const loaSemesters = ref([...(saved.loaSemesters ?? [])])
-const dragging = ref(null)
-const dragOver = ref(null)
+const basket = ref([]);
+const placed = ref(Object.fromEntries(SEM_IDS.map((id) => [id, [...(saved.takenBySem?.[id] ?? [])]])));
+const loaSemesters = ref([...(saved.loaSemesters ?? [])]);
+const dragging = ref(null);
+const dragOver = ref(null);
 
-const doneSems = computed(() => (currentSem.value ? SEM_IDS.slice(0, SEM_IDS.indexOf(currentSem.value)) : []))
+const doneSems = computed(() =>
+  currentSem.value ? SEM_IDS.slice(0, SEM_IDS.indexOf(currentSem.value)) : [],
+);
 // The done semesters plus the current one (modules being taken now, optional)
-const openSems = computed(() => (currentSem.value ? [...doneSems.value, currentSem.value] : []))
-const placedCodes = computed(() => Object.values(placed.value).flat())
-const allCodes = computed(() => [...basket.value, ...placedCodes.value])
+const openSems = computed(() => (currentSem.value ? [...doneSems.value, currentSem.value] : []));
+const placedCodes = computed(() => Object.values(placed.value).flat());
+const allCodes = computed(() => [...basket.value, ...placedCodes.value]);
 
 // Modules the student is exempted from. They count as cleared in Outstanding Modules, with no semester.
-const exempted = ref([...(saved.exempted ?? [])])
-const takenOrExempt = computed(() => [...allCodes.value, ...exempted.value])
+const exempted = ref([...(saved.exempted ?? [])]);
+const takenOrExempt = computed(() => [...allCodes.value, ...exempted.value]);
 function addExemption(m) {
-  if (!takenOrExempt.value.includes(m.code)) exempted.value = [...exempted.value, m.code]
+  if (!takenOrExempt.value.includes(m.code)) exempted.value = [...exempted.value, m.code];
 }
 function removeExemption(code) {
-  exempted.value = exempted.value.filter((c) => c !== code)
+  exempted.value = exempted.value.filter((c) => c !== code);
 }
 
 // Free electives exempted without a specific module (e.g. diploma credit). The degree has 6 free electives.
-const MAX_FREE_EXEMPT = 6
-const freeExempt = ref(saved.freeExemptions ?? 0)
-const hasExemptions = computed(() => exempted.value.length > 0 || freeExempt.value > 0)
-const emptySems = computed(() => doneSems.value.filter((id) => !loaSemesters.value.includes(id) && !placed.value[id].length))
+const MAX_FREE_EXEMPT = 6;
+const freeExempt = ref(saved.freeExemptions ?? 0);
+const hasExemptions = computed(() => exempted.value.length > 0 || freeExempt.value > 0);
+const emptySems = computed(() =>
+  doneSems.value.filter((id) => !loaSemesters.value.includes(id) && !placed.value[id].length),
+);
 
 function toggleLoa(id) {
-  if (!doneSems.value.includes(id)) return
-  if (loaSemesters.value.includes(id)) loaSemesters.value = loaSemesters.value.filter(sem => sem !== id)
+  if (!doneSems.value.includes(id)) return;
+  if (loaSemesters.value.includes(id)) loaSemesters.value = loaSemesters.value.filter((sem) => sem !== id);
   else if (loaSemesters.value.length < MAX_LOA_TERMS) {
-    loaSemesters.value.push(id)
-    placed.value[id].filter(code => code !== INTERNSHIP_CODE).forEach(backToBasket)
+    loaSemesters.value.push(id);
+    placed.value[id].filter((code) => code !== INTERNSHIP_CODE).forEach(backToBasket);
   }
 }
 
 function unplace(code) {
-  if (picked.value === code) picked.value = null
-  SEM_IDS.forEach((id) => (placed.value[id] = placed.value[id].filter((c) => c !== code)))
-  basket.value = basket.value.filter((c) => c !== code)
+  if (picked.value === code) picked.value = null;
+  SEM_IDS.forEach((id) => (placed.value[id] = placed.value[id].filter((c) => c !== code)));
+  basket.value = basket.value.filter((c) => c !== code);
 }
 
 function backToBasket(code) {
-  unplace(code)
-  basket.value = [...basket.value, code]
+  unplace(code);
+  basket.value = [...basket.value, code];
 }
 
 function addModule(m) {
-  if (!allCodes.value.includes(m.code)) basket.value = [...basket.value, m.code]
+  if (!allCodes.value.includes(m.code)) basket.value = [...basket.value, m.code];
 }
 
 // semId = null drops it back into the basket
 function drop(semId) {
-  const code = dragging.value
-  dragging.value = dragOver.value = null
-  if (!code) return
-  if (semId && loaSemesters.value.includes(semId) && code !== INTERNSHIP_CODE) return
-  unplace(code)
-  if (semId) placed.value[semId] = [...placed.value[semId], code]
-  else basket.value = [...basket.value, code]
+  const code = dragging.value;
+  dragging.value = dragOver.value = null;
+  if (!code) return;
+  if (semId && loaSemesters.value.includes(semId) && code !== INTERNSHIP_CODE) return;
+  unplace(code);
+  if (semId) placed.value[semId] = [...placed.value[semId], code];
+  else basket.value = [...basket.value, code];
 }
 
 // Tap a module, then tap a semester: dragging doesn't work on touch screens
-const picked = ref(null)
+const picked = ref(null);
 function pick(code) {
-  picked.value = picked.value === code ? null : code
+  picked.value = picked.value === code ? null : code;
 }
 function placePicked(semId) {
-  if (!picked.value) return
-  dragging.value = picked.value
-  picked.value = null
-  drop(semId)
+  if (!picked.value) return;
+  dragging.value = picked.value;
+  picked.value = null;
+  drop(semId);
 }
 
 // A semester that is no longer done or current gives its modules back to the basket.
 // Editing: those modules just leave the list (the plan keeps them as planned), and a semester that has
 // just become done or current starts with the modules the active plan has in it.
 watch(currentSem, () => {
-  loaSemesters.value = loaSemesters.value.filter(id => doneSems.value.includes(id))
+  loaSemesters.value = loaSemesters.value.filter((id) => doneSems.value.includes(id));
   SEM_IDS.filter((id) => !openSems.value.includes(id)).forEach((id) => {
-    if (!editing) basket.value = [...basket.value, ...placed.value[id]]
-    placed.value[id] = []
-  })
+    if (!editing) basket.value = [...basket.value, ...placed.value[id]];
+    placed.value[id] = [];
+  });
   if (editing) {
-    const taken = new Set([...basket.value, ...Object.values(placed.value).flat()])
+    const taken = new Set([...basket.value, ...Object.values(placed.value).flat()]);
     openSems.value
       .filter((id) => !placed.value[id].length)
       .forEach((id) => {
-        const fromPlan = (planner.activePlan.semesters.find((s) => s.id === id)?.modules.map(effectiveCode) ?? []).filter(code => !loaSemesters.value.includes(id) || code === INTERNSHIP_CODE)
-        placed.value[id] = fromPlan.filter((c) => !taken.has(c))
-      })
+        const fromPlan = (
+          planner.activePlan.semesters.find((s) => s.id === id)?.modules.map(effectiveCode) ?? []
+        ).filter((code) => !loaSemesters.value.includes(id) || code === INTERNSHIP_CODE);
+        placed.value[id] = fromPlan.filter((c) => !taken.has(c));
+      });
   }
-})
+});
 
-const eValue = computed(() => Number(eCredits.value))
-const eValid = computed(() => eCredits.value !== '' && Number.isFinite(eValue.value) && /^\d+(?:\.\d{1,2})?$/.test(String(eValue.value)))
+const eValue = computed(() => Number(eCredits.value));
+const eValid = computed(
+  () =>
+    eCredits.value !== '' &&
+    Number.isFinite(eValue.value) &&
+    /^\d+(?:\.\d{1,2})?$/.test(String(eValue.value)),
+);
 
 // Every section is required. Tracks can be "undecided", which sends you to the quiz.
 const sections = [
@@ -155,70 +167,87 @@ const sections = [
   // every done semester needs at least one module, and nothing may be left in the basket
   { label: 'modules', done: () => !!currentSem.value && !basket.value.length && !emptySems.value.length },
   { label: 'e-credits', done: () => eValid.value },
-]
-const sectionDone = computed(() => sections.map((s) => s.done()))
+];
+const sectionDone = computed(() => sections.map((s) => s.done()));
 const missing = computed(() => {
-  const left = sections.filter((_, i) => !sectionDone.value[i]).map((s) => s.label)
-  return left.length ? `Still to do: ${left.join(', ')}.` : ''
-})
+  const left = sections.filter((_, i) => !sectionDone.value[i]).map((s) => s.label);
+  return left.length ? `Still to do: ${left.join(', ')}.` : '';
+});
 
-const saving = ref(false)
-const saveError = ref('')
-const intakeYear = ref(user.profile.intakeYear ?? 2025)
+const saving = ref(false);
+const saveError = ref('');
+const intakeYear = ref(user.profile.intakeYear ?? 2025);
 
 // The tracks on offer depend on the curriculum for this major and intake year
-const catalogue = useCatalogueStore()
-catalogue.load()
-const curriculumId = computed(() => catalogue.majorIdFor(major.value, intakeYear.value))
-const trackOptions = computed(() => catalogue.tracksFor(curriculumId.value))
-watch(curriculumId, (id) => catalogue.loadMajor(id), { immediate: true })
+const catalogue = useCatalogueStore();
+catalogue.load();
+const curriculumId = computed(() => catalogue.majorIdFor(major.value, intakeYear.value));
+const trackOptions = computed(() => catalogue.tracksFor(curriculumId.value));
+watch(curriculumId, (id) => catalogue.loadMajor(id), { immediate: true });
 // Once that curriculum has loaded, drop any chosen track it doesn't have
 watch(
   () => catalogue.curricula[curriculumId.value],
   (curriculum) => {
-    if (!curriculum) return
-    const available = trackOptions.value.map((t) => t.code)
-    selectedTracks.value = selectedTracks.value.filter((code) => available.includes(code))
+    if (!curriculum) return;
+    const available = trackOptions.value.map((t) => t.code);
+    selectedTracks.value = selectedTracks.value.filter((code) => available.includes(code));
   },
-)
+);
 
 async function submit() {
-  if (missing.value) return
-  saveError.value = planner.profileLoaError({ currentSem: currentSem.value, loaSemesters: loaSemesters.value })
-  if (saveError.value) return
-  saving.value = true
-  saveError.value = ''
-  try {
-  await user.completeOnboarding({
-    intakeYear: Number(intakeYear.value),
-    major: major.value,
-    tracks: selectedTracks.value,
+  if (missing.value) return;
+  saveError.value = planner.profileLoaError({
     currentSem: currentSem.value,
-    loaSemesters: [...loaSemesters.value],
-    takenBySem: Object.fromEntries(openSems.value.filter((id) => placed.value[id].length).map((id) => [id, placed.value[id]])),
-    exempted: exempted.value,
-    freeExemptions: freeExempt.value,
-    balance: eValue.value,
-  })
-  emit('saved', { undecided: undecided.value })
-  } catch (error) { saveError.value = error.message }
-  finally { saving.value = false }
+    loaSemesters: loaSemesters.value,
+  });
+  if (saveError.value) return;
+  saving.value = true;
+  saveError.value = '';
+  try {
+    await user.completeOnboarding({
+      intakeYear: Number(intakeYear.value),
+      major: major.value,
+      tracks: selectedTracks.value,
+      currentSem: currentSem.value,
+      loaSemesters: [...loaSemesters.value],
+      takenBySem: Object.fromEntries(
+        openSems.value.filter((id) => placed.value[id].length).map((id) => [id, placed.value[id]]),
+      ),
+      exempted: exempted.value,
+      freeExemptions: freeExempt.value,
+      balance: eValue.value,
+    });
+    emit('saved', { undecided: undecided.value });
+  } catch (error) {
+    saveError.value = error.message;
+  } finally {
+    saving.value = false;
+  }
 }
 
 // Section number badge: turns into a green tick once that section is complete
 const badge = (n) => [
   'flex size-6 shrink-0 items-center justify-center rounded-full font-mono text-[12px] font-bold transition-colors',
   sectionDone.value[n - 1] ? 'bg-success-tint text-success' : 'bg-primary-tint text-primary',
-]
+];
 </script>
 
 <template>
   <form class="flex w-full flex-col gap-6" @submit.prevent="submit">
-    <label class="text-sm font-medium">Intake year
-      <input v-model="intakeYear" type="number" min="2000" max="2100" required class="ml-3 rounded border border-border bg-card p-2" />
+    <label class="text-sm font-medium"
+      >Intake year
+      <input
+        v-model="intakeYear"
+        type="number"
+        min="2000"
+        max="2100"
+        required
+        class="ml-3 rounded border border-border bg-card p-2"
+      />
     </label>
     <p v-if="saveError" role="alert" class="text-sm text-destructive">{{ saveError }}</p>
-    <div v-stagger class="card flex flex-col divide-y divide-border"> <!-- motion: the form sections stagger in -->
+    <div v-stagger class="card flex flex-col divide-y divide-border">
+      <!-- motion: the form sections stagger in -->
       <!-- 1. Course -->
       <section class="flex flex-col gap-3 p-6">
         <div class="flex items-center gap-3">
@@ -244,7 +273,11 @@ const badge = (n) => [
             :aria-checked="selectedTracks.includes(t.code)"
             :disabled="!selectedTracks.includes(t.code) && selectedTracks.length >= MAX_TRACKS"
             class="flex flex-col gap-1 rounded-lg border px-3.5 py-3 text-left leading-normal transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-            :class="selectedTracks.includes(t.code) ? 'border-primary bg-primary-tint' : 'border-border hover:bg-muted'"
+            :class="
+              selectedTracks.includes(t.code)
+                ? 'border-primary bg-primary-tint'
+                : 'border-border hover:bg-muted'
+            "
             @click="toggleTrack(t.code)"
           >
             <span class="text-[14px] font-semibold">{{ t.name }}</span>
@@ -262,12 +295,18 @@ const badge = (n) => [
           <span class="flex flex-col gap-0.5 leading-normal">
             <span class="text-[14px] font-semibold">I'm undecided. I want to take the quiz</span>
             <span class="text-[12px] text-muted-foreground">
-              {{ undecided ? "Great, you'll start the track quiz as soon as you finish this form." : 'We will match you to a track from a short quiz after this form.' }}
+              {{
+                undecided
+                  ? "Great, you'll start the track quiz as soon as you finish this form."
+                  : 'We will match you to a track from a short quiz after this form.'
+              }}
             </span>
           </span>
           <span v-if="undecided" class="shrink-0 text-[13px] font-semibold text-primary">Selected</span>
         </button>
-        <p class="text-[12px] text-muted-foreground">Required. Pick up to {{ MAX_TRACKS }} tracks, or choose the quiz if you haven't decided.</p>
+        <p class="text-[12px] text-muted-foreground">
+          Required. Pick up to {{ MAX_TRACKS }} tracks, or choose the quiz if you haven't decided.
+        </p>
       </section>
 
       <!-- 3. Current semester -->
@@ -284,14 +323,22 @@ const badge = (n) => [
             role="radio"
             :aria-checked="currentSem === id"
             class="flex flex-col items-center gap-0.5 rounded-md border px-3 py-2 leading-normal transition-colors"
-            :class="currentSem === id ? 'border-primary bg-primary-tint text-primary' : 'border-border hover:bg-muted'"
+            :class="
+              currentSem === id
+                ? 'border-primary bg-primary-tint text-primary'
+                : 'border-border hover:bg-muted'
+            "
             @click="currentSem = id"
           >
             <span class="font-mono text-[14px] font-bold">{{ id }}</span>
-            <span class="text-[11px] text-muted-foreground">{{ id === 'Y1S1' ? 'Freshman' : `Year ${id[1]} · Sem ${id[3]}` }}</span>
+            <span class="text-[11px] text-muted-foreground">{{
+              id === 'Y1S1' ? 'Freshman' : `Year ${id[1]} · Sem ${id[3]}`
+            }}</span>
           </button>
         </div>
-        <p class="text-[12px] text-muted-foreground">Y2S1 means Year 2, semester 1. Every semester before this one is marked as done in your roadmap.</p>
+        <p class="text-[12px] text-muted-foreground">
+          Y2S1 means Year 2, semester 1. Every semester before this one is marked as done in your roadmap.
+        </p>
       </section>
 
       <!-- 4. Modules already taken -->
@@ -322,7 +369,10 @@ const badge = (n) => [
                 tabindex="0"
                 :aria-pressed="picked === code"
                 class="flex cursor-grab items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[13px] active:cursor-grabbing"
-                :class="[dragging === code && 'opacity-40', picked === code ? 'border-primary ring-2 ring-primary/30' : 'border-border']"
+                :class="[
+                  dragging === code && 'opacity-40',
+                  picked === code ? 'border-primary ring-2 ring-primary/30' : 'border-border',
+                ]"
                 @dragstart="dragging = code"
                 @dragend="dragging = dragOver = null"
                 @click.stop="pick(code)"
@@ -336,10 +386,15 @@ const badge = (n) => [
                 </button>
               </div>
             </div>
-            <p v-else class="text-[13px] text-muted-foreground">Search above, then drag each module into the semester you took it, or tap it and then tap the semester.</p>
+            <p v-else class="text-[13px] text-muted-foreground">
+              Search above, then drag each module into the semester you took it, or tap it and then tap the
+              semester.
+            </p>
           </div>
 
-          <p v-if="picked" role="status" class="rounded-md bg-primary-tint px-3 py-2 text-[13px]">Tap a semester to place {{ picked }}.</p>
+          <p v-if="picked" role="status" class="rounded-md bg-primary-tint px-3 py-2 text-[13px]">
+            Tap a semester to place {{ picked }}.
+          </p>
 
           <!-- Done semesters and the current one: drop modules here -->
           <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -361,11 +416,25 @@ const badge = (n) => [
             >
               <div class="flex items-center justify-between">
                 <span class="font-mono text-[12px] font-bold">{{ id }}</span>
-                <span v-if="id === currentSem" class="text-[11px] font-medium text-warning">Now · in progress</span>
-                <span v-else class="text-[11px] text-muted-foreground">{{ loaSemesters.includes(id) ? 'LOA' : 'Done' }}</span>
+                <span v-if="id === currentSem" class="text-[11px] font-medium text-warning"
+                  >Now · in progress</span
+                >
+                <span v-else class="text-[11px] text-muted-foreground">{{
+                  loaSemesters.includes(id) ? 'LOA' : 'Done'
+                }}</span>
               </div>
-              <label v-if="id !== currentSem" class="flex items-center gap-1.5 text-[11px] text-muted-foreground" @click.stop>
-                <input type="checkbox" :aria-label="`${id} leave of absence`" :checked="loaSemesters.includes(id)" :disabled="!loaSemesters.includes(id) && loaSemesters.length >= MAX_LOA_TERMS" @change="toggleLoa(id)" />
+              <label
+                v-if="id !== currentSem"
+                class="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+                @click.stop
+              >
+                <input
+                  type="checkbox"
+                  :aria-label="`${id} leave of absence`"
+                  :checked="loaSemesters.includes(id)"
+                  :disabled="!loaSemesters.includes(id) && loaSemesters.length >= MAX_LOA_TERMS"
+                  @change="toggleLoa(id)"
+                />
                 Leave of absence
               </label>
               <div
@@ -385,25 +454,49 @@ const badge = (n) => [
                   :aria-label="`Move ${code} back to the basket`"
                   class="absolute top-1 right-1.5 text-[11px] text-muted-foreground hover:text-foreground lg:hidden lg:group-hover:block"
                   @click.stop="backToBasket(code)"
-                >✕</button>
+                >
+                  ✕
+                </button>
               </div>
-              <p v-if="loaSemesters.includes(id)" class="m-auto text-center text-[11px] text-muted-foreground">No classes required. Internship ({{ INTERNSHIP_CODE }}) is optional.</p>
-              <p v-else-if="!placed[id].length && id === currentSem" class="m-auto text-center text-[11px] text-muted-foreground">
+              <p
+                v-if="loaSemesters.includes(id)"
+                class="m-auto text-center text-[11px] text-muted-foreground"
+              >
+                No classes required. Internship ({{ INTERNSHIP_CODE }}) is optional.
+              </p>
+              <p
+                v-else-if="!placed[id].length && id === currentSem"
+                class="m-auto text-center text-[11px] text-muted-foreground"
+              >
                 Optional: what you're taking this semester
               </p>
-              <p v-else-if="!placed[id].length" class="m-auto text-center text-[11px] font-medium text-destructive">Needs a module</p>
+              <p
+                v-else-if="!placed[id].length"
+                class="m-auto text-center text-[11px] font-medium text-destructive"
+              >
+                Needs a module
+              </p>
             </div>
           </div>
           <p v-if="basket.length" class="text-[12px] font-medium text-destructive">
-            {{ basket.length }} module{{ basket.length === 1 ? '' : 's' }} still need{{ basket.length === 1 ? 's' : '' }} a semester. Drag {{ basket.length === 1 ? 'it' : 'them' }} into the semester you took {{ basket.length === 1 ? 'it' : 'them' }}.
+            {{ basket.length }} module{{ basket.length === 1 ? '' : 's' }} still need{{
+              basket.length === 1 ? 's' : ''
+            }}
+            a semester. Drag {{ basket.length === 1 ? 'it' : 'them' }} into the semester you took
+            {{ basket.length === 1 ? 'it' : 'them' }}.
           </p>
           <p v-else-if="emptySems.length" class="text-[12px] font-medium text-destructive">
-            Every finished study semester needs a module, or mark it as leave of absence. Still empty: {{ emptySems.join(', ') }}.
+            Every finished study semester needs a module, or mark it as leave of absence. Still empty:
+            {{ emptySems.join(', ') }}.
           </p>
           <p v-else class="text-[12px] text-muted-foreground">
-            Drag a module card into the semester you took it, or into {{ currentSem }} if you're taking it now. Drag it again to move it.
+            Drag a module card into the semester you took it, or into {{ currentSem }} if you're taking it
+            now. Drag it again to move it.
           </p>
-          <p class="text-[12px] text-muted-foreground">Up to {{ MAX_LOA_TERMS }} LOA terms per plan. Marking a term as LOA returns its regular modules to the basket; place them in another semester or remove them before saving.</p>
+          <p class="text-[12px] text-muted-foreground">
+            Up to {{ MAX_LOA_TERMS }} LOA terms per plan. Marking a term as LOA returns its regular modules to
+            the basket; place them in another semester or remove them before saving.
+          </p>
         </template>
       </section>
 
@@ -413,11 +506,18 @@ const badge = (n) => [
           <span
             class="flex size-6 shrink-0 items-center justify-center rounded-full font-mono text-[12px] font-bold"
             :class="hasExemptions ? 'bg-success-tint text-success' : 'bg-secondary text-muted-foreground'"
-          >{{ hasExemptions ? '✓' : 5 }}</span>
+            >{{ hasExemptions ? '✓' : 5 }}</span
+          >
           <h2 class="text-h4">Are you exempted from any modules?</h2>
-          <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Optional</span>
+          <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+            >Optional</span
+          >
         </div>
-        <ModuleSearchBox :exclude="takenOrExempt" placeholder="Search for a module you're exempted from" @pick="addExemption" />
+        <ModuleSearchBox
+          :exclude="takenOrExempt"
+          placeholder="Search for a module you're exempted from"
+          @pick="addExemption"
+        />
         <div v-if="exempted.length" class="flex flex-wrap gap-2">
           <span
             v-for="code in exempted"
@@ -435,7 +535,9 @@ const badge = (n) => [
         <div class="flex items-center justify-between gap-4 rounded-lg border border-border px-3.5 py-3">
           <span class="flex flex-col gap-0.5 leading-normal">
             <span class="text-[14px] font-semibold">Free elective exemptions</span>
-            <span class="text-[12px] text-muted-foreground">Free electives you're exempted from without a specific module, e.g. diploma credit.</span>
+            <span class="text-[12px] text-muted-foreground"
+              >Free electives you're exempted from without a specific module, e.g. diploma credit.</span
+            >
           </span>
           <div class="flex shrink-0 items-center gap-2" role="group" aria-label="Free elective exemptions">
             <button
@@ -444,19 +546,26 @@ const badge = (n) => [
               :disabled="freeExempt === 0"
               class="flex size-8 items-center justify-center rounded-md border border-border text-[16px] hover:bg-muted disabled:opacity-40"
               @click="freeExempt--"
-            >−</button>
-            <span class="w-6 text-center font-mono text-[15px] font-bold" aria-live="polite">{{ freeExempt }}</span>
+            >
+              −
+            </button>
+            <span class="w-6 text-center font-mono text-[15px] font-bold" aria-live="polite">{{
+              freeExempt
+            }}</span>
             <button
               type="button"
               aria-label="One more free elective exemption"
               :disabled="freeExempt >= MAX_FREE_EXEMPT"
               class="flex size-8 items-center justify-center rounded-md border border-border text-[16px] hover:bg-muted disabled:opacity-40"
               @click="freeExempt++"
-            >+</button>
+            >
+              +
+            </button>
           </div>
         </div>
         <p class="text-[12px] text-muted-foreground">
-          E.g. from A-levels, a diploma or a placement test. Exempted modules and free electives count as cleared, so they won't show up as outstanding.
+          E.g. from A-levels, a diploma or a placement test. Exempted modules and free electives count as
+          cleared, so they won't show up as outstanding.
         </p>
       </section>
 
@@ -466,7 +575,9 @@ const badge = (n) => [
           <span :class="badge(5)">{{ sectionDone[4] ? '✓' : 6 }}</span>
           <h2 class="text-h4">How many e-credits do you have?</h2>
         </div>
-        <label class="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-[9px] focus-within:border-ring">
+        <label
+          class="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-[9px] focus-within:border-ring"
+        >
           <span class="text-[14px] text-muted-foreground">e$</span>
           <input
             v-model="eCredits"
@@ -478,7 +589,9 @@ const badge = (n) => [
             class="min-w-0 flex-1 bg-transparent font-mono text-[14px] font-medium outline-none"
           />
         </label>
-        <p class="text-[12px] text-muted-foreground">Your current e-credit (e$) balance, with up to 2 decimal places. We use it to budget your bids.</p>
+        <p class="text-[12px] text-muted-foreground">
+          Your current e-credit (e$) balance, with up to 2 decimal places. We use it to budget your bids.
+        </p>
       </section>
     </div>
 
@@ -490,7 +603,15 @@ const badge = (n) => [
         :disabled="!!missing || saving"
         class="inline-flex items-center rounded-md bg-primary px-5 py-[11px] text-[15px] leading-normal font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
-        {{ saving ? 'Saving…' : editing ? 'Save changes' : undecided ? 'Finish and take the quiz' : 'Finish setup' }}
+        {{
+          saving
+            ? 'Saving…'
+            : editing
+              ? 'Save changes'
+              : undecided
+                ? 'Finish and take the quiz'
+                : 'Finish setup'
+        }}
       </button>
     </div>
   </form>

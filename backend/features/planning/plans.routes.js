@@ -1,13 +1,12 @@
-import { Router } from 'express'
-import * as plans from './plans.controller.js'
+import { Router } from 'express';
+import * as plans from './plans.controller.js';
 
-const router = Router()
+const router = Router();
 
-router.get('/', plans.listPlans)
-router.post('/', plans.createPlan)
-router.get('/:id', plans.getPlan)
-router.put('/:id', plans.updatePlan)
-router.delete('/:id', plans.deletePlan)
-router.get('/:id/check', plans.checkPlan)
+router.get('/', plans.listPlans);
+router.post('/', plans.createPlan);
+router.put('/:id', plans.updatePlan);
+router.delete('/:id', plans.deletePlan);
+router.get('/:id/check', plans.checkPlan);
 
-export default router
+export default router;

@@ -1,82 +1,112 @@
 // Thin client for the Express backend (see backend/routes). In dev, Vite proxies /api to :4000.
 // Each request obtains the current Firebase ID token from the auth store.
 
-const BASE = import.meta.env.VITE_API_URL ?? '/api'
+const BASE = import.meta.env.VITE_API_URL ?? '/api';
 
-let idToken = null
-let tokenProvider = null
-export function setToken(token) { idToken = token }
-export function setTokenProvider(provider) { tokenProvider = provider }
+let idToken = null;
+let tokenProvider = null;
+export function setToken(token) {
+  idToken = token;
+}
+export function setTokenProvider(provider) {
+  tokenProvider = provider;
+}
 
 // Thrown for every failed call. status is 0 when the backend could not be reached at all.
 export class ApiError extends Error {
   constructor(message, status) {
-    super(message)
-    this.status = status
+    super(message);
+    this.status = status;
   }
 }
 
-const UNREACHABLE = 'Could not reach the BidMaxxer server. Check your connection and try again in a moment.'
-const RETRY_DELAY_MS = 1500
+const UNREACHABLE = 'Could not reach the BidMaxxer server. Check your connection and try again in a moment.';
+const RETRY_DELAY_MS = 1500;
 
 async function request(method, path, body) {
-  const token = tokenProvider ? await tokenProvider() : idToken
-  const send = () => fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  let res
+  const token = tokenProvider ? await tokenProvider() : idToken;
+  const send = () =>
+    fetch(`${BASE}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  let res;
   try {
     try {
-      res = await send()
+      res = await send();
     } catch (error) {
       // The server may only be restarting. A read changes nothing, so it is safe to ask once more before giving up;
       // a save is never repeated, because the first attempt might have reached the server.
-      if (method !== 'GET') throw error
-      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
-      res = await send()
+      if (method !== 'GET') throw error;
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      res = await send();
     }
   } catch {
-    throw new ApiError(UNREACHABLE, 0)
+    throw new ApiError(UNREACHABLE, 0);
   }
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
+    const err = await res.json().catch(() => ({}));
     throw Object.assign(new ApiError(err.error ?? `${method} ${path} failed (${res.status})`, res.status), {
-      code: err.code, issues: err.issues ?? [],
-    })
+      code: err.code,
+      issues: err.issues ?? [],
+    });
   }
-  return res.status === 204 ? null : res.json()
+  return res.status === 204 ? null : res.json();
 }
 
 // ?a=1&b=2, leaving out empty values
 function query(params) {
-  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
-  return entries.length ? `?${new URLSearchParams(entries)}` : ''
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '');
+  return entries.length ? `?${new URLSearchParams(entries)}` : '';
 }
 
 export const api = {
   adminRound: () => request('GET', '/admin/bidding-round'),
-  saveAdminRound: data => request('PUT', '/admin/bidding-round', data),
+  saveAdminRound: (data) => request('PUT', '/admin/bidding-round', data),
   adminModules: (params = {}) => request('GET', `/admin/modules${query(params)}`),
   adminModule: (code) => request('GET', `/admin/modules/${encodeURIComponent(code)}`),
   createAdminModule: (data) => request('POST', '/admin/modules', data),
   updateAdminModule: (code, data) => request('PUT', `/admin/modules/${encodeURIComponent(code)}`, data),
-  archiveAdminModule: (code, revision) => request('POST', `/admin/modules/${encodeURIComponent(code)}/archive`, { revision }),
-  restoreAdminModule: (code, revision) => request('POST', `/admin/modules/${encodeURIComponent(code)}/restore`, { revision }),
-  deleteAdminModule: (code, revision) => request('DELETE', `/admin/modules/${encodeURIComponent(code)}`, { revision }),
+  archiveAdminModule: (code, revision) =>
+    request('POST', `/admin/modules/${encodeURIComponent(code)}/archive`, { revision }),
+  restoreAdminModule: (code, revision) =>
+    request('POST', `/admin/modules/${encodeURIComponent(code)}/restore`, { revision }),
+  deleteAdminModule: (code, revision) =>
+    request('DELETE', `/admin/modules/${encodeURIComponent(code)}`, { revision }),
   adminSections: (module, term) => request('GET', `/admin/sections${query({ module, term })}`),
   createAdminSection: (data) => request('POST', '/admin/sections', data),
-  updateAdminSection: (data) => request('PUT', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}`, data),
-  archiveAdminSection: (data) => request('POST', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/archive`, { revision: data.revision }),
-  restoreAdminSection: (data) => request('POST', `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/restore`, { revision: data.revision }),
+  updateAdminSection: (data) =>
+    request(
+      'PUT',
+      `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}`,
+      data,
+    ),
+  archiveAdminSection: (data) =>
+    request(
+      'POST',
+      `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/archive`,
+      { revision: data.revision },
+    ),
+  restoreAdminSection: (data) =>
+    request(
+      'POST',
+      `/admin/sections/${encodeURIComponent(data.termKey)}/${encodeURIComponent(data.moduleCode)}/${encodeURIComponent(data.sectionCode)}/restore`,
+      { revision: data.revision },
+    ),
   adminCurricula: () => request('GET', '/admin/curricula'),
   adminCurriculum: (id) => request('GET', `/admin/curricula/${encodeURIComponent(id)}`),
-  updateAdminTrack: (major, id, data) => request('PUT', `/admin/curricula/${encodeURIComponent(major)}/tracks/${encodeURIComponent(id)}`, data),
-  updateAdminRequirement: (major, id, data) => request('PUT', `/admin/curricula/${encodeURIComponent(major)}/requirements/${encodeURIComponent(id)}`, data),
+  updateAdminTrack: (major, id, data) =>
+    request('PUT', `/admin/curricula/${encodeURIComponent(major)}/tracks/${encodeURIComponent(id)}`, data),
+  updateAdminRequirement: (major, id, data) =>
+    request(
+      'PUT',
+      `/admin/curricula/${encodeURIComponent(major)}/requirements/${encodeURIComponent(id)}`,
+      data,
+    ),
   adminOverview: () => request('GET', '/admin'),
   adminAudit: (before) => request('GET', `/admin/audit${query({ before })}`),
   // Users / profile
@@ -102,13 +132,12 @@ export const api = {
   createPlan: (plan) => request('POST', '/plans', plan),
   updatePlan: (id, plan) => request('PUT', `/plans/${id}`, plan),
   deletePlan: (id) => request('DELETE', `/plans/${id}`),
-  checkPlan: (id) => request('GET', `/plans/${id}/check`),
 
   // Collab rooms
   // Frontend rooms map to the backend's parties resource.
   rooms: () => request('GET', '/parties'),
   room: (id) => request('GET', `/parties/${id}`),
-  // { name, module, termKey: "2026-27_T2", maxMembers?, memberEmails? } -> { party, blocked }
+  // { name, module, termKey: "2026-27_T2", maxMembers? } -> { party }
   createRoom: (room) => request('POST', '/parties', room),
   joinRoom: (inviteCode) => request('POST', '/parties/join', { inviteCode }),
   leaveRoom: (id) => request('DELETE', `/parties/${id}/members/me`),
@@ -124,14 +153,14 @@ export const api = {
   // Party admin only: hands the role to another member
   transferRoomAdmin: (id, userId) => request('PUT', `/parties/${id}/owner`, { userId }),
 
- notifications: (before) => request('GET', `/notifications${query({ before })}`),
-  unreadNotificationCount: () => request('GET', '/notifications/unread-count'),
+  notifications: (before) => request('GET', `/notifications${query({ before })}`),
   markNotificationRead: (id) => request('PATCH', `/notifications/${id}/read`),
-  markAllNotificationsRead: () => request('PATCH', '/notifications/read-all'),
 
   // BOSS bidding
   round: () => request('GET', '/bidding/round'),
-  sections: (moduleCodes, term) => request('GET', `/bidding/sections${query({ modules: moduleCodes.join(','), term })}`),
+  biddingWindows: (term) => request('GET', `/bidding/windows${query({ term })}`),
+  sections: (moduleCodes, term) =>
+    request('GET', `/bidding/sections${query({ modules: moduleCodes.join(','), term })}`),
   bidHistory: (moduleCode, round) => request('GET', `/bidding/history/${moduleCode}${query({ round })}`),
   // { rating: 'safe' | 'competitive' | 'at-risk' | null, suggested, mean, sd, basedOn, history }. With term, only
   // the terms before it count. round is required.
@@ -152,5 +181,10 @@ export const api = {
   // Google Calendar
   // termStart (Monday of the first teaching week) is only needed for sections without teaching dates
   exportCalendar: (accessToken, sectionIds, termStart, weeks = 13) =>
-    request('POST', '/calendar/export', { accessToken, sectionIds, termStart: termStart || undefined, weeks }),
-}
+    request('POST', '/calendar/export', {
+      accessToken,
+      sectionIds,
+      termStart: termStart || undefined,
+      weeks,
+    }),
+};

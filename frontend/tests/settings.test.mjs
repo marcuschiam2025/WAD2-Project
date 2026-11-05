@@ -14,7 +14,6 @@ test('settings explains actual calendar access without treating legacy consent f
     const { useUserStore } = await server.ssrLoadModule('/src/core/stores/user.js')
     for (const enabled of [false, true]) {
       const pinia = createPinia(); setActivePinia(pinia)
-      useUserStore().consents = { gmail: enabled, outlook: enabled }
       const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/settings', component: Settings }, { path: '/bidding/finalised', component: { render: () => null } }] })
       await router.push('/settings')
       const app = createSSRApp(Settings).use(pinia).use(router)

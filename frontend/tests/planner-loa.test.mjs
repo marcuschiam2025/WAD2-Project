@@ -53,7 +53,6 @@ test('LOA terms move and delete within future terms, renumbering the terms after
     const modules = { Y1S1: ['IS111'], Y1S2: ['IS112'], Y2S1: ['IS216'], Y2S2: ['IS217'] }
     const semesters = Object.entries(modules).map(([id, codes]) => ({ id, modules: codes }))
     api.plans = async () => [{ _id: 'p', name: 'Plan 1', majorId: null, tracks: [], currentSem: 'Y1S2', semesters }]
-    api.checkPlan = async () => ({})
     api.updatePlan = async () => ({})
     api.updateMe = async (body) => body
     const planner = usePlannerStore(); await planner.load()

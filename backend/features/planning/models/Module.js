@@ -1,4 +1,4 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
 // Catalogue entry, built from the SMU courses report by scripts/build-catalogue.js. Seeded initially; staff edits are audited.
 const moduleSchema = new mongoose.Schema(
@@ -11,8 +11,8 @@ const moduleSchema = new mongoose.Schema(
     schoolId: { type: String, ref: 'School', default: null },
     department: String, // BOSS department code, e.g. SIS
     description: String,
-    categories: [String], // IS, IS_TRACK, IS_RELATED — matched by "anyFromCategory" requirements
-    fulfils: [String], // e.g. CORE:MANAGING, GRAD:SUSTAINABILITY — matched by "basket" / "flag" requirements
+    categories: [String], // IS, IS_TRACK, IS_RELATED, matched by "anyFromCategory" requirements
+    fulfils: [String], // e.g. CORE:MANAGING, GRAD:SUSTAINABILITY, matched by "basket" / "flag" requirements
     prerequisites: [[String]], // AND of OR-groups: [["IS111","CS101"],["IS217"]]
     corequisites: [[String]], // same shape; may be taken in the same term
     mutuallyExclusive: [String],
@@ -23,6 +23,6 @@ const moduleSchema = new mongoose.Schema(
     offeredRecently: { type: Boolean, default: true }, // ran in about the last 2 years; false = probably retired
   },
   { versionKey: false },
-)
+);
 
-export default mongoose.model('Module', moduleSchema, 'modules')
+export default mongoose.model('Module', moduleSchema, 'modules');

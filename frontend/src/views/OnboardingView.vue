@@ -1,20 +1,25 @@
 <script setup>
 // Onboarding: a new student fills in the degree form (components/DegreeForm.vue). Undecided students go to the quiz.
-import { useRouter } from 'vue-router'
-import DegreeForm from '@/components/DegreeForm.vue'
-import iconBack from '@/assets/v2/back.svg'
+import { useRouter } from 'vue-router';
+import DegreeForm from '@/components/DegreeForm.vue';
+import iconBack from '@/assets/v2/back.svg';
 
-const router = useRouter()
+const router = useRouter();
 
 function finished({ undecided }) {
-  router.push(undecided ? '/quiz/attempt' : '/dashboard')
+  router.push(undecided ? '/quiz/attempt' : '/dashboard');
 }
 </script>
 
 <template>
   <div class="flex min-h-screen flex-col">
     <header class="flex items-center gap-4 bg-card px-8 py-5">
-      <button type="button" aria-label="Back" class="rounded-md border border-border bg-card p-2 hover:bg-muted" @click="router.push('/')">
+      <button
+        type="button"
+        aria-label="Back"
+        class="rounded-md border border-border bg-card p-2 hover:bg-muted"
+        @click="router.push('/')"
+      >
         <img :src="iconBack" alt="" class="size-4" />
       </button>
       <p class="text-overline text-muted-foreground">Set up your profile</p>

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
 const responseSchema = new mongoose.Schema(
   {
@@ -6,7 +6,7 @@ const responseSchema = new mongoose.Schema(
     optionId: { type: String, default: null }, // null is an explicit Skip
   },
   { _id: false },
-)
+);
 
 const resultSchema = new mongoose.Schema(
   {
@@ -18,9 +18,8 @@ const resultSchema = new mongoose.Schema(
     scenarioPreferenceIndex: { type: Number, min: 0, max: 100 },
   },
   { _id: false },
-)
+);
 
-// Only the latest attempts are kept (see MAX_ATTEMPTS in quiz.controller.js).
 const quizAttemptSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -46,6 +45,6 @@ const quizAttemptSchema = new mongoose.Schema(
     aiExplanation: mongoose.Schema.Types.Mixed,
   },
   { timestamps: true },
-)
+);
 
-export default mongoose.model('QuizAttempt', quizAttemptSchema)
+export default mongoose.model('QuizAttempt', quizAttemptSchema);

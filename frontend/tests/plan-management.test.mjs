@@ -19,7 +19,6 @@ test('failed deletion preserves plans; management requests serialize and ignore 
     useCatalogueStore().load = async () => {}
     const records = ['one', 'two'].map((_id, i) => ({ _id, name: `Plan ${i + 1}`, majorId: null, tracks: [], currentSem: 'Y1S1', semesters: [{ id: 'Y1S1', modules: [] }] }))
     api.plans = async () => structuredClone(records)
-    api.checkPlan = async () => ({})
     api.updatePlan = async () => ({})
     const planner = usePlannerStore(); await planner.load(); planner.activePlanId = 'two'
     let pending = deferred(), deletions = 0, creations = 0

@@ -1,5 +1,5 @@
-// Reference bid: rate a bid against past bid results. Pure function — unit test me.
-import { MIN_BID } from '../models/BidCart.js'
+// Reference bid: rate a bid against past bid results. Pure function: unit test me.
+import { MIN_BID } from '../models/BidCart.js';
 
 /**
  * With 2+ terms: the mean of the past medians ± 1 SD.
@@ -9,36 +9,37 @@ import { MIN_BID } from '../models/BidCart.js'
  * @param {number} [amount] the student's bid; omit to only get the suggestion
  */
 export function referenceBid(history, amount) {
-  if (!history.length) return { rating: null, suggested: MIN_BID, mean: null, sd: null, low: null, high: null, basedOn: 0 }
+  if (!history.length)
+    return { rating: null, suggested: MIN_BID, mean: null, sd: null, low: null, high: null, basedOn: 0 };
 
   // Average of the past medians
-  let total = 0
+  let total = 0;
   for (const entry of history) {
-    total += entry.median
+    total += entry.median;
   }
-  const mean = total / history.length
+  const mean = total / history.length;
 
   // Standard deviation: how far the medians spread out from the average
-  let squaredGaps = 0
+  let squaredGaps = 0;
   for (const entry of history) {
-    squaredGaps += (entry.median - mean) ** 2
+    squaredGaps += (entry.median - mean) ** 2;
   }
-  const sd = Math.sqrt(squaredGaps / history.length)
+  const sd = Math.sqrt(squaredGaps / history.length);
 
-  let low = mean - sd
-  let high = mean + sd
+  let low = mean - sd;
+  let high = mean + sd;
   if (history.length === 1 && history[0].min !== undefined) {
-    low = Math.min(history[0].min, history[0].median)
-    high = history[0].median
+    low = Math.min(history[0].min, history[0].median);
+    high = history[0].median;
   }
 
-  const suggested = Math.max(MIN_BID, Math.ceil(high))
+  const suggested = Math.max(MIN_BID, Math.ceil(high));
 
-  let rating = null
+  let rating = null;
   if (amount !== undefined) {
-    if (amount >= high) rating = 'safe'
-    else if (amount >= low) rating = 'competitive'
-    else rating = 'at-risk'
+    if (amount >= high) rating = 'safe';
+    else if (amount >= low) rating = 'competitive';
+    else rating = 'at-risk';
   }
 
   return {
@@ -49,5 +50,5 @@ export function referenceBid(history, amount) {
     low: +low.toFixed(2),
     high: +high.toFixed(2),
     basedOn: history.length,
-  }
+  };
 }

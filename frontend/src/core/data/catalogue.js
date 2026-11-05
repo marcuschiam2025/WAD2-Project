@@ -1,17 +1,16 @@
 // The track list (codes match the backend: BA, SMCT, FT, PD) and lookups over the module catalogue,
 // which is loaded into liveModules from GET /api/modules (see stores/catalogue.js).
-import { reactive } from 'vue'
+import { reactive } from 'vue';
 
 // code -> backend Module ({ _id, title, cu, categories, prerequisites, corequisites, ... }), empty while offline
-export const liveModules = reactive({})
+export const liveModules = reactive({});
 
 export const tracks = [
   {
     code: 'BA',
     name: 'Business Analytics',
     short: 'Business Analytics',
-    blurb:
-      'BA leans on statistics, visualisation and turning results into business recommendations.',
+    blurb: 'BA leans on statistics, visualisation and turning results into business recommendations.',
   },
   {
     code: 'SMCT',
@@ -31,15 +30,15 @@ export const tracks = [
     short: 'Product Development',
     blurb: 'PD centres on understanding users and shipping software products end to end.',
   },
-]
+];
 
 export function moduleName(code) {
-  return liveModules[code]?.title ?? code
+  return liveModules[code]?.title ?? code;
 }
 
 // Tracks only an older curriculum has, so they stay out of the list above that new students choose from
-const olderTrackNames = { DCS: 'Digitalisation & Cloud Solutions' }
+const olderTrackNames = { DCS: 'Digitalisation & Cloud Solutions' };
 
 export function trackName(code) {
-  return tracks.find((t) => t.code === code)?.name ?? olderTrackNames[code] ?? code
+  return tracks.find((t) => t.code === code)?.name ?? olderTrackNames[code] ?? code;
 }

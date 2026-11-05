@@ -1,18 +1,18 @@
-// Matches an upcoming section to past BOSS bid results. Pure functions — unit test me.
+// Matches an upcoming section to past BOSS bid results. Pure functions: unit test me.
 // Used by scripts/build-bid-history.js (to build the keys) and the reference bid API (to match on them).
 
 // Joins a co-taught section's names. Not a comma: BOSS names can contain one ("LEE, YUN").
-const NAME_SEPARATOR = '; '
+const NAME_SEPARATOR = '; ';
 
 // How closely the past results match the section, most specific first
-export const MATCH_LEVELS = ['prof-slot', 'prof', 'module']
+export const MATCH_LEVELS = ['prof-slot', 'prof', 'module'];
 
 /**
  * "  kelly   ngo " → "KELLY NGO"
  * @param {string} name
  */
 function cleanName(name) {
-  return name.replace(/\s+/g, ' ').trim().toUpperCase()
+  return name.replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
 /**
@@ -22,74 +22,35 @@ function cleanName(name) {
  * @returns {string | null}
  */
 export function instructorKey(names) {
-  const unique = new Set()
+  const unique = new Set();
   for (const name of names ?? []) {
-    const cleaned = cleanName(name ?? '')
-    if (cleaned) unique.add(cleaned)
+    const cleaned = cleanName(name ?? '');
+    if (cleaned) unique.add(cleaned);
   }
-  if (unique.size === 0) return null
-  return [...unique].sort().join(NAME_SEPARATOR)
+  if (unique.size === 0) return null;
+  return [...unique].sort().join(NAME_SEPARATOR);
 }
 
 /**
  * The weekly class times of a section: day (0 = Monday) and start time.
  * [{ day: 3, start: '08:15' }, { day: 0, start: '08:15' }] → "0-08:15|3-08:15"
- * A section with no fixed class time (SMU-X, work-study) gives "" — that is still a known timing.
+ * A section with no fixed class time (SMU-X, work-study) gives "", which is still a known timing.
  * @param {Array<{ day: number, start: string }>} meetings
  * @returns {string}
  */
 export function slotKey(meetings) {
-  const slots = new Set()
+  const slots = new Set();
   for (const meeting of meetings ?? []) {
-    slots.add(`${meeting.day}-${meeting.start}`)
+    slots.add(`${meeting.day}-${meeting.start}`);
   }
-  return [...slots].sort().join('|')
-}
-
-/**
- * Splits the Instructor column of a BOSS bid result into names.
- * BOSS joins the names with ", " and repeats a name for every class meeting, but some names contain
- * ", " themselves ("TAN WEI PENG, BRIAN"). Names seen in a class schedule are matched first; otherwise
- * a part with no space ("BRIAN") is taken as the end of the name before it.
- * " TAN WEI PENG, BRIAN, KELLY NGO, KELLY NGO" → ['TAN WEI PENG, BRIAN', 'KELLY NGO']
- * @param {string} text
- * @param {Set<string>} [knownNames] cleaned names from the class schedules
- * @returns {string[]}
- */
-export function splitInstructors(text, knownNames = new Set()) {
-  const parts = (text ?? '').split(',').map(cleanName).filter(Boolean)
-  const names = []
-
-  let i = 0
-  while (i < parts.length) {
-    // The longest run of parts (up to 3) that makes a known name
-    let taken = 1
-    for (let length = 3; length >= 2; length--) {
-      if (i + length > parts.length) continue
-      if (knownNames.has(parts.slice(i, i + length).join(', '))) {
-        taken = length
-        break
-      }
-    }
-
-    let name = parts.slice(i, i + taken).join(', ')
-    // Not a known name: "LEE" followed by "YUN" is most likely "LEE, YUN"
-    if (taken === 1 && !knownNames.has(name) && i + 1 < parts.length && !parts[i + 1].includes(' ')) {
-      name = `${name}, ${parts[i + 1]}`
-      taken = 2
-    }
-
-    if (!names.includes(name)) names.push(name)
-    i += taken
-  }
-  return names
+  return [...slots].sort().join('|');
 }
 
 function median(numbers) {
-  const sorted = [...numbers].sort((a, b) => a - b)
-  const middle = Math.floor(sorted.length / 2)
-  if (sorted.length % 2 === 1) return sorted[middle]
-  return (sorted[middle - 1] + sorted[middle]) / 2
+  const sorted = [...numbers].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[middle];
+  return (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
 /**
@@ -98,13 +59,13 @@ function median(numbers) {
  * @param {Array<object>} rows SectionBidResult rows
  */
 function firstWindows(rows) {
-  const first = new Map()
+  const first = new Map();
   for (const row of rows) {
-    const key = `${row.term}|${row.section}`
-    const kept = first.get(key)
-    if (!kept || row.window < kept.window) first.set(key, row)
+    const key = `${row.term}|${row.section}`;
+    const kept = first.get(key);
+    if (!kept || row.window < kept.window) first.set(key, row);
   }
-  return [...first.values()]
+  return [...first.values()];
 }
 
 /**
@@ -113,28 +74,30 @@ function firstWindows(rows) {
  * @param {Array<object>} rows
  */
 function byTerm(rows) {
-  const terms = new Map()
+  const terms = new Map();
   for (const row of firstWindows(rows)) {
-    if (!terms.has(row.term)) terms.set(row.term, [])
-    terms.get(row.term).push(row)
+    if (!terms.has(row.term)) terms.set(row.term, []);
+    terms.get(row.term).push(row);
   }
 
-  const history = []
+  const history = [];
   for (const [term, sections] of terms) {
     history.push({
       term,
       median: Math.round(median(sections.map((row) => row.median)) * 100) / 100,
       min: Math.min(...sections.map((row) => row.min)),
-      sections: sections.map((row) => row.section).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })),
-    })
+      sections: sections
+        .map((row) => row.section)
+        .sort((a, b) => a.localeCompare(b, 'en', { numeric: true })),
+    });
   }
-  return history.sort((a, b) => b.term.localeCompare(a.term))
+  return history.sort((a, b) => b.term.localeCompare(a.term));
 }
 
 /**
  * Picks the most specific past results that exist for a section, falling back level by level:
  *   prof-slot  same module, same set of instructors, same class times, same round
- *   prof       same module, same set of instructors, same round (any time — the only option for
+ *   prof       same module, same set of instructors, same round (any time: the only option for
  *              terms without a class schedule)
  *   module     same module, same round (every section)
  * @param {Array<object>} rows SectionBidResult rows for the module and round, terms before the one bid for
@@ -143,16 +106,16 @@ function byTerm(rows) {
  * @returns {{ matchLevel: string | null, history: Array<object> }}
  */
 export function matchHistory(rows, target, maxTerms = 3) {
-  const sameProf = (row) => target.instructorKey !== null && row.instructorKey === target.instructorKey
+  const sameProf = (row) => target.instructorKey !== null && row.instructorKey === target.instructorKey;
   const filters = {
     'prof-slot': (row) => sameProf(row) && target.slotKey !== null && row.slotKey === target.slotKey,
     prof: sameProf,
     module: () => true,
-  }
+  };
 
   for (const level of MATCH_LEVELS) {
-    const history = byTerm(rows.filter(filters[level]))
-    if (history.length > 0) return { matchLevel: level, history: history.slice(0, maxTerms) }
+    const history = byTerm(rows.filter(filters[level]));
+    if (history.length > 0) return { matchLevel: level, history: history.slice(0, maxTerms) };
   }
-  return { matchLevel: null, history: [] }
+  return { matchLevel: null, history: [] };
 }

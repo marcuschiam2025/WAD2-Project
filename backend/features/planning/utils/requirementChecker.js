@@ -1,10 +1,10 @@
 // Requirement + prerequisite checker for a What-If plan, driven by the requirements collection.
-// Pure function (no database calls) — see requirementChecker.test.js.
-import { unmetGroups } from './requisites.js'
+// Pure function (no database calls): see requirementChecker.test.js.
+import { unmetGroups } from './requisites.js';
 
 // Exchange mappings are stored as "CS412 → IS460"; the SMU code is on the right.
 export function effectiveCode(entry) {
-  return entry.split('→').pop().trim()
+  return entry.split('→').pop().trim();
 }
 
 // Requirements are filled most-specific first, so a course never lands in a broad bucket
@@ -16,10 +16,10 @@ const PASSES = [
   (requirement) => requirement.rule === 'basket',
   (requirement) => requirement.rule === 'anyFromCategory' && !requirement.categories?.includes('ANY'),
   (requirement) => requirement.rule === 'anyFromCategory' && requirement.categories?.includes('ANY'),
-]
+];
 
 // Core rules come first, then major rules, then track rules
-const LEVEL_ORDER = ['core', 'major', 'track']
+const LEVEL_ORDER = ['core', 'major', 'track'];
 
 // ---------------------------------------------------------------------------------------------
 // Small helpers
@@ -29,113 +29,117 @@ const LEVEL_ORDER = ['core', 'major', 'track']
 function matches(requirement, mod) {
   if (requirement.rule === 'all' || requirement.rule === 'chooseN') {
     // Must be one of the listed courses
-    return requirement.modules?.includes(mod._id) ?? false
+    return requirement.modules?.includes(mod._id) ?? false;
   }
 
   if (requirement.rule === 'basket' || requirement.rule === 'flag') {
     // Must carry the requirement's tag, e.g. CORE:MANAGING
-    return mod.fulfils?.includes(requirement.tag) ?? false
+    return mod.fulfils?.includes(requirement.tag) ?? false;
   }
 
   if (requirement.rule === 'anyFromCategory') {
     // ANY = any course at all
     if (requirement.categories?.includes('ANY')) {
-      return true
+      return true;
     }
     // Otherwise the module must be in one of the listed categories, e.g. IS or IS_TRACK
     for (const category of requirement.categories ?? []) {
       if (mod.categories?.includes(category)) {
-        return true
+        return true;
       }
     }
-    return false
+    return false;
   }
 
-  return false
+  return false;
 }
 
 // The short form of a module we send back to the frontend
 function brief(mod) {
-  return { code: mod._id, title: mod.title }
+  return { code: mod._id, title: mod.title };
 }
 
 // Total CU of a list of placements
 function sumCu(placements, catalogue) {
-  let total = 0
+  let total = 0;
   for (const placement of placements) {
-    total += catalogue[placement.code].cu ?? 1
+    total += catalogue[placement.code].cu ?? 1;
   }
-  return total
+  return total;
 }
 
 // Both course coverage and CU matter when staff edit curriculum targets.
 function covered(requirement, taken, catalogue) {
-  const codes = new Set(taken.map(p => p.code))
-  if (requirement.rule === 'all' && !requirement.modules?.every(code => codes.has(code))) return false
-  if (requirement.rule === 'chooseN' && codes.size < requirement.n) return false
-  return sumCu(taken, catalogue) >= requirement.cuRequired
+  const codes = new Set(taken.map((p) => p.code));
+  if (requirement.rule === 'all' && !requirement.modules?.every((code) => codes.has(code))) return false;
+  if (requirement.rule === 'chooseN' && codes.size < requirement.n) return false;
+  return sumCu(taken, catalogue) >= requirement.cuRequired;
 }
 
 // Sort requirements: core, then major, then track; within a level by their `order`
 function sortRequirements(requirements) {
-  const sorted = [...requirements]
+  const sorted = [...requirements];
   sorted.sort((a, b) => {
-    const levelDifference = LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level)
+    const levelDifference = LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level);
     if (levelDifference !== 0) {
-      return levelDifference
+      return levelDifference;
     }
-    return (a.order ?? 0) - (b.order ?? 0)
-  })
-  return sorted
+    return (a.order ?? 0) - (b.order ?? 0);
+  });
+  return sorted;
 }
 
 // What is left to take for a requirement, given the courses already placed anywhere in the plan.
 // Returns null when nothing is left.
 function outstandingFor(requirement, cuLeft, placed, catalogue) {
-  const isFlag = requirement.rule === 'flag'
+  const isFlag = requirement.rule === 'flag';
 
   // Flags pass cuLeft 0 (met) or 1 (not met); other rules pass the CU still needed
   if (isFlag && cuLeft === 0) {
-    return null
+    return null;
   }
-  const missingCoverage = requirement.rule === 'all' ? requirement.modules?.some(code => !placed.has(code)) : requirement.rule === 'chooseN' && (requirement.modules ?? []).filter(code => placed.has(code)).length < requirement.n
+  const missingCoverage =
+    requirement.rule === 'all'
+      ? requirement.modules?.some((code) => !placed.has(code))
+      : requirement.rule === 'chooseN' &&
+        (requirement.modules ?? []).filter((code) => placed.has(code)).length < requirement.n;
   if (!isFlag && cuLeft <= 0 && !missingCoverage) {
-    return null
+    return null;
   }
 
   // Codes that aren't placed yet and exist in the catalogue, in their short form
   function notPlacedYet(codes) {
-    const result = []
+    const result = [];
     for (const code of codes) {
       if (!placed.has(code) && catalogue[code]) {
-        result.push(brief(catalogue[code]))
+        result.push(brief(catalogue[code]));
       }
     }
-    return result
+    return result;
   }
 
-  const outstanding = { cu: isFlag ? 0 : cuLeft }
+  const outstanding = { cu: isFlag ? 0 : cuLeft };
 
   if (requirement.rule === 'all') {
     // Every listed course is required
-    outstanding.mustTake = notPlacedYet(requirement.modules)
+    outstanding.mustTake = notPlacedYet(requirement.modules);
   } else if (requirement.rule === 'chooseN') {
     // Pick from the listed courses
-    outstanding.chooseFrom = notPlacedYet(requirement.modules)
+    outstanding.chooseFrom = notPlacedYet(requirement.modules);
   } else if (requirement.categories?.includes('ANY')) {
     // Free electives: any course will do, so don't list 1,000+ courses
-    outstanding.anyCourse = true
+    outstanding.anyCourse = true;
   } else {
     // Baskets, flags and IS electives: every catalogue course that would count
-    outstanding.chooseFrom = []
+    outstanding.chooseFrom = [];
     for (const mod of Object.values(catalogue)) {
       if (!placed.has(mod._id) && matches(requirement, mod)) {
-        outstanding.chooseFrom.push(brief(mod))
+        outstanding.chooseFrom.push(brief(mod));
       }
     }
   }
 
-  return outstanding
+  return outstanding;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -147,7 +151,7 @@ function outstandingFor(requirement, cuLeft, placed, catalogue) {
  * @param context    {
  *   major:        { _id },
  *   requirements: core + major requirements of the plan's major,
- *   tracks:       [{ trackCode, requirements }] in the plan's order — the first is the track that counts,
+ *   tracks:       [{ trackCode, requirements }] in the plan's order: the first is the track that counts,
  *                 any second one is an optional extra whose courses still count as electives,
  *   catalogue:    modules by code,
  *   exempted:     course codes the student is exempted from (their profile); they count as cleared
@@ -155,177 +159,207 @@ function outstandingFor(requirement, cuLeft, placed, catalogue) {
  */
 export function checkPlan(plan, { major, requirements, tracks = [], catalogue, exempted = [] }) {
   // Leave-of-absence terms are included: they can hold an internship
-  const semesters = plan.semesters
-  const currentIndex = semesters.findIndex((semester) => semester.id === plan.currentSem)
+  const semesters = plan.semesters;
+  const currentIndex = semesters.findIndex((semester) => semester.id === plan.currentSem);
 
   // ----- 1. Every placed course, and where it sits -----
-  const placements = []
+  const placements = [];
 
   // Exemptions come first and count as cleared before the first semester, so they meet prerequisites
   // of anything in the plan. The profile wins: a plan entry of an exempted course isn't counted again.
-  const exemptedCodes = [...new Set(exempted)]
+  const exemptedCodes = [...new Set(exempted)];
   for (const code of exemptedCodes) {
-    placements.push({ code, at: -1, semester: 'Exempted', status: 'done', exempted: true })
+    placements.push({ code, at: -1, semester: 'Exempted', status: 'done', exempted: true });
   }
 
   for (let i = 0; i < semesters.length; i++) {
-    const semester = semesters[i]
+    const semester = semesters[i];
     for (const entry of semester.modules) {
       if (exemptedCodes.includes(effectiveCode(entry))) {
-        continue
+        continue;
       }
       placements.push({
         code: effectiveCode(entry),
         at: i, // position of the semester in the plan
         semester: semester.id,
         status: i < currentIndex ? 'done' : 'planned', // semesters before the current one are completed
-      })
+      });
     }
   }
 
-  const positionOf = {} // module code -> semester position
-  const placed = new Set() // every placed module code
-  const unknownModules = [] // placed codes that aren't in the catalogue
+  const positionOf = {}; // module code -> semester position
+  const placed = new Set(); // every placed module code
+  const unknownModules = []; // placed codes that aren't in the catalogue
   for (const placement of placements) {
-    positionOf[placement.code] = placement.at
-    placed.add(placement.code)
+    positionOf[placement.code] = placement.at;
+    placed.add(placement.code);
     if (!catalogue[placement.code]) {
-      unknownModules.push(placement.code)
+      unknownModules.push(placement.code);
     }
   }
 
   // ----- 2. Prerequisite / corequisite / exclusion warnings (current and future semesters only) -----
-  const warnings = []
+  const warnings = [];
   for (const placement of placements) {
-    const mod = catalogue[placement.code]
+    const mod = catalogue[placement.code];
     if (!mod || placement.status === 'done') {
-      continue
+      continue;
     }
-    const here = placement.at
+    const here = placement.at;
 
     // Prerequisites must sit in an earlier semester
-    const prereqs = unmetGroups(mod.prerequisites, (code) => positionOf[code] !== undefined && positionOf[code] < here)
+    const prereqs = unmetGroups(
+      mod.prerequisites,
+      (code) => positionOf[code] !== undefined && positionOf[code] < here,
+    );
 
     // Corequisites may sit in the same semester or an earlier one
-    const coreqs = unmetGroups(mod.corequisites, (code) => positionOf[code] !== undefined && positionOf[code] <= here)
+    const coreqs = unmetGroups(
+      mod.corequisites,
+      (code) => positionOf[code] !== undefined && positionOf[code] <= here,
+    );
 
     // Courses it can't be taken together with
-    const exclusions = []
+    const exclusions = [];
     for (const code of mod.mutuallyExclusive ?? []) {
       if (placed.has(code)) {
-        exclusions.push(code)
+        exclusions.push(code);
       }
     }
 
     // Rules like "2 track courses before this one"
-    const rules = []
+    const rules = [];
     for (const rule of mod.prerequisiteRules ?? []) {
-      let count = 0
+      let count = 0;
       for (const other of placements) {
-        const otherModule = catalogue[other.code]
+        const otherModule = catalogue[other.code];
         if (other.at >= here || !otherModule) {
-          continue
+          continue;
         }
         if (rule.countFrom !== 'TRACK' || otherModule.categories?.includes('IS_TRACK')) {
-          count++
+          count++;
         }
       }
       if (count < rule.n) {
-        const what = rule.countFrom === 'TRACK' ? 'track courses' : 'courses'
-        rules.push(`${rule.n} ${what} before this one`)
+        const what = rule.countFrom === 'TRACK' ? 'track courses' : 'courses';
+        rules.push(`${rule.n} ${what} before this one`);
       }
     }
 
     // A course that hasn't run in about 2 years may have been retired
-    const notOffered = mod.offeredRecently === false
+    const notOffered = mod.offeredRecently === false;
 
-    const hasProblem = prereqs.length > 0 || coreqs.length > 0 || exclusions.length > 0 || rules.length > 0 || notOffered
+    const hasProblem =
+      prereqs.length > 0 || coreqs.length > 0 || exclusions.length > 0 || rules.length > 0 || notOffered;
     if (hasProblem) {
-      const warning = { module: placement.code, semester: placement.semester, prereqs, coreqs, exclusions, rules }
+      const warning = {
+        module: placement.code,
+        semester: placement.semester,
+        prereqs,
+        coreqs,
+        exclusions,
+        rules,
+      };
       if (notOffered) {
-        warning.notOffered = { lastOffered: mod.lastOffered ?? null }
+        warning.notOffered = { lastOffered: mod.lastOffered ?? null };
       }
-      warnings.push(warning)
+      warnings.push(warning);
     }
   }
 
   // ----- 3. Allocate each placed course to one requirement -----
-  const mainTrack = tracks[0]
-  const extraTracks = tracks.slice(1)
+  const mainTrack = tracks[0];
+  const extraTracks = tracks.slice(1);
 
   // Requirements that use courses up: the major's (except non-credit flags) and the main track's
-  const counted = sortRequirements(requirements.filter((requirement) => requirement.rule !== 'flag'))
+  const counted = sortRequirements(requirements.filter((requirement) => requirement.rule !== 'flag'));
   if (mainTrack) {
-    counted.push(...sortRequirements(mainTrack.requirements))
+    counted.push(...sortRequirements(mainTrack.requirements));
   }
 
-  const allocated = {} // requirement id -> placements counted towards it
+  const allocated = {}; // requirement id -> placements counted towards it
   for (const requirement of counted) {
-    allocated[requirement._id] = []
+    allocated[requirement._id] = [];
   }
 
   // Courses not counted towards anything yet (unknown codes can't count)
-  let unallocated = placements.filter((placement) => catalogue[placement.code])
+  let unallocated = placements.filter((placement) => catalogue[placement.code]);
 
   for (const belongsToPass of PASSES) {
-    const passRequirements = counted.filter(belongsToPass)
-    const stillUnallocated = []
+    const passRequirements = counted.filter(belongsToPass);
+    const stillUnallocated = [];
 
     for (const placement of unallocated) {
-      const mod = catalogue[placement.code]
+      const mod = catalogue[placement.code];
       // The first requirement in this pass that the course matches and that still has room
       const target = passRequirements.find(
-        (requirement) => matches(requirement, mod) && !covered(requirement, allocated[requirement._id], catalogue),
-      )
+        (requirement) =>
+          matches(requirement, mod) && !covered(requirement, allocated[requirement._id], catalogue),
+      );
       if (target) {
-        allocated[target._id].push(placement)
+        allocated[target._id].push(placement);
       } else {
-        stillUnallocated.push(placement)
+        stillUnallocated.push(placement);
       }
     }
 
-    unallocated = stillUnallocated
+    unallocated = stillUnallocated;
   }
 
   // Flags and extra tracks don't use courses up: they look at every placed course
   function allMatching(requirement) {
-    return placements.filter((placement) => catalogue[placement.code] && matches(requirement, catalogue[placement.code]))
+    return placements.filter(
+      (placement) => catalogue[placement.code] && matches(requirement, catalogue[placement.code]),
+    );
   }
 
   // ----- 4. Describe each requirement's progress -----
   function describe(requirement, owner, taken) {
-    const cuDone = sumCu(taken.filter((placement) => placement.status === 'done'), catalogue)
-    const cuPlanned = sumCu(taken, catalogue) // done + planned
+    const cuDone = sumCu(
+      taken.filter((placement) => placement.status === 'done'),
+      catalogue,
+    );
+    const cuPlanned = sumCu(taken, catalogue); // done + planned
 
-    let status
-    let cuLeft
+    let status;
+    let cuLeft;
     if (requirement.rule === 'flag') {
       // Non-credit: met by any one matching course, or automatically
-      const met = requirement.autoFulfilled || taken.length > 0
+      const met = requirement.autoFulfilled || taken.length > 0;
       if (!met) {
-        status = 'outstanding'
+        status = 'outstanding';
       } else if (requirement.autoFulfilled || cuDone > 0) {
-        status = 'done'
+        status = 'done';
       } else {
-        status = 'planned'
+        status = 'planned';
       }
-      cuLeft = met ? 0 : 1
+      cuLeft = met ? 0 : 1;
     } else {
-      if (covered(requirement, taken.filter(p => p.status === 'done'), catalogue)) {
-        status = 'done'
+      if (
+        covered(
+          requirement,
+          taken.filter((p) => p.status === 'done'),
+          catalogue,
+        )
+      ) {
+        status = 'done';
       } else if (covered(requirement, taken, catalogue)) {
-        status = 'planned'
+        status = 'planned';
       } else {
-        status = 'outstanding'
+        status = 'outstanding';
       }
-      cuLeft = Math.max(0, requirement.cuRequired - cuPlanned)
+      cuLeft = Math.max(0, requirement.cuRequired - cuPlanned);
     }
 
-    const modules = []
+    const modules = [];
     for (const placement of taken) {
       // status is "exempted" for a course from the profile's exemptions, so the UI can colour it apart
-      const shownStatus = placement.exempted ? 'exempted' : placement.status
-      modules.push({ ...brief(catalogue[placement.code]), status: shownStatus, semester: placement.semester })
+      const shownStatus = placement.exempted ? 'exempted' : placement.status;
+      modules.push({
+        ...brief(catalogue[placement.code]),
+        status: shownStatus,
+        semester: placement.semester,
+      });
     }
 
     return {
@@ -342,47 +376,47 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue, e
       status: status,
       modules: modules,
       outstanding: outstandingFor(requirement, cuLeft, placed, catalogue),
-    }
+    };
   }
 
-  const results = []
+  const results = [];
   for (const requirement of sortRequirements(requirements)) {
-    const taken = requirement.rule === 'flag' ? allMatching(requirement) : allocated[requirement._id]
-    results.push(describe(requirement, requirement.level, taken))
+    const taken = requirement.rule === 'flag' ? allMatching(requirement) : allocated[requirement._id];
+    results.push(describe(requirement, requirement.level, taken));
   }
   if (mainTrack) {
     for (const requirement of sortRequirements(mainTrack.requirements)) {
-      results.push(describe(requirement, mainTrack.trackCode, allocated[requirement._id]))
+      results.push(describe(requirement, mainTrack.trackCode, allocated[requirement._id]));
     }
   }
 
   // An extra track only shows how far along it is; it never takes courses away from the main plan
-  const extraTrackResults = []
+  const extraTrackResults = [];
   for (const track of extraTracks) {
-    const trackResults = []
+    const trackResults = [];
     for (const requirement of sortRequirements(track.requirements)) {
-      const limit = requirement.n ?? requirement.cuRequired
-      const taken = allMatching(requirement).slice(0, limit)
-      trackResults.push(describe(requirement, track.trackCode, taken))
+      const limit = requirement.n ?? requirement.cuRequired;
+      const taken = allMatching(requirement).slice(0, limit);
+      trackResults.push(describe(requirement, track.trackCode, taken));
     }
-    extraTrackResults.push({ trackCode: track.trackCode, requirements: trackResults })
+    extraTrackResults.push({ trackCode: track.trackCode, requirements: trackResults });
   }
 
   // ----- 5. Totals and the outstanding list -----
-  let doneCu = 0
-  let plannedCu = 0
-  let sumRequired = 0
+  let doneCu = 0;
+  let plannedCu = 0;
+  let sumRequired = 0;
   for (const result of results) {
     if (result.rule === 'flag') {
-      continue // non-credit
+      continue; // non-credit
     }
     // Extra courses in one requirement don't count towards another, so cap each at what it needs
-    doneCu += Math.min(result.cuDone, result.cuRequired)
-    plannedCu += Math.min(result.cuPlanned, result.cuRequired)
-    sumRequired += result.cuRequired
+    doneCu += Math.min(result.cuDone, result.cuRequired);
+    plannedCu += Math.min(result.cuPlanned, result.cuRequired);
+    sumRequired += result.cuRequired;
   }
 
-  const outstanding = []
+  const outstanding = [];
   for (const result of results) {
     if (result.status === 'outstanding') {
       outstanding.push({
@@ -391,7 +425,7 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue, e
         label: result.label,
         owner: result.owner,
         ...result.outstanding,
-      })
+      });
     }
   }
 
@@ -408,5 +442,5 @@ export function checkPlan(plan, { major, requirements, tracks = [], catalogue, e
     unknownModules: unknownModules,
     exempted: exemptedCodes, // the profile exemptions that were counted
     onTrack: warnings.length === 0,
-  }
+  };
 }

@@ -1,10 +1,10 @@
 <script setup>
-import logo from '@/assets/bidmaxxer_logo.png'
+import logo from '@/assets/bidmaxxer_logo.png';
 
 defineProps({
   to: { type: String, default: '/' },
   large: Boolean, // 18px wordmark on the sign-in screen, 16px elsewhere
-})
+});
 </script>
 
 <template>

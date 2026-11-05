@@ -26,7 +26,6 @@ async function fixture(t, editing) {
   api.updateMe = async body => { profileWrites.push(body); profile = { ...profile, ...profileUpdate(body, profile) }; return structuredClone(profile) }
   api.updatePlan = async (id, body) => { planWrites.push(body); return { _id: id, ...body } }
   api.createPlan = async body => { planWrites.push(body); return { _id: 'p', name: 'Plan 1', ...body } }
-  api.checkPlan = async () => ({})
   const planner = usePlannerStore()
   if (editing) await planner.load()
   const mount = async mode => {

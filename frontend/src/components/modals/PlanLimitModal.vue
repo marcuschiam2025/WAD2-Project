@@ -1,17 +1,18 @@
 <script setup>
 // Overlay / Plan Limit Warning
-import { MAX_PLANS } from '@core/stores/planner'
-import AlertModal from './AlertModal.vue'
-import NoticeRow from './NoticeRow.vue'
-import BaseButton from '@/components/ui/BaseButton.vue'
+import { MAX_PLANS } from '@core/stores/planner';
+import AlertModal from './AlertModal.vue';
+import NoticeRow from './NoticeRow.vue';
+import BaseButton from '@/components/ui/BaseButton.vue';
 
-const emit = defineEmits(['close', 'go-to-plans'])
+const emit = defineEmits(['close', 'go-to-plans']);
 </script>
 
 <template>
   <AlertModal :title="`You already have ${MAX_PLANS} plans`" @close="emit('close')">
     <p class="text-[14px] leading-[22px] text-muted-foreground">
-      You can create up to {{ MAX_PLANS }} plans. To create another plan, delete one of your existing plans first.
+      You can create up to {{ MAX_PLANS }} plans. To create another plan, delete one of your existing plans
+      first.
     </p>
     <NoticeRow label="Plan limit">
       Delete one of your {{ MAX_PLANS }} existing plans before you can create a new one.

@@ -14,7 +14,7 @@ async function setup(server) {
   setActivePinia(createPinia())
   const user = useUserStore(), planner = usePlannerStore()
   api.updateMe = async (c) => ({ email: 'a@smu.edu.sg', name: 'A', onboarded: true, ...c })
-  api.updatePlan = async () => ({}); api.checkPlan = async () => ({})
+  api.updatePlan = async () => ({})
   user.uid = 'a'; user.isSignedIn = true; user.onboarded = true
   user.profile.tracks = ['BA']; user.profile.takenBySem = { Y1S1: ['IS111', 'IS113'], Y2S1: ['IS212'] }
   planner.plans = [plan('p1', ['BA'], ['IS212', 'IS216', 'IS442']), plan('p2', [], ['IS212'])]; planner.activePlanId = 'p1'; planner.online = true

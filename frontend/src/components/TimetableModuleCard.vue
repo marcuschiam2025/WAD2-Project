@@ -1,5 +1,5 @@
 <script setup>
-// v2 Components / Timetable Card - module card inside a timetable cell.
+// v2 Components / Timetable Card: module card inside a timetable cell.
 // booked = green accent; selected = opened in the sidebar; option = alternative section (dashed);
 // clash = overlaps another booking; room = section accepted in a collab room (locked);
 // chosen / chosen-success = filled slot picked in a collab room.
@@ -9,7 +9,7 @@ defineProps({
   name: { type: String, default: '' },
   meta: { type: String, default: '' },
   variant: { type: String, default: 'booked' },
-})
+});
 </script>
 
 <template>
@@ -26,15 +26,32 @@ defineProps({
     }"
   >
     <div class="flex items-start justify-between gap-1 whitespace-nowrap">
-      <span class="min-w-0 truncate text-[12px] font-bold" :class="(variant === 'selected' || variant === 'option') && 'text-primary'">{{ code || section }}</span>
+      <span
+        class="min-w-0 truncate text-[12px] font-bold"
+        :class="(variant === 'selected' || variant === 'option') && 'text-primary'"
+        >{{ code || section }}</span
+      >
       <span
         v-if="code"
         class="shrink-0 font-mono text-[11px]"
         :class="variant.startsWith('chosen') ? '' : 'text-muted-foreground'"
-      >{{ section }}</span>
+        >{{ section }}</span
+      >
     </div>
-    <p v-if="name" class="truncate text-[11.5px] font-medium" :class="variant.startsWith('chosen') ? '' : variant === 'option' ? 'text-primary' : 'text-foreground'">{{ name }}</p>
-    <p v-if="meta" class="truncate text-[10.5px]" :class="variant.startsWith('chosen') ? '' : 'text-muted-foreground'">{{ meta }}</p>
+    <p
+      v-if="name"
+      class="truncate text-[11.5px] font-medium"
+      :class="variant.startsWith('chosen') ? '' : variant === 'option' ? 'text-primary' : 'text-foreground'"
+    >
+      {{ name }}
+    </p>
+    <p
+      v-if="meta"
+      class="truncate text-[10.5px]"
+      :class="variant.startsWith('chosen') ? '' : 'text-muted-foreground'"
+    >
+      {{ meta }}
+    </p>
     <slot />
   </div>
 </template>

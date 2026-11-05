@@ -36,6 +36,13 @@ test('non-SMU admin requires verified Google identity', async () => {
 test('SMU students retain first-login access', async () => {
   assert.equal((await check({ ...token, email: 'student@smu.edu.sg' }, null)).passed, true)
 })
+test('an SMU email alone is not enough without a verified Google identity', async () => {
+  const student = { ...token, email: 'student@smu.edu.sg' }
+  for (const identity of [{ ...student, email_verified: false }, { ...student, email_verified: undefined }, { ...student, firebase: { sign_in_provider: 'password' } }]) {
+    const result = await check(identity, null)
+    assert.equal(result.code, 403); assert.equal(result.passed, false); assert.equal(result.created, false)
+  }
+})
 test('admin guard denies missing user and students', () => {
   for (const user of [undefined, { role: 'student' }]) {
     const res = { status(code) { assert.equal(code, 403); return this }, json() {} }

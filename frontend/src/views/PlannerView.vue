@@ -1,6 +1,6 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   usePlannerStore,
   effectiveCode,
@@ -8,53 +8,51 @@ import {
   MAX_MODULES_PER_SEM,
   MAX_PLANS,
   MAX_LOA_TERMS,
-} from "@core/stores/planner";
-import { useRoomsStore } from "@core/stores/rooms";
-import { useBiddingStore } from "@core/stores/bidding";
-import { useCatalogueStore } from "@core/stores/catalogue";
-import { useUserStore } from "@core/stores/user";
-import { moduleName, trackName } from "@core/data/catalogue";
-import { planLabel } from "@/trackLabels";
-import PageHeader from "@/components/layout/PageHeader.vue";
-import BaseButton from "@/components/ui/BaseButton.vue";
-import UserAvatar from "@/components/ui/UserAvatar.vue";
-import StatusPill from "@/components/ui/StatusPill.vue";
-import DegreeChecklist from "@/components/DegreeChecklist.vue";
-import PrereqWarningModal from "@/components/modals/PrereqWarningModal.vue";
-import PlanLimitModal from "@/components/modals/PlanLimitModal.vue";
-import DeletePlanModal from "@/components/modals/DeletePlanModal.vue";
-import PlanSettingsModal from "@/components/modals/PlanSettingsModal.vue";
-import SemesterFullModal from "@/components/modals/SemesterFullModal.vue";
+} from '@core/stores/planner';
+import { useRoomsStore } from '@core/stores/rooms';
+import { useBiddingStore } from '@core/stores/bidding';
+import { useCatalogueStore } from '@core/stores/catalogue';
+import { useUserStore } from '@core/stores/user';
+import { moduleName, trackName } from '@core/data/catalogue';
+import { planLabel } from '@/trackLabels';
+import PageHeader from '@/components/layout/PageHeader.vue';
+import BaseButton from '@/components/ui/BaseButton.vue';
+import UserAvatar from '@/components/ui/UserAvatar.vue';
+import StatusPill from '@/components/ui/StatusPill.vue';
+import DegreeChecklist from '@/components/DegreeChecklist.vue';
+import PrereqWarningModal from '@/components/modals/PrereqWarningModal.vue';
+import PlanLimitModal from '@/components/modals/PlanLimitModal.vue';
+import DeletePlanModal from '@/components/modals/DeletePlanModal.vue';
+import PlanSettingsModal from '@/components/modals/PlanSettingsModal.vue';
+import SemesterFullModal from '@/components/modals/SemesterFullModal.vue';
 const thinkers = Object.values(
-  import.meta.glob("@/assets/thinking/*.png", {
+  import.meta.glob('@/assets/thinking/*.png', {
     eager: true,
-    import: "default",
+    import: 'default',
   }),
 );
 // One thinker, picked at random each time the page loads.
 const thinker = thinkers[Math.floor(Math.random() * thinkers.length)];
-import iconSearch from "@/assets/v2/search.svg";
-import iconCheck from "@/assets/figma/check-success.svg";
-import iconAlert from "@/assets/figma/alert-12.svg";
-import iconGrip from "@/assets/figma/icon-grip.svg";
-import iconPlus from "@/assets/figma/plus-14.svg";
+import iconSearch from '@/assets/v2/search.svg';
+import iconCheck from '@/assets/figma/check-success.svg';
+import iconAlert from '@/assets/figma/alert-12.svg';
+import iconGrip from '@/assets/figma/icon-grip.svg';
+import iconPlus from '@/assets/figma/plus-14.svg';
 const doneColumnsCount = computed(
   () =>
-    columns.value.filter(
-      (c) =>
-        c.type === "sem" && planner.semStatus(plan.value, c.sem.id) === "done",
-    ).length,
+    columns.value.filter((c) => c.type === 'sem' && planner.semStatus(plan.value, c.sem.id) === 'done')
+      .length,
 );
 const importingToBidding = ref(false);
-const handoffError = ref("");
+const handoffError = ref('');
 async function importToBidding() {
   importingToBidding.value = true;
-  handoffError.value = "";
+  handoffError.value = '';
   try {
     await planner.savePlans();
     await planner.saveBasket();
     await router.push({
-      path: "/bidding",
+      path: '/bidding',
       query: { plan: planner.activePlanId },
     });
   } catch (error) {
@@ -86,20 +84,16 @@ const catalogue = useCatalogueStore();
 const user = useUserStore();
 const overline = computed(() => {
   const { major, intakeYear } = user.profile;
-  return intakeYear
-    ? `BSc ${major} · Class of ${Number(intakeYear) + 4}`
-    : `BSc ${major}`;
+  return intakeYear ? `BSc ${major} · Class of ${Number(intakeYear) + 4}` : `BSc ${major}`;
 });
 
 // Modules whose section a party admin locked in a collab room are locked here too and get their own colour. This only
-// reads the locked section; it never edits the plan (rooms.decided stays empty on purpose).
+// reads the locked section; it never edits the plan.
 // -> { roomId, roomName, module, sectionId, party: [you, ...the other members of that room] }
 function roomDecision(code) {
   const module = effectiveCode(code);
   const picks = rooms.pickedForBidding.filter(
-    (d) =>
-      d.module === module &&
-      (!bidding.round.term || d.term === bidding.round.term),
+    (d) => d.module === module && (!bidding.round.term || d.term === bidding.round.term),
   );
   if (!picks.length) return undefined;
   const pick = picks[0];
@@ -108,15 +102,13 @@ function roomDecision(code) {
       .filter((d) => d.sectionId === pick.sectionId)
       .flatMap((d) => {
         const room = rooms.getRoom(d.roomId);
-        return (room?.members ?? []).filter(
-          (id) => room.sharedSections?.[id] === pick.sectionId,
-        );
+        return (room?.members ?? []).filter((id) => room.sharedSections?.[id] === pick.sectionId);
       }),
   );
-  others.delete("me");
+  others.delete('me');
   return {
     ...pick,
-    party: [rooms.person("me"), ...[...others].map(rooms.person)],
+    party: [rooms.person('me'), ...[...others].map(rooms.person)],
   };
 }
 // Plans come from the authenticated backend through the planner store.
@@ -125,15 +117,10 @@ const plan = computed(() => planner.activePlan);
 // semester (the one being bid for) without being added to the plan; the room, not the plan, decides them.
 const nextSemId = computed(() => {
   const sems = plan.value.semesters;
-  return (
-    sems[sems.findIndex((sem) => sem.id === plan.value.currentSem) + 1]?.id ??
-    null
-  );
+  return sems[sems.findIndex((sem) => sem.id === plan.value.currentSem) + 1]?.id ?? null;
 });
 const roomOnly = computed(() => {
-  const placed = new Set(
-    plan.value.semesters.flatMap((sem) => sem.modules.map(effectiveCode)),
-  );
+  const placed = new Set(plan.value.semesters.flatMap((sem) => sem.modules.map(effectiveCode)));
   const seen = new Set();
   return rooms.pickedForBidding
     .filter(
@@ -172,27 +159,23 @@ const warning = ref(null); // { code, semId }
 const fullSem = ref(null); // semester that refused a module because it already holds the maximum
 const dragging = ref(null);
 const dragOver = ref(null); // semester id under the cursor while dragging
-const query = ref("");
+const query = ref('');
 const expandedYears = ref([]);
 
 const status = (sem) => planner.semStatus(plan.value, sem.id);
-const nowSem = computed(() =>
-  plan.value.semesters.find((s) => s.id === plan.value.currentSem),
-);
+const nowSem = computed(() => plan.value.semesters.find((s) => s.id === plan.value.currentSem));
 
 // --- Columns: finished years collapse into one narrow "Y1 ✓ 8 done" column ------------------
 const columns = computed(() => {
   const cols = [];
   plan.value.semesters.forEach((sem) => {
     const year = sem.id.slice(0, 2);
-    if (status(sem) === "done" && !expandedYears.value.includes(year)) {
+    if (status(sem) === 'done' && !expandedYears.value.includes(year)) {
       const last = cols.at(-1);
-      if (last?.type === "year" && last.year === year)
-        last.count += sem.modules.length;
-      else
-        cols.push({ type: "year", key: year, year, count: sem.modules.length });
+      if (last?.type === 'year' && last.year === year) last.count += sem.modules.length;
+      else cols.push({ type: 'year', key: year, year, count: sem.modules.length });
     } else {
-      cols.push({ type: "sem", key: sem.id, sem });
+      cols.push({ type: 'sem', key: sem.id, sem });
     }
   });
   return cols;
@@ -216,8 +199,7 @@ function toggleYear(year) {
 // --- Plans ---------------------------------------------------------------------------------
 const planToDelete = ref(null);
 async function confirmDelete() {
-  if (await planner.deletePlan(planToDelete.value.id))
-    planToDelete.value = null;
+  if (await planner.deletePlan(planToDelete.value.id)) planToDelete.value = null;
 }
 async function addPlan() {
   if (planner.plans.length >= MAX_PLANS) {
@@ -229,11 +211,11 @@ async function addPlan() {
 
 function goToPlans() {
   showPlanLimit.value = false;
-  tabsRef.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+  tabsRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // --- Drag & drop ---------------------------------------------------------------------------
-const canDrop = (sem) => !sem.loa && status(sem) !== "done";
+const canDrop = (sem) => !sem.loa && status(sem) !== 'done';
 const isFull = (sem) => sem.modules.length >= MAX_MODULES_PER_SEM;
 
 // Place a module, or tell the student the semester is full. The room check happens here too, so a
@@ -250,8 +232,8 @@ function place(code, semId) {
 
 function onDragStart(e, code) {
   dragging.value = code;
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", code);
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', code);
 }
 
 function onDragEnd() {
@@ -263,18 +245,15 @@ function onDragEnd() {
 // --- LOA terms: drag the LOA header onto another future term to move it there (the terms renumber),
 // or use the arrows on touch screens. ✕ deletes it.
 const draggingLoa = ref(null); // id of the LOA term being dragged
-const isMovableLoa = (sem) => sem.loa && status(sem) === "future";
+const isMovableLoa = (sem) => sem.loa && status(sem) === 'future';
 function onLoaDragStart(e, sem) {
   e.stopPropagation();
   draggingLoa.value = sem.id;
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", sem.id);
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', sem.id);
 }
 function onDragEnter(sem) {
-  if (draggingLoa.value)
-    dragOver.value = planner.canMoveLoa(draggingLoa.value, sem.id)
-      ? sem.id
-      : null;
+  if (draggingLoa.value) dragOver.value = planner.canMoveLoa(draggingLoa.value, sem.id) ? sem.id : null;
   else if (canDrop(sem)) dragOver.value = sem.id;
 }
 function moveLoa(semId, targetId) {
@@ -284,8 +263,7 @@ function moveLoa(semId, targetId) {
 }
 // The term next to an LOA in a direction (-1 earlier, +1 later), if the LOA can move there
 function loaNeighbour(sem, dir) {
-  const target =
-    plan.value.semesters[planner.semIndex(plan.value, sem.id) + dir];
+  const target = plan.value.semesters[planner.semIndex(plan.value, sem.id) + dir];
   return target && planner.canMoveLoa(sem.id, target.id) ? target.id : null;
 }
 function removeLoa(sem) {
@@ -304,8 +282,7 @@ function dropOnSemester(sem) {
   onDragEnd();
   if (!code || !canDrop(sem)) return;
   if (!place(code, sem.id)) return;
-  if (planner.hasWarning(plan.value, code, sem.id))
-    warning.value = { code, semId: sem.id };
+  if (planner.hasWarning(plan.value, code, sem.id)) warning.value = { code, semId: sem.id };
 }
 
 // Tap a module, then tap a semester: dragging doesn't work on touch screens
@@ -325,24 +302,21 @@ function placePicked(sem) {
     warning.value = { code, semId: sem.id };
 }
 function tapPlaced(event, code, sem) {
-  if (event.target.closest("button")) return;
+  if (event.target.closest('button')) return;
   event.stopPropagation();
   if (picked.value && picked.value !== code) placePicked(sem);
-  else if (status(sem) !== "done" && !roomDecision(code)) pick(code);
+  else if (status(sem) !== 'done' && !roomDecision(code)) pick(code);
 }
 // A module picked from a semester goes back to the basket
 function tapBasket() {
-  if (picked.value && !planner.basket.includes(picked.value))
-    planner.returnToBasket(picked.value);
+  if (picked.value && !planner.basket.includes(picked.value)) planner.returnToBasket(picked.value);
   picked.value = null;
 }
 
 // Clearing the basket can be undone for a few seconds, in case it was a mis-click
 const clearedCodes = ref(null);
 let undoTimer;
-const clearable = computed(() =>
-  planner.basket.some((code) => !roomDecision(code)),
-);
+const clearable = computed(() => planner.basket.some((code) => !roomDecision(code)));
 function clearBasket() {
   clearedCodes.value = planner.clearBasket();
   clearTimeout(undoTimer);
@@ -359,9 +333,9 @@ function dropOnBasket() {
 }
 
 function cardState(code, sem) {
-  if (status(sem) === "done") return "done";
-  if (planner.hasWarning(plan.value, code, sem.id)) return "warning";
-  return "planned";
+  if (status(sem) === 'done') return 'done';
+  if (planner.hasWarning(plan.value, code, sem.id)) return 'warning';
+  return 'planned';
 }
 
 // --- Prereq warning overlay ----------------------------------------------------------------
@@ -370,20 +344,42 @@ const warningInfo = computed(() => {
   const { code, semId } = warning.value;
   const semesters = plan.value.semesters.filter((s) => !s.loa);
   const i = semesters.findIndex((s) => s.id === semId);
+  const check = planner.checkModule(plan.value, code, semId);
   return {
     code,
     sem: semesters[i],
     prev: semesters[i - 1],
     next: semesters[i + 1],
-    ...planner.checkModule(plan.value, code, semId),
+    ...check,
+    canDrop: !roomDecision(code),
+    droppableExclusions: check.exclusions.filter(canDropExclusion),
   };
 });
 
+// A module in an exclusion can come out of the plan unless it is finished, exempted or locked by a collab room
+function canDropExclusion(code) {
+  if (roomDecision(code) || (user.profile.exempted ?? []).includes(code)) return false;
+  return plan.value.semesters.some(
+    (s) => status(s) !== 'done' && s.modules.some((m) => effectiveCode(m) === code),
+  );
+}
+
+function dropFromWarning(code) {
+  const w = warningInfo.value;
+  if (code === w.code) {
+    planner.returnToBasket(code);
+    warning.value = null;
+    return;
+  }
+  planner.returnToBasketFrom(plan.value.id, code);
+  if (!planner.hasWarning(plan.value, w.code, w.sem.id)) warning.value = null;
+}
+
 function resolveWarning(action, target) {
   const w = warningInfo.value;
-  if (action === "prereq" && !place(target, w.prev.id)) return;
-  if (action === "coreq" && !place(target, w.sem.id)) return;
-  if (action === "move") {
+  if (action === 'prereq' && !place(target, w.prev.id)) return;
+  if (action === 'coreq' && !place(target, w.sem.id)) return;
+  if (action === 'move') {
     if (!place(w.code, w.next.id)) return;
     warning.value = planner.hasWarning(plan.value, w.code, w.next.id)
       ? { code: w.code, semId: w.next.id }
@@ -396,13 +392,9 @@ function resolveWarning(action, target) {
 // --- Basket + search -----------------------------------------------------------------------
 const q = computed(() => query.value.trim().toLowerCase());
 const matches = (m) =>
-  !q.value ||
-  m.code.toLowerCase().includes(q.value) ||
-  m.name.toLowerCase().includes(q.value);
+  !q.value || m.code.toLowerCase().includes(q.value) || m.name.toLowerCase().includes(q.value);
 const basket = computed(() =>
-  planner.basket
-    .map((code) => ({ code, name: moduleName(code) }))
-    .filter(matches),
+  planner.basket.map((code) => ({ code, name: moduleName(code) })).filter(matches),
 );
 
 // Search: GET /api/modules?q=… (debounced)
@@ -418,12 +410,8 @@ watch(q, (text) => {
 });
 const searchResults = computed(() => {
   if (!q.value) return [];
-  const placed = new Set(
-    plan.value.semesters.flatMap((s) => s.modules.map(effectiveCode)),
-  );
-  return apiResults.value
-    .filter((m) => !placed.has(m.code) && !planner.basket.includes(m.code))
-    .slice(0, 4);
+  const placed = new Set(plan.value.semesters.flatMap((s) => s.modules.map(effectiveCode)));
+  return apiResults.value.filter((m) => !placed.has(m.code) && !planner.basket.includes(m.code)).slice(0, 4);
 });
 
 // --- Requirements strip --------------------------------------------------------------------
@@ -431,18 +419,12 @@ const searchResults = computed(() => {
 // cleared (before the current semester), in progress (current semester) and planned (later semesters).
 const countSlots = (b) => {
   // Each row carries credit counts, so an area adds up course by course (a requirement 2 of 5 met counts 2)
-  const add = (key) =>
-    Math.round(b.slots.reduce((n, x) => n + x.credit[key], 0) * 10) / 10;
-  const [cleared, exempted, inProgress, planned] = [
-    "cleared",
-    "exempted",
-    "inProgress",
-    "planned",
-  ].map(add);
+  const add = (key) => Math.round(b.slots.reduce((n, x) => n + x.credit[key], 0) * 10) / 10;
+  const [cleared, exempted, inProgress, planned] = ['cleared', 'exempted', 'inProgress', 'planned'].map(add);
   return {
     key: b.key,
     label: b.label,
-    required: add("required"),
+    required: add('required'),
     cleared,
     exempted,
     inProgress,
@@ -458,8 +440,8 @@ const requirements = computed(() => {
   const merged = uni.length
     ? [
         {
-          key: "uni",
-          label: "University core",
+          key: 'uni',
+          label: 'University core',
           slots: uni.flatMap((g) => g.slots),
         },
       ]
@@ -474,8 +456,8 @@ const inPlan = computed(() => {
   };
 });
 const pct = (n, of) => `${of ? (n / of) * 100 : 0}%`;
-// Same rule as the red cards: a prerequisite or co-requisite not met somewhere in the plan
-const onTrack = computed(() => !planner.hasAnyWarning);
+// Same rule as the red cards. This says nothing about how much of the degree is planned: that is the count beside it
+const noWarnings = computed(() => !planner.hasAnyWarning);
 </script>
 
 <template>
@@ -492,12 +474,9 @@ const onTrack = computed(() => !planner.hasAnyWarning);
         <span v-if="!planner.canAddLoa" class="text-xs text-muted-foreground">{{
           planner.canAddSemester
             ? `Maximum of ${MAX_LOA_TERMS} LOA terms per plan.`
-            : "Semester limit reached (Y9 · S2)."
+            : 'Semester limit reached (Y9 · S2).'
         }}</span>
-        <BaseButton
-          size="lg"
-          :disabled="!planner.online || planner.planActionPending"
-          @click="addPlan"
+        <BaseButton size="lg" :disabled="!planner.online || planner.planActionPending" @click="addPlan"
           >Add plan</BaseButton
         >
       </template>
@@ -512,11 +491,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
     </PageHeader>
 
     <main class="flex flex-col gap-6 px-5 md:px-8 lg:px-16 pt-8 pb-12">
-      <p
-        v-if="planner.planActionError"
-        role="alert"
-        class="text-sm text-destructive"
-      >
+      <p v-if="planner.planActionError" role="alert" class="text-sm text-destructive">
         Plan update failed: {{ planner.planActionError }}
       </p>
       <p v-if="handoffError" role="alert" class="text-sm text-destructive">
@@ -527,29 +502,17 @@ const onTrack = computed(() => !planner.hasAnyWarning);
         v-if="planner.syncError"
         class="flex items-center justify-between gap-4 rounded-lg border border-destructive bg-destructive-tint px-4 py-3 text-[13px]"
       >
-        <span
-          ><span class="font-semibold">Not saved:</span>
-          {{ planner.syncError }}</span
-        >
-        <BaseButton
-          variant="outline"
-          size="sm"
-          :disabled="planner.plansSaving"
-          @click="retryPlans"
+        <span><span class="font-semibold">Not saved:</span> {{ planner.syncError }}</span>
+        <BaseButton variant="outline" size="sm" :disabled="planner.plansSaving" @click="retryPlans"
           >Retry saving plans</BaseButton
         >
       </div>
-      <section
-        v-enter
-        class="card flex flex-col items-stretch overflow-hidden lg:flex-row"
-      >
+      <section v-enter class="card flex flex-col items-stretch overflow-hidden lg:flex-row">
         <!-- motion: fade + slide up on mount -->
         <!-- Module basket -->
         <aside
           class="flex w-full shrink-0 flex-col gap-3 border-b border-border p-4 transition-colors lg:w-[260px] lg:border-r lg:border-b-0"
-          :class="
-            dragging && !planner.basket.includes(dragging) && 'bg-primary-tint'
-          "
+          :class="dragging && !planner.basket.includes(dragging) && 'bg-primary-tint'"
           @dragover.prevent
           @drop.prevent="dropOnBasket"
           @click="tapBasket"
@@ -558,9 +521,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
             <div class="flex items-center justify-between">
               <h2 class="text-h4">Module basket</h2>
               <div class="flex items-center gap-2">
-                <span class="text-[13px] text-muted-foreground">{{
-                  planner.basket.length
-                }}</span>
+                <span class="text-[13px] text-muted-foreground">{{ planner.basket.length }}</span>
                 <button
                   v-if="clearable"
                   type="button"
@@ -571,20 +532,10 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                 </button>
               </div>
             </div>
-            <p class="text-[12px] text-muted-foreground">
-              Saved from Match Results and search.
-            </p>
-            <div
-              v-if="planner.basketError"
-              role="alert"
-              class="text-xs text-destructive"
-            >
+            <p class="text-[12px] text-muted-foreground">Saved from Match Results and search.</p>
+            <div v-if="planner.basketError" role="alert" class="text-xs text-destructive">
               <p>Basket not saved: {{ planner.basketError }}</p>
-              <BaseButton
-                size="sm"
-                variant="link"
-                :disabled="planner.basketSaving"
-                @click="retryBasket"
+              <BaseButton size="sm" variant="link" :disabled="planner.basketSaving" @click="retryBasket"
                 >Retry saving</BaseButton
               >
             </div>
@@ -631,9 +582,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
               ]"
               :role="roomDecision(m.code) ? undefined : 'button'"
               :tabindex="roomDecision(m.code) ? undefined : 0"
-              :aria-pressed="
-                roomDecision(m.code) ? undefined : picked === m.code
-              "
+              :aria-pressed="roomDecision(m.code) ? undefined : picked === m.code"
               @dragstart="onDragStart($event, m.code)"
               @dragend="onDragEnd"
               @click.stop="!roomDecision(m.code) && pick(m.code)"
@@ -641,12 +590,8 @@ const onTrack = computed(() => !planner.hasAnyWarning);
             >
               <img :src="iconGrip" alt="" class="size-3.5" />
               <div class="flex min-w-0 flex-1 flex-col leading-normal">
-                <span class="font-mono text-[13px] font-bold">{{
-                  m.code
-                }}</span>
-                <span class="text-[12px] text-muted-foreground">{{
-                  m.name
-                }}</span>
+                <span class="font-mono text-[13px] font-bold">{{ m.code }}</span>
+                <span class="text-[12px] text-muted-foreground">{{ m.name }}</span>
               </div>
               <button
                 v-if="!roomDecision(m.code)"
@@ -664,22 +609,14 @@ const onTrack = computed(() => !planner.hasAnyWarning);
             v-if="clearedCodes?.length"
             class="flex items-center justify-between rounded-md bg-muted px-2.5 py-2 text-[12px]"
           >
-            Cleared {{ clearedCodes.length }} module{{
-              clearedCodes.length === 1 ? "" : "s"
-            }}
-            <button
-              type="button"
-              class="font-semibold text-primary hover:underline"
-              @click="undoClear"
-            >
+            Cleared {{ clearedCodes.length }} module{{ clearedCodes.length === 1 ? '' : 's' }}
+            <button type="button" class="font-semibold text-primary hover:underline" @click="undoClear">
               Undo
             </button>
           </p>
 
           <div v-if="searchResults.length" class="flex flex-col gap-1.5">
-            <p class="text-overline text-muted-foreground">
-              Add from catalogue
-            </p>
+            <p class="text-overline text-muted-foreground">Add from catalogue</p>
             <button
               v-for="m in searchResults"
               :key="m.code"
@@ -689,18 +626,13 @@ const onTrack = computed(() => !planner.hasAnyWarning);
             >
               <img :src="iconPlus" alt="" class="size-3.5" />
               <span class="min-w-0 flex-1 truncate text-[12px]"
-                ><span class="font-mono font-bold">{{ m.code }}</span>
-                {{ m.name }}</span
+                ><span class="font-mono font-bold">{{ m.code }}</span> {{ m.name }}</span
               >
             </button>
           </div>
 
-          <p
-            v-if="!planner.basket.length"
-            class="text-[12px] text-muted-foreground"
-          >
-            Your basket is empty. Save modules from your track matches, or drag
-            one back here.
+          <p v-if="!planner.basket.length" class="text-[12px] text-muted-foreground">
+            Your basket is empty. Save modules from your track matches, or drag one back here.
           </p>
           <p v-else class="text-[12px] text-muted-foreground">
             Drag a module onto a semester, or tap it and then tap the semester.
@@ -718,11 +650,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                 v-for="p in planner.plans"
                 :key="p.id"
                 class="-mb-px flex items-start gap-1.5 border-b-2 pb-2.5 transition-colors"
-                :class="
-                  p.id === planner.activePlanId
-                    ? 'border-foreground'
-                    : 'border-transparent'
-                "
+                :class="p.id === planner.activePlanId ? 'border-foreground' : 'border-transparent'"
               >
                 <button
                   type="button"
@@ -750,32 +678,21 @@ const onTrack = computed(() => !planner.hasAnyWarning);
               </span>
             </div>
             <div class="flex gap-2 pb-2">
-              <BaseButton
-                variant="outline"
-                size="sm"
-                @click="showSettings = true"
-                >Plan settings</BaseButton
-              >
+              <BaseButton variant="outline" size="sm" @click="showSettings = true">Plan settings</BaseButton>
               <BaseButton
                 variant="secondary"
                 size="sm"
                 :disabled="importingToBidding"
                 @click="importToBidding"
-                >{{
-                  importingToBidding
-                    ? "Saving plan…"
-                    : "View in Bidding Planner"
-                }}</BaseButton
+                >{{ importingToBidding ? 'Saving plan…' : 'View in Bidding Planner' }}</BaseButton
               >
             </div>
           </div>
 
           <p class="text-[13px] text-muted-foreground">
-            Now: {{ nowSem?.label.replace("S", "Sem ") }} · 1st track:
-            {{ plan.tracks[0] ? trackName(plan.tracks[0]) : "Not decided" }}
-            <template v-if="plan.tracks[1]">
-              · 2nd track: {{ trackName(plan.tracks[1]) }}</template
-            >
+            Now: {{ nowSem?.label.replace('S', 'Sem ') }} · 1st track:
+            {{ plan.tracks[0] ? trackName(plan.tracks[0]) : 'Not decided' }}
+            <template v-if="plan.tracks[1]"> · 2nd track: {{ trackName(plan.tracks[1]) }}</template>
           </p>
 
           <p
@@ -784,11 +701,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
             class="flex items-center justify-between gap-2 rounded-md bg-primary-tint px-3 py-2 text-[13px]"
           >
             Tap a semester to place {{ picked }}.
-            <button
-              type="button"
-              class="font-semibold text-primary hover:underline"
-              @click="picked = null"
-            >
+            <button type="button" class="font-semibold text-primary hover:underline" @click="picked = null">
               Cancel
             </button>
           </p>
@@ -814,18 +727,13 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                 class="relative flex min-w-[140px] flex-1 flex-col gap-2 rounded-md p-2 transition-colors"
                 :class="[
                   /* USE MARGIN (mb) instead of padding. This forces the dark grey background to physically stop early! */
-                  status(col.sem) === 'done'
-                    ? 'min-h-[286px] mb-[44px]'
-                    : 'min-h-[330px]',
+                  status(col.sem) === 'done' ? 'min-h-[286px] mb-[44px]' : 'min-h-[330px]',
                   {
-                    'border-[1.5px] border-primary bg-card':
-                      status(col.sem) === 'now',
-                    'border border-border bg-card':
-                      status(col.sem) === 'future' && !col.sem.loa,
+                    'border-[1.5px] border-primary bg-card': status(col.sem) === 'now',
+                    'border border-border bg-card': status(col.sem) === 'future' && !col.sem.loa,
                     'border border-border bg-muted': status(col.sem) === 'done',
                     'border border-dashed border-border bg-muted': col.sem.loa,
-                    'cursor-pointer ring-2 ring-primary/30':
-                      picked && canDrop(col.sem),
+                    'cursor-pointer ring-2 ring-primary/30': picked && canDrop(col.sem),
                   },
                 ]"
                 @dragenter="onDragEnter(col.sem)"
@@ -861,10 +769,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                     </button>
                   </span>
                 </div>
-                <div
-                  v-else
-                  class="flex items-center justify-between px-0.5 font-mono text-[11px]"
-                >
+                <div v-else class="flex items-center justify-between px-0.5 font-mono text-[11px]">
                   <button
                     v-if="status(col.sem) === 'done'"
                     type="button"
@@ -875,45 +780,24 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                   </button>
                   <span
                     v-else
-                    :class="
-                      status(col.sem) === 'now'
-                        ? 'text-primary'
-                        : 'text-muted-foreground'
-                    "
+                    :class="status(col.sem) === 'now' ? 'text-primary' : 'text-muted-foreground'"
                     >{{ col.sem.label }}</span
                   >
-                  <span
-                    v-if="col.sem.loa"
-                    class="font-sans text-muted-foreground"
-                    >LOA</span
-                  >
-                  <span
-                    v-else-if="status(col.sem) === 'now'"
-                    class="font-sans font-semibold text-primary"
+                  <span v-if="col.sem.loa" class="font-sans text-muted-foreground">LOA</span>
+                  <span v-else-if="status(col.sem) === 'now'" class="font-sans font-semibold text-primary"
                     >Now</span
                   >
-                  <span
-                    v-else-if="col.sem.exchange"
-                    class="font-sans font-semibold text-primary"
+                  <span v-else-if="col.sem.exchange" class="font-sans font-semibold text-primary"
                     >Exchange</span
                   >
                   <span
                     v-else
-                    :class="
-                      isFull(col.sem)
-                        ? 'font-semibold text-destructive'
-                        : 'text-muted-foreground'
-                    "
-                    >{{ col.sem.modules.length }}/{{
-                      MAX_MODULES_PER_SEM
-                    }}</span
+                    :class="isFull(col.sem) ? 'font-semibold text-destructive' : 'text-muted-foreground'"
+                    >{{ col.sem.modules.length }}/{{ MAX_MODULES_PER_SEM }}</span
                   >
                 </div>
 
-                <p
-                  v-if="col.sem.loa"
-                  class="px-0.5 text-[11.5px] text-muted-foreground"
-                >
+                <p v-if="col.sem.loa" class="px-0.5 text-[11.5px] text-muted-foreground">
                   Leave of absence. No modules this term.
                 </p>
                 <!-- Move one term at a time without dragging (touch screens, keyboard) -->
@@ -929,9 +813,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                     :title="`Move one term ${word}`"
                     :disabled="!loaNeighbour(col.sem, dir)"
                     class="rounded-sm border border-border bg-card px-2 py-0.5 text-[12px] text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40 max-lg:min-h-11 max-lg:min-w-11"
-                    @click.stop="
-                      moveLoa(col.sem.id, loaNeighbour(col.sem, dir))
-                    "
+                    @click.stop="moveLoa(col.sem.id, loaNeighbour(col.sem, dir))"
                   >
                     {{ arrow }}
                   </button>
@@ -953,9 +835,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                       : cardState(code, col.sem) === 'warning'
                         ? 'border border-destructive bg-destructive-tint'
                         : 'bg-secondary',
-                    status(col.sem) !== 'done' &&
-                      !roomDecision(code) &&
-                      'cursor-grab',
+                    status(col.sem) !== 'done' && !roomDecision(code) && 'cursor-grab',
                     dragging === code && 'opacity-40',
                     picked === code && 'ring-2 ring-primary',
                   ]"
@@ -963,9 +843,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                   @dragend="onDragEnd"
                   @click="tapPlaced($event, code, col.sem)"
                 >
-                  <span
-                    class="flex items-center gap-1 font-mono text-[12px] font-bold"
-                  >
+                  <span class="flex items-center gap-1 font-mono text-[12px] font-bold">
                     {{ code }}
                     <img
                       v-if="cardState(code, col.sem) === 'warning'"
@@ -981,19 +859,12 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                     :aria-label="`Review academic warnings for ${effectiveCode(code)}`"
                     @click.stop="warning = { code, semId: col.sem.id }"
                   >
-                    {{
-                      planner.warningMessages(plan, code, col.sem.id).join("; ")
-                    }}
+                    {{ planner.warningMessages(plan, code, col.sem.id).join('; ') }}
                   </button>
-                  <span
-                    v-else
-                    class="line-clamp-2 text-[11px] text-muted-foreground"
-                    >{{ moduleName(effectiveCode(code)) }}</span
-                  >
-                  <span
-                    v-if="roomDecision(code)"
-                    class="mt-1 flex items-center"
-                  >
+                  <span v-else class="line-clamp-2 text-[11px] text-muted-foreground">{{
+                    moduleName(effectiveCode(code))
+                  }}</span>
+                  <span v-if="roomDecision(code)" class="mt-1 flex items-center">
                     <UserAvatar
                       v-for="(f, i) in roomDecision(code).party"
                       :key="f.id"
@@ -1022,13 +893,10 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                     :title="`Accepted in ${d.roomName}. Undo it in the room to change it.`"
                     class="flex flex-col rounded-sm border-2 border-success bg-success-tint px-2 py-1.5 leading-normal"
                   >
-                    <span class="font-mono text-[12px] font-bold">{{
-                      d.module
+                    <span class="font-mono text-[12px] font-bold">{{ d.module }}</span>
+                    <span class="line-clamp-2 text-[11px] text-muted-foreground">{{
+                      moduleName(d.module)
                     }}</span>
-                    <span
-                      class="line-clamp-2 text-[11px] text-muted-foreground"
-                      >{{ moduleName(d.module) }}</span
-                    >
                     <span class="mt-1 flex items-center">
                       <UserAvatar
                         v-for="(f, i) in d.party"
@@ -1051,31 +919,19 @@ const onTrack = computed(() => !planner.hasAnyWarning);
                 </div>
                 <!-- Floats over the column's bottom edge: taking up space would stretch every column while hovering -->
                 <div
-                  v-if="
-                    dragging &&
-                    dragOver === col.sem.id &&
-                    !col.sem.modules.includes(dragging)
-                  "
+                  v-if="dragging && dragOver === col.sem.id && !col.sem.modules.includes(dragging)"
                   class="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex justify-center rounded-sm border-[1.5px] border-dashed bg-card px-2 py-2.5 text-[11.5px] font-medium shadow-sm"
                   :class="
-                    isFull(col.sem)
-                      ? 'border-destructive text-destructive'
-                      : 'border-primary text-primary'
+                    isFull(col.sem) ? 'border-destructive text-destructive' : 'border-primary text-primary'
                   "
                 >
-                  {{
-                    isFull(col.sem)
-                      ? `Full: ${MAX_MODULES_PER_SEM} modules max`
-                      : `Drop ${dragging} here`
-                  }}
+                  {{ isFull(col.sem) ? `Full: ${MAX_MODULES_PER_SEM} modules max` : `Drop ${dragging} here` }}
                 </div>
                 <!-- Collapse Past Years Button (Spans dynamically across done columns) -->
                 <button
                   v-if="
                     status(col.sem) === 'done' &&
-                    columns.filter(
-                      (c) => c.type === 'sem' && status(c.sem) === 'done',
-                    )[0]?.key === col.key
+                    columns.filter((c) => c.type === 'sem' && status(c.sem) === 'done')[0]?.key === col.key
                   "
                   type="button"
                   class="absolute -bottom-[44px] left-0 z-20 flex h-[36px] items-center justify-center rounded-sm bg-primary/10 text-[11px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
@@ -1090,9 +946,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
             </template>
           </div>
 
-          <div
-            class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground"
-          >
+          <div class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground">
             <span class="flex items-center gap-1.5"
               ><span class="h-3 w-4 rounded-[3px] bg-muted" /> Done</span
             >
@@ -1100,39 +954,25 @@ const onTrack = computed(() => !planner.hasAnyWarning);
               ><span class="h-3 w-4 rounded-[3px] bg-secondary" /> Planned</span
             >
             <span class="flex items-center gap-1.5"
-              ><span
-                class="h-3 w-4 rounded-[3px] border border-destructive bg-destructive-tint"
-              />
-              Prereq not met</span
+              ><span class="h-3 w-4 rounded-[3px] border border-destructive bg-destructive-tint" /> Prereq not
+              met</span
             >
             <span class="flex items-center gap-1.5"
-              ><span
-                class="h-3 w-4 rounded-[3px] border-2 border-success bg-success-tint"
-              />
-              Locked in a collab room</span
+              ><span class="h-3 w-4 rounded-[3px] border-2 border-success bg-success-tint" /> Locked in a
+              collab room</span
             >
             <span class="flex items-center gap-1.5"
-              ><span
-                class="h-3 w-4 rounded-[3px] border border-dashed border-primary"
-              />
-              Drop target</span
+              ><span class="h-3 w-4 rounded-[3px] border border-dashed border-primary" /> Drop target</span
             >
             <span class="flex items-center gap-1.5"
-              ><span
-                class="h-3 w-4 rounded-[3px] border-[1.5px] border-primary"
-              />
-              Current semester</span
+              ><span class="h-3 w-4 rounded-[3px] border-[1.5px] border-primary" /> Current semester</span
             >
           </div>
         </div>
       </section>
 
       <!-- Module requirements: the checklist below, added up by area -->
-      <p
-        v-if="planner.curriculumNotice"
-        role="status"
-        class="rounded-lg border border-warning p-4 text-sm"
-      >
+      <p v-if="planner.curriculumNotice" role="status" class="rounded-lg border border-warning p-4 text-sm">
         {{ planner.curriculumNotice }}
       </p>
       <section
@@ -1142,35 +982,22 @@ const onTrack = computed(() => !planner.hasAnyWarning);
       >
         <!-- motion: requirements strip fades in, 100ms delay -->
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <h2 class="text-[17px] font-semibold">
-            Module requirements · {{ plan.name }}
-          </h2>
+          <h2 class="text-[17px] font-semibold">Module requirements · {{ plan.name }}</h2>
           <div class="flex items-center gap-3">
             <span class="font-mono text-[13px] text-muted-foreground"
-              >{{ inPlan.filled }} / {{ inPlan.required }} courses in your
-              plan</span
+              >{{ inPlan.filled }} / {{ inPlan.required }} courses in your plan</span
             >
-            <StatusPill v-if="onTrack" tone="success">On track</StatusPill>
-            <StatusPill v-else tone="destructive">Prereq issues</StatusPill>
+            <StatusPill v-if="noWarnings" tone="success">No warnings</StatusPill>
+            <StatusPill v-else tone="destructive">Plan warnings</StatusPill>
           </div>
         </div>
         <div
           class="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-3 lg:gap-x-10 lg:[grid-template-columns:repeat(var(--n),minmax(0,1fr))]"
           :style="{ '--n': requirements.length }"
         >
-          <div
-            v-for="b in requirements"
-            :key="b.key"
-            class="flex flex-col gap-1.5"
-          >
-            <span
-              class="truncate text-[13px] text-muted-foreground"
-              :title="b.label"
-              >{{ b.label }}</span
-            >
-            <span class="font-mono text-[14px] font-bold"
-              >{{ b.filled }} / {{ b.required }}</span
-            >
+          <div v-for="b in requirements" :key="b.key" class="flex flex-col gap-1.5">
+            <span class="truncate text-[13px] text-muted-foreground" :title="b.label">{{ b.label }}</span>
+            <span class="font-mono text-[14px] font-bold">{{ b.filled }} / {{ b.required }}</span>
             <div
               class="flex h-1.5 overflow-hidden rounded-full bg-border"
               role="img"
@@ -1196,15 +1023,13 @@ const onTrack = computed(() => !planner.hasAnyWarning);
             <span class="text-[11.5px] text-muted-foreground">
               {{
                 b.filled === b.required && b.cleared + b.exempted === b.required
-                  ? "Done"
-                  : `${b.cleared} cleared${b.exempted ? ` · ${b.exempted} exempted` : ""}${b.inProgress ? ` · ${b.inProgress} in progress` : ""}${b.planned ? ` · ${b.planned} planned` : ""}`
+                  ? 'Done'
+                  : `${b.cleared} cleared${b.exempted ? ` · ${b.exempted} exempted` : ''}${b.inProgress ? ` · ${b.inProgress} in progress` : ''}${b.planned ? ` · ${b.planned} planned` : ''}`
               }}
             </span>
           </div>
         </div>
-        <div
-          class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground"
-        >
+        <div class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground">
           <span class="flex items-center gap-1.5"
             ><span class="h-2 w-4 rounded-full bg-success" /> Cleared</span
           >
@@ -1217,10 +1042,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
           <span class="flex items-center gap-1.5"
             ><span class="h-2 w-4 rounded-full bg-primary" /> Planned</span
           >
-          <span
-            >Counted in courses: a requirement part met still counts the courses
-            it has.</span
-          >
+          <span>Counted in courses: a requirement part met still counts the courses it has.</span>
         </div>
       </section>
 
@@ -1233,8 +1055,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
       :code="warningInfo.code"
       :sem-label="warningInfo.sem.label"
       :prev-sem-label="
-        warningInfo.prev &&
-        planner.semStatus(plan, warningInfo.prev.id) !== 'done'
+        warningInfo.prev && planner.semStatus(plan, warningInfo.prev.id) !== 'done'
           ? warningInfo.prev.label
           : ''
       "
@@ -1244,12 +1065,16 @@ const onTrack = computed(() => !planner.hasAnyWarning);
       :prereq-groups="warningInfo.prereqGroups"
       :coreq-groups="warningInfo.coreqGroups"
       :exclusions="warningInfo.exclusions"
+      :droppable-exclusions="warningInfo.droppableExclusions"
+      :can-drop="warningInfo.canDrop"
       :rules="warningInfo.rules"
       :not-offered="warningInfo.notOffered"
+      :unknown="warningInfo.unknown"
       @close="warning = null"
       @add-prereq="resolveWarning('prereq', $event)"
       @add-coreq="resolveWarning('coreq', $event)"
       @move-next="resolveWarning('move')"
+      @drop-module="dropFromWarning"
     />
     <!-- Floats, so it never pushes the planner around -->
     <Transition name="fade">
@@ -1258,7 +1083,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
         role="status"
         class="pointer-events-none fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-full border border-border bg-card px-4 py-2 text-[13px] text-muted-foreground shadow-md"
       >
-        {{ slowPlansSave ? "Saving semester changes…" : "Saving basket…" }}
+        {{ slowPlansSave ? 'Saving semester changes…' : 'Saving basket…' }}
       </p>
     </Transition>
     <SemesterFullModal
@@ -1273,11 +1098,7 @@ const onTrack = computed(() => !planner.hasAnyWarning);
       @close="planToDelete = null"
       @confirm="confirmDelete"
     />
-    <PlanLimitModal
-      v-if="showPlanLimit"
-      @close="showPlanLimit = false"
-      @go-to-plans="goToPlans"
-    />
+    <PlanLimitModal v-if="showPlanLimit" @close="showPlanLimit = false" @go-to-plans="goToPlans" />
     <PlanSettingsModal v-if="showSettings" @close="showSettings = false" />
   </div>
 </template>

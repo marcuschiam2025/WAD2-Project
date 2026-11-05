@@ -1,5 +1,5 @@
-// Shapes a Section document for the Bidding screen (frontend core/data/bidding.js). Pure functions — unit test me.
-import { EXAM_NOT_ANNOUNCED } from './sectionData.js'
+// Shapes a Section document for the Bidding screen (frontend core/data/bidding.js). Pure functions: unit test me.
+import { EXAM_NOT_ANNOUNCED } from './sectionData.js';
 
 /**
  * "Prof. Lwin Khin Shar" → "Prof. L. Shar"
@@ -7,14 +7,14 @@ import { EXAM_NOT_ANNOUNCED } from './sectionData.js'
  * @returns {string | undefined}
  */
 export function shortProf(prof) {
-  if (!prof) return prof
+  if (!prof) return prof;
 
-  const names = prof.replace('Prof. ', '').split(' ')
-  if (names.length < 2) return prof
+  const names = prof.replace('Prof. ', '').split(' ');
+  if (names.length < 2) return prof;
 
-  const firstInitial = names[0].charAt(0)
-  const lastName = names[names.length - 1]
-  return `Prof. ${firstInitial}. ${lastName}`
+  const firstInitial = names[0].charAt(0);
+  const lastName = names[names.length - 1];
+  return `Prof. ${firstInitial}. ${lastName}`;
 }
 
 /**
@@ -23,8 +23,8 @@ export function shortProf(prof) {
  * @returns {string | undefined}
  */
 export function shortVenue(venue) {
-  if (!venue) return venue
-  return venue.replace('Seminar Room', 'SR')
+  if (!venue) return venue;
+  return venue.replace('Seminar Room', 'SR');
 }
 
 /**
@@ -50,5 +50,5 @@ export function toSectionView(section) {
     exam: section.exam ?? EXAM_NOT_ANNOUNCED,
     startDate: section.startDate ?? null, // teaching dates, e.g. 2027-01-11 to 2027-04-18 (null for older rows)
     endDate: section.endDate ?? null,
-  }
+  };
 }

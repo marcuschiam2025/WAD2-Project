@@ -1,15 +1,30 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '../stores/user'
-import { routeAccess } from './access'
-import { rememberJoin, takeJoin } from '../utils/roomInvite'
+import { createRouter, createWebHistory } from 'vue-router';
+import { useUserStore } from '../stores/user';
+import { routeAccess } from './access';
+import { rememberJoin, takeJoin } from '../utils/roomInvite';
 
 // meta.layout: 'app' shows the signed-in nav bar; 'bare' shows nothing.
 // meta.auth: route needs a signed-in student.
 // meta.nav: which nav link is highlighted.
 const routes = [
-  { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue'), meta: { layout: 'bare', auth: true, admin: true } },
-  { path: '/', name: 'landing', component: () => import('@/views/LandingView.vue'), meta: { layout: 'bare' } },
-  { path: '/signin', name: 'signin', component: () => import('@/views/SignInView.vue'), meta: { layout: 'bare' } },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: () => import('@/views/AdminView.vue'),
+    meta: { layout: 'bare', auth: true, admin: true },
+  },
+  {
+    path: '/',
+    name: 'landing',
+    component: () => import('@/views/LandingView.vue'),
+    meta: { layout: 'bare' },
+  },
+  {
+    path: '/signin',
+    name: 'signin',
+    component: () => import('@/views/SignInView.vue'),
+    meta: { layout: 'bare' },
+  },
   {
     path: '/onboarding',
     name: 'onboarding',
@@ -79,7 +94,7 @@ const routes = [
   {
     path: '/rooms/:id/votes',
     name: 'room-votes',
-    redirect: to => `/rooms/${to.params.id}`,
+    redirect: (to) => `/rooms/${to.params.id}`,
     meta: { layout: 'app', auth: true, nav: 'rooms' },
   },
   {
@@ -97,27 +112,27 @@ const routes = [
   // Degree details are edited inline on the profile page now
   { path: '/profile/degree', redirect: '/profile' },
   { path: '/:pathMatch(.*)*', redirect: '/' },
-]
+];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
   scrollBehavior: () => ({ top: 0 }),
-})
+});
 
 router.beforeEach(async (to) => {
-  const user = useUserStore()
-  await user.initialize()
-  const access = routeAccess(to, user)
+  const user = useUserStore();
+  await user.initialize();
+  const access = routeAccess(to, user);
   if (access) {
     // Sent away from a join link (to sign in or onboard): keep the code for when they get back
-    if (to.path === '/rooms' && to.query.join) rememberJoin(to.query.join)
-    return access
+    if (to.path === '/rooms' && to.query.join) rememberJoin(to.query.join);
+    return access;
   }
   if (to.meta.auth && to.name !== 'onboarding' && !to.query.join) {
-    const join = takeJoin()
-    if (join) return { path: '/rooms', query: { join } }
+    const join = takeJoin();
+    if (join) return { path: '/rooms', query: { join } };
   }
-})
+});
 
-export default router
+export default router;

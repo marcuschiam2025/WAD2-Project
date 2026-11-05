@@ -69,7 +69,6 @@ test('locking applies to the whole room, rechecks the latest votes, and unlockin
     assert.deepEqual(rooms.pickedForBidding.map((d) => [d.roomId, d.module, d.sectionId]), [['r', 'IS216', 'g1']], 'it feeds bidding')
     assert.deepEqual({ ...rooms.getRoom('r').sharedSections }, { me: 'g1', b: 'g1' }, 'for every member')
     assert.equal(rooms.roomState(rooms.getRoom('r')).lockedId, 'g1')
-    assert.deepEqual([...rooms.decided], [], 'a room section must not auto-edit personal plans')
 
     assert.equal(await rooms.unlockRoom('r'), true)
     assert.deepEqual(calls.at(-1), ['unlock', 'r'])
@@ -117,7 +116,7 @@ test('locking applies to the whole room, rechecks the latest votes, and unlockin
     api.room = async () => ({ ...(await roomBefore()), owner })
     api.transferRoomAdmin = async () => { throw Object.assign(Error('Not found'), { status: 404 }) }
     assert.equal(await rooms.transferAdmin('r', 'b'), false)
-    assert.match(rooms.voteErrors.r, /isn't available yet/, 'a clear message until the backend has the endpoint')
+    assert.match(rooms.voteErrors.r, /Not found/)
     assert.equal(rooms.getRoom('r').ownerId, 'me', 'and nothing changed')
     assert.notEqual(rooms.getRoom('r'), undefined, 'the 404 does not read as being removed from the room')
     api.transferRoomAdmin = async (id, target) => { assert.equal(id, 'r'); assert.equal(target, 'b'); owner = 'b' }

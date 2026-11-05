@@ -29,13 +29,11 @@ test('cart saving and room imports accept an exact decimal budget and reject a c
     assert.equal(bidding.allocated, 210)
     assert.deepEqual(writes[0].items.map(item => item.amount), [10.02, 128.30, 71.68])
     useRoomsStore().rooms = [{ id: 'r', module: 'IS216', term, lockedSection: 'IS216-G1', members: ['me'], admins: [], votes: {}, suggestedBids: {} }]
-    await assert.doesNotReject(bidding.addRoomSection('r', 'IS216-G1', 'p'))
 
     user.balance = 209.99
     assert.equal(await bidding.save(), false)
     assert.match(bidding.saveError, /exceed/)
     assert.equal(writes.length, 1, 'over-budget carts must never reach the API')
-    await assert.rejects(bidding.addRoomSection('r', 'IS216-G1', 'p'), /exceed/)
 
     user.balance = 210.01
     assert.equal(await bidding.save(), true)

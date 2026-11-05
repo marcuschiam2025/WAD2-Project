@@ -33,7 +33,6 @@ test('curriculum selection respects intake ranges and never substitutes a suppor
     api.plans = async () => []
     let created
     api.createPlan = async body => { created = body; return { ...body, _id: 'p', name: 'Plan' } }
-    api.checkPlan = async () => ({})
     api.updatePlan = async () => ({})
     api.majorRequirements = async id => ({ majorId: id, requirementsAvailable: true, requirements: [], tracks: [] })
     const planner = usePlannerStore()

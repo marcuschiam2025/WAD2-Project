@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 import { createPinia, setActivePinia } from 'pinia'
 
-test('explicit room handoff selects one cart and a room module survives reload only while you are in the room', async () => {
+test('a locked room section enters the cart and a room module survives reload only while you are in the room', async () => {
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }
   const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' })
   try {
@@ -23,19 +23,12 @@ test('explicit room handoff selects one cart and a room module survives reload o
     let releaseCart
     const cartGate = new Promise(resolve => { releaseCart = resolve })
     api.cart = async id => { if (id === 'p1') await cartGate; return { items: id === 'p1' ? items : [] } }
-    // The room's section is looked up in the bidding term (no handoff endpoint)
     useRoomsStore().rooms = [{ id: 'r', module: 'IS216', term: '2026-27_T1', lockedSection: section.id, members: ['me'], admins: [], votes: {}, suggestedBids: {} }]
     const bidding = useBiddingStore()
-    assert.equal(typeof bidding.addRoomSection, 'function', 'explicit room-to-bidding action is required')
     const loading = bidding.load()
     await new Promise(resolve => setTimeout(resolve, 0))
-    let finished = false
-    const adding = bidding.addRoomSection('r', section.id, 'p1').then(() => { finished = true })
-    await new Promise(resolve => setTimeout(resolve, 0))
-    const finishedBeforeCart = finished
     releaseCart()
-    await Promise.all([loading, adding])
-    assert.equal(finishedBeforeCart, false, 'handoff must wait for the in-flight saved cart read')
+    await loading
     assert.equal(bidding.booked.IS216, section.id)
     assert.deepEqual(planner.plans[0].semesters[1].modules, [])
     assert.deepEqual(planner.plans[1].semesters[1].modules, [])

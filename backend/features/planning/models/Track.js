@@ -1,4 +1,4 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
 // A track within a major's curriculum. Its rules live in the requirements collection (ownerId = this _id).
 const trackSchema = new mongoose.Schema(
@@ -13,6 +13,6 @@ const trackSchema = new mongoose.Schema(
     lastChecked: Date,
   },
   { versionKey: false }, // seeded initially; staff edits are audited
-)
+);
 
-export default mongoose.model('Track', trackSchema, 'tracks')
+export default mongoose.model('Track', trackSchema, 'tracks');

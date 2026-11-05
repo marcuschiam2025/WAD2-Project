@@ -6,4 +6,4 @@ export const WEIGHTAGE = {
     { label: 'Quizzes', pct: 20 },
     { label: 'Final exam', pct: 30 },
   ],
-}
+};

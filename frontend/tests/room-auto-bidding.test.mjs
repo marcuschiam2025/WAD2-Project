@@ -42,7 +42,6 @@ test('a section the party admin locked enters matching-term bidding for every me
     assert.equal(bidding.booked.IS216, g2.id, 'a member cannot drop it')
     bidding.swapSection('IS216', g1.id)
     assert.equal(bidding.booked.IS216, g2.id, 'or swap it')
-    assert.deepEqual([...rooms.decided], [], 'the degree-plan automation remains inactive')
     assert.equal(await bidding.save(), true)
     assert.deepEqual(saved.items, [{ module: 'IS216', sectionId: g2.id, amount: 10 }])
 

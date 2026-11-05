@@ -89,3 +89,38 @@ test('the warning dialog lists every module that satisfies a prerequisite or cor
     assert.match(closed, /no earlier semester is open/)
   } finally { await server.close() }
 })
+
+test('two mutually exclusive modules can each be dropped from the warning', async () => {
+  const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' })
+  globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }
+  try {
+    const { default: Warning } = await server.ssrLoadModule('/src/components/modals/PrereqWarningModal.vue')
+    const render = async (props) => {
+      const context = {}
+      await renderToString(createSSRApp(Warning, { code: 'IS483', semLabel: 'Y3S1', exclusions: ['CS102'], ...props }), context)
+      return context.teleports.body
+    }
+    const both = await render({ droppableExclusions: ['CS102'], canDrop: true })
+    assert.match(both, /Drop CS102/); assert.match(both, /Drop IS483/)
+    const thisOnly = await render({ droppableExclusions: [], canDrop: true })
+    assert.doesNotMatch(thisOnly, /Drop CS102/); assert.match(thisOnly, /Drop IS483/)
+    const neither = await render({ droppableExclusions: [], canDrop: false })
+    assert.doesNotMatch(neither, /Drop /); assert.match(neither, /Neither can be dropped/)
+
+    const { useUserStore } = await server.ssrLoadModule('/src/core/stores/user.js')
+    const { usePlannerStore } = await server.ssrLoadModule('/src/core/stores/planner.js')
+    const { liveModules } = await server.ssrLoadModule('/src/core/data/catalogue.js')
+    setActivePinia(createPinia())
+    const user = useUserStore(); user.uid = 'a'; user.isSignedIn = true
+    const planner = usePlannerStore()
+    liveModules.AAA = { _id: 'AAA', categories: [], mutuallyExclusive: ['BBB'] }
+    liveModules.BBB = { _id: 'BBB', categories: [], mutuallyExclusive: ['AAA'] }
+    const plan = { id: 'p', name: 'Plan 1', tracks: [], currentSem: 'Y1S1', semesters: [{ id: 'Y1S1', modules: [] }, { id: 'Y1S2', modules: ['AAA'] }, { id: 'Y2S1', modules: ['CS412 → BBB'] }] }
+    planner.plans = [plan]; planner.activePlanId = 'p'
+    assert.equal(planner.hasWarning(planner.activePlan, 'AAA', 'Y1S2'), true)
+    planner.returnToBasketFrom('p', 'BBB')
+    assert.equal(planner.hasWarning(planner.activePlan, 'AAA', 'Y1S2'), false, 'dropping the other one clears the warning')
+    assert.deepEqual(planner.activePlan.semesters[2].modules, [], 'an exchange entry mapped to it comes out too')
+    assert.ok(planner.basket.includes('BBB'))
+  } finally { await server.close() }
+})

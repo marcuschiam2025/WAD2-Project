@@ -1,6 +1,6 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
-export const MIN_BID = 10
+export const MIN_BID = 10;
 
 // A student's bid cart for one What-If plan and term: the chosen section and e$ amount per module
 const bidCartSchema = new mongoose.Schema(
@@ -18,8 +18,8 @@ const bidCartSchema = new mongoose.Schema(
     ],
   },
   { timestamps: true },
-)
+);
 
-bidCartSchema.index({ user: 1, plan: 1, term: 1 }, { unique: true })
+bidCartSchema.index({ user: 1, plan: 1, term: 1 }, { unique: true });
 
-export default mongoose.model('BidCart', bidCartSchema)
+export default mongoose.model('BidCart', bidCartSchema);

@@ -25,3 +25,18 @@ test('LOA profile validation rejects current/future terms, extra terms, duplicat
   assert.deepEqual(profileUpdate({ currentSem: 'Y1S2', loaSemesters: [] }, saved).loaSemesters, [])
   assert.deepEqual(profileUpdate({ currentSem: 'Y2S1', takenBySem: {} }).completedModules, [], 'older profiles without LOA fields remain supported')
 })
+
+test('onboarding cannot be marked complete without the details the form requires', () => {
+  const finished = { onboarded: true, major: 'Information Systems', intakeYear: 2025, currentSem: 'Y2S1', takenBySem: { Y1S1: ['IS111'], Y1S2: ['IS112'] } }
+  assert.equal(profileUpdate(finished, {}).onboarded, true)
+  assert.throws(() => profileUpdate({ onboarded: true }, { major: 'Information Systems' }), /degree details/)
+  assert.throws(() => profileUpdate({ ...finished, intakeYear: undefined }, {}), /degree details/)
+  assert.throws(() => profileUpdate({ ...finished, currentSem: undefined }, {}), /degree details/)
+  assert.throws(() => profileUpdate({ ...finished, takenBySem: { Y1S1: ['IS111'] } }, {}), /Y1S2/)
+  // A leave of absence needs no modules, and details already saved count
+  assert.equal(profileUpdate({ ...finished, takenBySem: { Y1S1: ['IS111'] }, loaSemesters: ['Y1S2'] }, {}).onboarded, true)
+  assert.equal(profileUpdate({ onboarded: true }, { major: 'IS', intakeYear: 2025, currentSem: 'Y1S1' }).onboarded, true)
+  // Someone already onboarded is not blocked, and leaving the flag off checks nothing
+  assert.equal(profileUpdate({ onboarded: true }, { onboarded: true }).onboarded, true)
+  assert.equal(profileUpdate({ name: 'A' }, {}).name, 'A')
+})

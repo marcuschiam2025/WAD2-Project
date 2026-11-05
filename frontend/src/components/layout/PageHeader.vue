@@ -4,7 +4,7 @@ defineProps({
   overline: { type: String, default: '' },
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
-})
+});
 </script>
 
 <template>

@@ -1,8 +1,8 @@
-import mongoose from 'mongoose'
-import Module from '../../planning/models/Module.js'
+import mongoose from 'mongoose';
+import Module from '../../planning/models/Module.js';
 
 // 24h time, e.g. 08:15
-const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // One weekly class meeting. day: 0 = Monday … 6 = Sunday; times are 24h "HH:MM".
 const meetingSchema = new mongoose.Schema(
@@ -16,7 +16,7 @@ const meetingSchema = new mongoose.Schema(
       validate: {
         // "HH:MM" strings compare in time order
         validator: function (end) {
-          return end > this.start
+          return end > this.start;
         },
         message: 'end must be after start',
       },
@@ -24,7 +24,7 @@ const meetingSchema = new mongoose.Schema(
     venue: String,
   },
   { _id: false },
-)
+);
 
 // One BOSS class section in a term, built by scripts/build-sections.js from the BOSS timetable export.
 const sectionSchema = new mongoose.Schema({
@@ -48,20 +48,20 @@ const sectionSchema = new mongoose.Schema({
   capacity: Number,
   archived: { type: Boolean, default: false }, // staff archive: hidden from new choices, kept for saved carts
   revision: { type: Number, default: 0 }, // bumped on every admin edit, so two admins can't overwrite each other
-})
+});
 
 // MongoDB has no foreign keys, so check the module exists before a section is saved.
 // (Runs on create() and save(); the seed script checks its data itself.)
 sectionSchema.pre('validate', async function () {
-  if (!this.isModified('module')) return
-  const exists = await Module.exists({ _id: this.module })
+  if (!this.isModified('module')) return;
+  const exists = await Module.exists({ _id: this.module });
   if (!exists) {
-    this.invalidate('module', `Module ${this.module} does not exist`)
+    this.invalidate('module', `Module ${this.module} does not exist`);
   }
-})
+});
 
 // A section id repeats every term, so it is unique per term
-sectionSchema.index({ term: 1, sectionId: 1 }, { unique: true })
+sectionSchema.index({ term: 1, sectionId: 1 }, { unique: true });
 
 // SMU's standard 3h15 class blocks, used by the timetable grid
 export const SLOTS = [
@@ -69,6 +69,6 @@ export const SLOTS = [
   { start: '12:00', end: '15:15' },
   { start: '15:30', end: '18:45' },
   { start: '19:00', end: '22:15' },
-]
+];
 
-export default mongoose.model('Section', sectionSchema)
+export default mongoose.model('Section', sectionSchema);

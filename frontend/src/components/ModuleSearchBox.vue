@@ -2,33 +2,38 @@
 // Search box for modules: results float under it while you type, nothing is listed until then.
 // Emits `pick` with the chosen catalogue module. Modules in `exclude` (codes) are left out of the results.
 // Searches the backend's full module catalogue once it has loaded.
-import { computed, onMounted, ref } from 'vue'
-import { liveModules } from '@core/data/catalogue'
-import { useCatalogueStore } from '@core/stores/catalogue'
-import iconSearch from '@/assets/figma/icon-search.svg'
+import { computed, onMounted, ref } from 'vue';
+import { liveModules } from '@core/data/catalogue';
+import { useCatalogueStore } from '@core/stores/catalogue';
+import iconSearch from '@/assets/figma/icon-search.svg';
 
 const props = defineProps({
   exclude: { type: Array, default: () => [] },
   disabled: Boolean,
   placeholder: { type: String, default: 'Search by module code or name' },
-})
-const emit = defineEmits(['pick'])
+});
+const emit = defineEmits(['pick']);
 
-const catalogue = useCatalogueStore()
-onMounted(() => catalogue.load())
+const catalogue = useCatalogueStore();
+onMounted(() => catalogue.load());
 const all = computed(() =>
-  Object.values(liveModules).filter(m => !m.archived).map((m) => ({ code: m._id, name: m.title })).sort((a, b) => a.code.localeCompare(b.code)),
-)
-const query = ref('')
+  Object.values(liveModules)
+    .filter((m) => !m.archived)
+    .map((m) => ({ code: m._id, name: m.title }))
+    .sort((a, b) => a.code.localeCompare(b.code)),
+);
+const query = ref('');
 const matches = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return []
-  return all.value.filter((m) => !props.exclude.includes(m.code) && `${m.code} ${m.name}`.toLowerCase().includes(q)).slice(0, 8)
-})
+  const q = query.value.trim().toLowerCase();
+  if (!q) return [];
+  return all.value
+    .filter((m) => !props.exclude.includes(m.code) && `${m.code} ${m.name}`.toLowerCase().includes(q))
+    .slice(0, 8);
+});
 
 function pick(m) {
-  emit('pick', m)
-  query.value = ''
+  emit('pick', m);
+  query.value = '';
 }
 </script>
 

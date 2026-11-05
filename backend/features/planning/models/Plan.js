@@ -1,12 +1,12 @@
-import mongoose from 'mongoose'
+import mongoose from 'mongoose';
 
-export const MAX_PLANS = 3
+export const MAX_PLANS = 3;
 
 // A plan may have up to 2 leave-of-absence terms, used only for an internship
-export const MAX_LOA_TERMS = 2
+export const MAX_LOA_TERMS = 2;
 
 // SMU's internship course, added to the catalogue by scripts/build-catalogue.js
-export const INTERNSHIP_CODE = 'COR1001'
+export const INTERNSHIP_CODE = 'COR1001';
 
 const semesterSchema = new mongoose.Schema(
   {
@@ -17,7 +17,7 @@ const semesterSchema = new mongoose.Schema(
     modules: [String], // module codes; exchange mappings stored as "CS412 → IS460"
   },
   { _id: false },
-)
+);
 
 // A What-If plan: up to MAX_PLANS per student.
 const planSchema = new mongoose.Schema(
@@ -30,6 +30,6 @@ const planSchema = new mongoose.Schema(
     semesters: [semesterSchema],
   },
   { timestamps: true },
-)
+);
 
-export default mongoose.model('Plan', planSchema, 'degreePlans')
+export default mongoose.model('Plan', planSchema, 'degreePlans');

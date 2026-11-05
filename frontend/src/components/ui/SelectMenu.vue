@@ -2,60 +2,60 @@
 // Select field with an attached listbox (Onboarding Major / Track / Year).
 // `multiple` renders checkboxes and binds an array; otherwise binds a single value and shows a check on the active row.
 // `searchable` turns the field into a type-to-filter input with a leading search icon.
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { popEnter, popLeave } from '@/motion'
-import iconSearch from '@/assets/v2/search.svg'
-import chevronDown from '@/assets/v2/chevron-down.svg'
-import chevronUp from '@/assets/v2/chevron-up.svg'
-import checkWhite from '@/assets/v2/check-white-12.svg'
-import checkPrimary from '@/assets/v2/check-primary-16.svg'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { popEnter, popLeave } from '@/motion';
+import iconSearch from '@/assets/v2/search.svg';
+import chevronDown from '@/assets/v2/chevron-down.svg';
+import chevronUp from '@/assets/v2/chevron-up.svg';
+import checkWhite from '@/assets/v2/check-white-12.svg';
+import checkPrimary from '@/assets/v2/check-primary-16.svg';
 
-const model = defineModel({ type: [String, Number, Array], default: '' })
+const model = defineModel({ type: [String, Number, Array], default: '' });
 const props = defineProps({
   options: { type: Array, required: true }, // [{ value, label }]
   multiple: Boolean,
   searchable: Boolean,
   placeholder: { type: String, default: 'Select…' },
-})
+});
 
-const open = ref(false)
-const query = ref('')
-const root = ref(null)
+const open = ref(false);
+const query = ref('');
+const root = ref(null);
 
-const isSelected = (v) => (props.multiple ? model.value.includes(v) : model.value === v)
+const isSelected = (v) => (props.multiple ? model.value.includes(v) : model.value === v);
 
 const summary = computed(() => {
-  const picked = props.options.filter((o) => isSelected(o.value))
-  return picked.length ? picked.map((o) => o.label).join(', ') : ''
-})
+  const picked = props.options.filter((o) => isSelected(o.value));
+  return picked.length ? picked.map((o) => o.label).join(', ') : '';
+});
 
 const visible = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  return q ? props.options.filter((o) => o.label.toLowerCase().includes(q)) : props.options
-})
+  const q = query.value.trim().toLowerCase();
+  return q ? props.options.filter((o) => o.label.toLowerCase().includes(q)) : props.options;
+});
 
 function pick(o) {
   if (!props.multiple) {
-    model.value = o.value
-    open.value = false
-    query.value = ''
-    return
+    model.value = o.value;
+    open.value = false;
+    query.value = '';
+    return;
   }
   // An option flagged `exclusive` (e.g. Undecided) can't be combined with others
   if (o.exclusive) {
-    model.value = isSelected(o.value) ? [] : [o.value]
-    return
+    model.value = isSelected(o.value) ? [] : [o.value];
+    return;
   }
-  const exclusive = props.options.filter((x) => x.exclusive).map((x) => x.value)
-  const rest = model.value.filter((v) => !exclusive.includes(v))
-  model.value = rest.includes(o.value) ? rest.filter((v) => v !== o.value) : [...rest, o.value]
+  const exclusive = props.options.filter((x) => x.exclusive).map((x) => x.value);
+  const rest = model.value.filter((v) => !exclusive.includes(v));
+  model.value = rest.includes(o.value) ? rest.filter((v) => v !== o.value) : [...rest, o.value];
 }
 
 function onDocClick(e) {
-  if (root.value && !root.value.contains(e.target)) open.value = false
+  if (root.value && !root.value.contains(e.target)) open.value = false;
 }
-onMounted(() => document.addEventListener('click', onDocClick))
-onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
+onMounted(() => document.addEventListener('click', onDocClick));
+onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 </script>
 
 <template>
@@ -75,7 +75,11 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
         @focus="open = true"
         @keydown.esc="open = false"
       />
-      <span v-else class="min-w-0 flex-1 truncate text-[14px] leading-normal" :class="!summary && 'text-muted-foreground'">
+      <span
+        v-else
+        class="min-w-0 flex-1 truncate text-[14px] leading-normal"
+        :class="!summary && 'text-muted-foreground'"
+      >
         {{ summary || placeholder }}
       </span>
       <button type="button" :aria-expanded="open" aria-label="Toggle options" @click.stop="open = !open">
@@ -107,7 +111,12 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
               <img v-if="isSelected(o.value)" :src="checkWhite" alt="" class="size-3" />
             </span>
             <span class="flex-1">{{ o.label }}</span>
-            <img v-if="!multiple && isSelected(o.value)" :src="checkPrimary" alt="" class="icon-accent size-4" />
+            <img
+              v-if="!multiple && isSelected(o.value)"
+              :src="checkPrimary"
+              alt=""
+              class="icon-accent size-4"
+            />
           </button>
         </li>
         <li v-if="!visible.length" class="px-2.5 py-2 text-[13px] text-muted-foreground">No matches</li>

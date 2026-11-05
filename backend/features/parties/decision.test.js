@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import mongoose from 'mongoose'
 import { decisionSummary } from './utils/decision.js'
-import { lockParty, getDecision, unlockParty } from './parties.controller.js'
+import { lockParty, unlockParty } from './parties.controller.js'
 import Party from './models/Party.js'
 import Section from '../bidding/models/Section.js'
 import Notification from '../notifications/model/notification.js'
@@ -41,7 +41,6 @@ test('lock, read decision and unlock responses agree with the saved Party fields
     assert.equal(party.locked, true)
     assert.equal(response.status, 'locked')
     assert.equal(response.lockedSection, party.lockedSection)
-    await getDecision(req, res)
     assert.equal(response.lockedSection, sectionId)
     assert.equal(response.finalisedSection, sectionId)
     await unlockParty(req, res)

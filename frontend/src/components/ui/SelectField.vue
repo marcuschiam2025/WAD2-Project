@@ -1,13 +1,13 @@
 <script setup>
 // Native select styled like the V2 Select field. Use SelectMenu for the searchable / multi-select listbox.
-import chevronDown from '@/assets/v2/chevron-down.svg'
+import chevronDown from '@/assets/v2/chevron-down.svg';
 
-const model = defineModel({ type: [String, Number], default: '' })
+const model = defineModel({ type: [String, Number], default: '' });
 defineProps({
   label: { type: String, default: '' },
   options: { type: Array, required: true }, // [{ value, label }]
   width: { type: String, default: 'w-full' },
-})
+});
 </script>
 
 <template>
@@ -20,7 +20,11 @@ defineProps({
       >
         <option v-for="o in options" :key="o.value" :value="o.value">{{ o.label }}</option>
       </select>
-      <img :src="chevronDown" alt="" class="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2" />
+      <img
+        :src="chevronDown"
+        alt=""
+        class="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2"
+      />
     </span>
   </label>
 </template>

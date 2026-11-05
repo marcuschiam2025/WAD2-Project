@@ -1,13 +1,13 @@
 <script setup>
 // Overlay / Semester Full: shown when a module is dropped into a semester that already has the maximum.
-import AlertModal from './AlertModal.vue'
-import BaseButton from '@/components/ui/BaseButton.vue'
+import AlertModal from './AlertModal.vue';
+import BaseButton from '@/components/ui/BaseButton.vue';
 
 defineProps({
   semLabel: { type: String, required: true },
   max: { type: Number, required: true },
-})
-const emit = defineEmits(['close'])
+});
+const emit = defineEmits(['close']);
 </script>
 
 <template>

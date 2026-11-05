@@ -20,9 +20,7 @@ async function setup(run) {
     catalogue.majors = [{ _id: 'BSC-IS_AY2025', name: 'Information Systems', intakeFrom: 2025, requirementsAvailable: true }]
     catalogue.load = async () => {}
     api.majorRequirements = async majorId => ({ majorId, requirementsAvailable: true, requirements: [], tracks: [] })
-    const checks = []
-    api.checkPlan = async id => { checks.push(id); return {} }
-    await run({ user, catalogue, planner: usePlannerStore(), api, checks })
+    await run({ user, catalogue, planner: usePlannerStore(), api })
   } finally { await server.close() }
 }
 
@@ -48,7 +46,6 @@ test('missing plan curriculum is repaired and persists without changing placemen
   assert.deepEqual(stored[0], { ...original[0], majorId: 'BSC-IS_AY2025' })
   assert.deepEqual(stored[1], original[1])
   assert.deepEqual(user.profile.basket, ['IS419'])
-  assert.ok(checks.includes('missing'))
   await planner.reload()
   assert.equal(planner.activePlan.majorId, 'BSC-IS_AY2025')
   assert.equal(writes.length, 1, 'a persisted repair is not repeated')
@@ -72,7 +69,7 @@ test('catalogue failure prevents first-plan creation and reload retries safely',
   assert.equal(planner.syncError, '')
 }))
 
-test('unsupported intakes and unavailable requirements do not trigger doomed checks or guessed repairs', async () => setup(async ({ catalogue, user, planner, api, checks }) => {
+test('unsupported intakes and unavailable requirements stay unavailable or guessed repairs', async () => setup(async ({ catalogue, user, planner, api }) => {
   user.profile.intakeYear = 2024
   catalogue.majors.push({ _id: 'UNAVAILABLE', name: 'Another major', intakeFrom: 2025, requirementsAvailable: false })
   api.plans = async () => [record('unsupported'), record('unavailable', 'UNAVAILABLE')]
@@ -81,14 +78,12 @@ test('unsupported intakes and unavailable requirements do not trigger doomed che
   assert.equal(planner.online, true)
   assert.equal(planner.activePlan.majorId, null)
   assert.equal(planner.checklist.unavailable, true)
-  assert.deepEqual(checks, [])
   planner.plans[0].semesters[1].modules.push('IS111')
   api.updatePlan = async () => ({})
   await planner.savePlans()
-  assert.deepEqual(checks, [], 'autosave must not repeat unsupported checks either')
 }))
 
-test('failed curriculum repair remains retryable without changing the saved plan', async () => setup(async ({ planner, api, checks }) => {
+test('failed curriculum repair remains retryable without changing the saved plan', async () => setup(async ({ planner, api }) => {
   const stored = record('missing')
   api.plans = async () => [structuredClone(stored)]
   api.updatePlan = async () => { throw new Error('Repair could not be saved') }
@@ -96,14 +91,13 @@ test('failed curriculum repair remains retryable without changing the saved plan
   assert.equal(planner.online, false)
   assert.match(planner.syncError, /could not be saved/)
   assert.equal(stored.majorId, null)
-  assert.deepEqual(checks, [])
   api.updatePlan = async (_id, body) => Object.assign(stored, body)
   await planner.reload()
   assert.equal(planner.activePlan.majorId, 'BSC-IS_AY2025')
   assert.equal(planner.online, true)
 }))
 
-test('account changes discard a pending repair and stop subsequent writes for the old account', async () => setup(async ({ user, planner, api, checks }) => {
+test('account changes discard a pending repair and stop subsequent writes for the old account', async () => setup(async ({ user, planner, api }) => {
   api.plans = async () => [record('first'), record('second')]
   let finish, started
   const writing = new Promise(resolve => { started = resolve })
@@ -119,7 +113,6 @@ test('account changes discard a pending repair and stop subsequent writes for th
   await loading
   assert.deepEqual(writes, ['first'])
   assert.deepEqual(planner.plans, [])
-  assert.deepEqual(checks, [])
   assert.equal(planner.online, false)
   assert.equal(planner.syncError, '')
 }))

@@ -2,49 +2,54 @@
 // The AI assistant's mascot: a warm, glossy smiley whose eyes follow the cursor. The face, eyes and cheeks shift by
 // different amounts, so it turns slightly towards whatever you point at. It keeps its own colours (a mascot, not UI
 // chrome), which read well on both the light and the dark theme.
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
-defineProps({ size: { type: Number, default: 44 } })
+defineProps({ size: { type: Number, default: 44 } });
 
-let counter = 0
-const uid = `face${++counter}-${Math.random().toString(36).slice(2, 7)}` // gradient ids must be unique per instance
+let counter = 0;
+const uid = `face${++counter}-${Math.random().toString(36).slice(2, 7)}`; // gradient ids must be unique per instance
 
-const root = ref(null)
-const look = ref({ x: 0, y: 0 }) // -1..1 towards the cursor
-let frame = 0
-let last = null
+const root = ref(null);
+const look = ref({ x: 0, y: 0 }); // -1..1 towards the cursor
+let frame = 0;
+let last = null;
 
 function aim() {
-  frame = 0
-  if (!root.value || !last) return
-  const box = root.value.getBoundingClientRect()
-  const dx = last.x - (box.left + box.width / 2)
-  const dy = last.y - (box.top + box.height / 2)
-  const distance = Math.hypot(dx, dy)
+  frame = 0;
+  if (!root.value || !last) return;
+  const box = root.value.getBoundingClientRect();
+  const dx = last.x - (box.left + box.width / 2);
+  const dy = last.y - (box.top + box.height / 2);
+  const distance = Math.hypot(dx, dy);
   // Full stretch from about 180px away, easing in as the cursor gets closer
-  const reach = Math.min(1, distance / 180)
-  look.value = distance ? { x: (dx / distance) * reach, y: (dy / distance) * reach } : { x: 0, y: 0 }
+  const reach = Math.min(1, distance / 180);
+  look.value = distance ? { x: (dx / distance) * reach, y: (dy / distance) * reach } : { x: 0, y: 0 };
 }
 function onMove(event) {
-  last = { x: event.clientX, y: event.clientY }
-  if (!frame) frame = requestAnimationFrame(aim) // at most one update per frame
+  last = { x: event.clientX, y: event.clientY };
+  if (!frame) frame = requestAnimationFrame(aim); // at most one update per frame
 }
 
 onMounted(() => {
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return // a still face for people who ask for less motion
-  window.addEventListener('pointermove', onMove, { passive: true })
-})
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return; // a still face for people who ask for less motion
+  window.addEventListener('pointermove', onMove, { passive: true });
+});
 onBeforeUnmount(() => {
-  window.removeEventListener('pointermove', onMove)
-  cancelAnimationFrame(frame)
-})
+  window.removeEventListener('pointermove', onMove);
+  cancelAnimationFrame(frame);
+});
 
 // How far each part travels, in SVG units: the eyes the most, the cheeks and smile a little, the shine the least
-const shift = (k) => `translate(${(look.value.x * k).toFixed(2)} ${(look.value.y * k).toFixed(2)})`
+const shift = (k) => `translate(${(look.value.x * k).toFixed(2)} ${(look.value.y * k).toFixed(2)})`;
 </script>
 
 <template>
-  <span ref="root" class="inline-flex shrink-0" :style="{ width: `${size}px`, height: `${size}px` }" aria-hidden="true">
+  <span
+    ref="root"
+    class="inline-flex shrink-0"
+    :style="{ width: `${size}px`, height: `${size}px` }"
+    aria-hidden="true"
+  >
     <svg viewBox="0 0 64 64" class="size-full overflow-visible">
       <defs>
         <radialGradient :id="`${uid}-skin`" cx="36%" cy="30%" r="78%">
@@ -57,7 +62,15 @@ const shift = (k) => `translate(${(look.value.x * k).toFixed(2)} ${(look.value.y
       <circle cx="32" cy="32" r="30" :fill="`url(#${uid}-skin)`" />
       <circle cx="32" cy="32" r="29.5" fill="none" stroke="#c97c00" stroke-opacity="0.35" />
       <!-- soft shine on the top left -->
-      <ellipse cx="21" cy="13.5" rx="9" ry="4.5" fill="#fff" fill-opacity="0.38" :style="{ transform: `${shift(0.6)} rotate(-28deg)`, transformOrigin: '21px 13.5px' }" />
+      <ellipse
+        cx="21"
+        cy="13.5"
+        rx="9"
+        ry="4.5"
+        fill="#fff"
+        fill-opacity="0.38"
+        :style="{ transform: `${shift(0.6)} rotate(-28deg)`, transformOrigin: '21px 13.5px' }"
+      />
 
       <!-- cheeks -->
       <g :transform="shift(1)">
@@ -76,7 +89,13 @@ const shift = (k) => `translate(${(look.value.x * k).toFixed(2)} ${(look.value.y
 
       <!-- smile -->
       <g :transform="shift(1.4)">
-        <path d="M22.5 40.5 Q32 51 41.5 40.5" fill="none" stroke="#7a3e00" stroke-width="3.2" stroke-linecap="round" />
+        <path
+          d="M22.5 40.5 Q32 51 41.5 40.5"
+          fill="none"
+          stroke="#7a3e00"
+          stroke-width="3.2"
+          stroke-linecap="round"
+        />
       </g>
     </svg>
   </span>
@@ -89,10 +108,18 @@ const shift = (k) => `translate(${(look.value.x * k).toFixed(2)} ${(look.value.y
   animation: face-blink 5.5s infinite;
 }
 @keyframes face-blink {
-  0%, 93%, 100% { transform: scaleY(1); }
-  96% { transform: scaleY(0.1); }
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .face-eye { animation: none; }
+  .face-eye {
+    animation: none;
+  }
 }
 </style>

@@ -1,84 +1,90 @@
-import { acceptHMRUpdate, defineStore } from 'pinia'
-import { reactive, ref } from 'vue'
-import { api } from '../services/api'
-import { liveModules, tracks as sampleTracks } from '../data/catalogue'
-import { degreeGroups } from '../data/degree'
+import { acceptHMRUpdate, defineStore } from 'pinia';
+import { reactive, ref } from 'vue';
+import { api } from '../services/api';
+import { liveModules, tracks as sampleTracks } from '../data/catalogue';
+import { degreeGroups } from '../data/degree';
 
 // Catalogue tags -> the basket and graduation keys the degree checklist uses
-const BASKET_OF = { 'CORE:MANAGING': 'managing', 'CORE:TECH_SCIENCE_SOCIETY': 'tss', 'CORE:CULTURES_MODERN_WORLD': 'cmw' }
-const GRAD_OF = { 'GRAD:SUSTAINABILITY': 'sustainability', 'GRAD:SG_ASIA_STUDIES': 'sg-asia' }
-const IS_CATEGORIES = ['IS', 'IS_TRACK', 'IS_RELATED']
+const BASKET_OF = {
+  'CORE:MANAGING': 'managing',
+  'CORE:TECH_SCIENCE_SOCIETY': 'tss',
+  'CORE:CULTURES_MODERN_WORLD': 'cmw',
+};
+const GRAD_OF = { 'GRAD:SUSTAINABILITY': 'sustainability', 'GRAD:SG_ASIA_STUDIES': 'sg-asia' };
+const IS_CATEGORIES = ['IS', 'IS_TRACK', 'IS_RELATED'];
 // Courses the checklist names one by one (IS114, IS212, ...): they are major core, not IS electives
-const FIXED_CODES = new Set(degreeGroups.flatMap((g) => g.slots).flatMap((s) => s.codes ?? []))
+const FIXED_CODES = new Set(degreeGroups.flatMap((g) => g.slots).flatMap((s) => s.codes ?? []));
 
 // The backend's module and major catalogue. Loaded once; while the backend is unreachable,
 // liveModules stays empty, so module lists and searches come up empty.
 export const useCatalogueStore = defineStore('catalogue', () => {
-  const online = ref(false)
-  const majors = ref([])
-  const details = reactive({}) // code -> GET /api/modules/:code (the list leaves descriptions out)
-  const curricula = reactive({}) // curriculum id -> complete backend requirement bundle
-  const loadedMajors = new Set()
-  const catalogueLoading = ref(false)
-  const loadingMajors = reactive(new Set())
-  let loading = null
+  const online = ref(false);
+  const majors = ref([]);
+  const details = reactive({}); // code -> GET /api/modules/:code (the list leaves descriptions out)
+  const curricula = reactive({}); // curriculum id -> complete backend requirement bundle
+  const loadedMajors = new Set();
+  const catalogueLoading = ref(false);
+  const loadingMajors = reactive(new Set());
+  let loading = null;
 
   function load() {
     // The whole catalogue, including courses not offered in about 2 years (all: true): modules a student took
     // years ago must still be found. The planner's search leaves those out (see search below).
-    if (!loading) catalogueLoading.value = true
+    if (!loading) catalogueLoading.value = true;
     loading ??= Promise.all([api.modules({ includeArchived: true, all: true }), api.majors()])
       .then(([mods, majorList]) => {
-        mods.forEach((m) => (liveModules[m._id] = m))
-        majors.value = majorList
-        online.value = true
+        mods.forEach((m) => (liveModules[m._id] = m));
+        majors.value = majorList;
+        online.value = true;
       })
       .catch(() => {
-        loading = null // try again next time
+        loading = null; // try again next time
       })
-      .finally(() => (catalogueLoading.value = false))
-    return loading
+      .finally(() => (catalogueLoading.value = false));
+    return loading;
   }
 
   // The newest curriculum covering this intake, even if its requirements are not available yet.
   function majorIdFor(name, intakeYear) {
-    const year = Number(intakeYear)
-    if (!intakeYear || !Number.isInteger(year) || year < 2000 || year > 2100) return null
-    return majors.value
-      .filter((m) => m.name === name && m.intakeFrom <= year && (m.intakeTo == null || year <= m.intakeTo))
-      .sort((a, b) => b.intakeFrom - a.intakeFrom)[0]?._id ?? null
+    const year = Number(intakeYear);
+    if (!intakeYear || !Number.isInteger(year) || year < 2000 || year > 2100) return null;
+    return (
+      majors.value
+        .filter((m) => m.name === name && m.intakeFrom <= year && (m.intakeTo == null || year <= m.intakeTo))
+        .sort((a, b) => b.intakeFrom - a.intakeFrom)[0]?._id ?? null
+    );
   }
 
   // The track course lists of a major, from GET /api/majors/:id/requirements
   async function loadMajor(majorId) {
-    if (!majorId || loadedMajors.has(majorId)) return
-    loadedMajors.add(majorId)
-    loadingMajors.add(majorId)
+    if (!majorId || loadedMajors.has(majorId)) return;
+    loadedMajors.add(majorId);
+    loadingMajors.add(majorId);
     try {
-      const bundle = await api.majorRequirements(majorId)
-      const { tracks } = bundle
-      const lists = {}
+      const bundle = await api.majorRequirements(majorId);
+      const { tracks } = bundle;
+      const lists = {};
       tracks.forEach((t) => {
-        lists[t.trackCode] = [...new Set(t.requirements.flatMap((r) => r.modules ?? []))]
-      })
-      curricula[majorId] = { ...bundle, trackModules: lists }
+        lists[t.trackCode] = [...new Set(t.requirements.flatMap((r) => r.modules ?? []))];
+      });
+      curricula[majorId] = { ...bundle, trackModules: lists };
     } catch {
-      loadedMajors.delete(majorId)
+      loadedMajors.delete(majorId);
     } finally {
-      loadingMajors.delete(majorId)
+      loadingMajors.delete(majorId);
     }
   }
 
   // The tracks a student on this curriculum can choose. The sample list stands in until it has loaded.
   // Tracks the sample list doesn't describe (DCS, only on the 2023 curriculum) use the backend's name and description.
   function tracksFor(majorId) {
-    const loaded = curricula[majorId]?.tracks
-    if (!loaded) return sampleTracks
-    const described = sampleTracks.filter((t) => loaded.some((l) => l.trackCode === t.code))
+    const loaded = curricula[majorId]?.tracks;
+    if (!loaded) return sampleTracks;
+    const described = sampleTracks.filter((t) => loaded.some((l) => l.trackCode === t.code));
     const others = loaded
       .filter((l) => !sampleTracks.some((t) => t.code === l.trackCode))
-      .map((l) => ({ code: l.trackCode, name: l.name, short: l.name, blurb: l.description ?? '' }))
-    return [...described, ...others]
+      .map((l) => ({ code: l.trackCode, name: l.name, short: l.name, blurb: l.description ?? '' }));
+    return [...described, ...others];
   }
 
   // The backend catalogue in the shape the degree checklist matches against (see utils/degreeChecklist.js):
@@ -86,16 +92,18 @@ export const useCatalogueStore = defineStore('catalogue', () => {
   //   basket    managing | tss | cmw (university core baskets)      grad  sustainability | sg-asia
   // The catalogue fields (fulfils, categories, prerequisites, ...) come along for the module details.
   function checklistModulesFor(majorId) {
-    const tracksOf = {}
-    Object.entries(curricula[majorId]?.trackModules ?? {}).forEach(([track, codes]) => codes.forEach((c) => (tracksOf[c] ??= []).push(track)))
-    const out = {}
+    const tracksOf = {};
+    Object.entries(curricula[majorId]?.trackModules ?? {}).forEach(([track, codes]) =>
+      codes.forEach((c) => (tracksOf[c] ??= []).push(track)),
+    );
+    const out = {};
     Object.values(liveModules).forEach((m) => {
-      const tracks = tracksOf[m._id] ?? []
-      const fulfils = m.fulfils ?? []
-      let category = 'free'
-      if (FIXED_CODES.has(m._id)) category = 'major-core'
-      else if (tracks.length) category = 'track'
-      else if (m.categories?.some((c) => IS_CATEGORIES.includes(c))) category = 'depth'
+      const tracks = tracksOf[m._id] ?? [];
+      const fulfils = m.fulfils ?? [];
+      let category = 'free';
+      if (FIXED_CODES.has(m._id)) category = 'major-core';
+      else if (tracks.length) category = 'track';
+      else if (m.categories?.some((c) => IS_CATEGORIES.includes(c))) category = 'depth';
       out[m._id] = {
         code: m._id,
         name: m.title,
@@ -110,15 +118,15 @@ export const useCatalogueStore = defineStore('catalogue', () => {
         prerequisites: m.prerequisites ?? [],
         corequisites: m.corequisites ?? [],
         termsOffered: m.termsOffered ?? [],
-      }
-    })
-    return out
+      };
+    });
+    return out;
   }
 
   async function loadDetail(code) {
-    if (details[code] || !online.value) return
+    if (details[code] || !online.value) return;
     try {
-      details[code] = await api.module(code)
+      details[code] = await api.module(code);
     } catch {
       // not in the catalogue: the screens show what they have
     }
@@ -126,13 +134,27 @@ export const useCatalogueStore = defineStore('catalogue', () => {
 
   // Module search for the What-If Planner: code or title, like GET /api/modules?q=
   async function search(q, limit = 8) {
-    const mods = await api.modules({ q, limit })
-    mods.forEach((m) => (liveModules[m._id] ??= m))
-    return mods.map((m) => ({ code: m._id, name: m.title }))
+    const mods = await api.modules({ q, limit });
+    mods.forEach((m) => (liveModules[m._id] ??= m));
+    return mods.map((m) => ({ code: m._id, name: m.title }));
   }
 
-  return { online, catalogueLoading, loadingMajors, majors, details, curricula, tracksFor, checklistModulesFor, load, loadMajor, loadDetail, majorIdFor, search }
-})
+  return {
+    online,
+    catalogueLoading,
+    loadingMajors,
+    majors,
+    details,
+    curricula,
+    tracksFor,
+    checklistModulesFor,
+    load,
+    loadMajor,
+    loadDetail,
+    majorIdFor,
+    search,
+  };
+});
 
 // Dev only: lets Vite swap this store's code in when the file is edited, instead of keeping the old store
-if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useCatalogueStore, import.meta.hot))
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useCatalogueStore, import.meta.hot));

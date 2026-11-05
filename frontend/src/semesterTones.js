@@ -12,7 +12,7 @@ export const semesterTone = {
   inProgress: 'border-warning bg-warning-tint text-warning',
   planned: 'border-primary bg-primary-tint text-primary',
   exempted: 'border-exempt bg-exempt-tint text-exempt',
-}
+};
 
 export const semesterToneLabel = {
   now: 'Recommended this semester',
@@ -21,4 +21,4 @@ export const semesterToneLabel = {
   inProgress: 'In progress this semester',
   planned: 'Already in your plan',
   exempted: 'Exempted (from your profile)',
-}
+};

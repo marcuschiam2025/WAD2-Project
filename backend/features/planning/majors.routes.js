@@ -1,10 +1,10 @@
-import { Router } from 'express'
-import * as majors from './majors.controller.js'
+import { Router } from 'express';
+import * as majors from './majors.controller.js';
 
-const router = Router()
+const router = Router();
 
-router.get('/', majors.listMajors)
-router.get('/:id', majors.getMajor)
-router.get('/:id/requirements', majors.getRequirements)
+router.get('/', majors.listMajors);
+router.get('/:id', majors.getMajor);
+router.get('/:id/requirements', majors.getRequirements);
 
-export default router
+export default router;

@@ -1,7 +1,7 @@
-# WAD2-Project — BidMaxxer
+# WAD2-Project: BidMaxxer
 
 Collaborative track explorer, What-If degree planner and BOSS bidding simulator for SMU students.
-Developed for **SMU IS216 — Web Application Development II (AY2026/2027 T1, Section G2, Team bidmaxxer)**.
+Developed for **SMU IS216: Web Application Development II (AY2026/2027 T1, Section G2, Team bidmaxxer)**.
 
 BidMaxxer is a web application designed to assist SMU students with academic planning and course bidding.
 It provides tools for exploring potential specializations, planning degree pathways, and coordinating course selections with peers, particularly during the BOSS bidding periods.
@@ -75,10 +75,7 @@ The application serves as a unified platform where students can:
    ```
 
 2. **Configure backend environment variables**:
-   ```bash
-   cp .env.example .env
-   ```
-   Open `backend/.env` and configure the following:
+   Create `backend/.env` with the following:
    ```env
    PORT=4000
    MONGODB_URI=mongodb://127.0.0.1:27017/bidmaxxer
@@ -88,10 +85,6 @@ The application serves as a unified platform where students can:
    FIREBASE_PROJECT_ID=your-project-id
    FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project-id.iam.gserviceaccount.com
    FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-
-   # Firebase Web API Key, used only by the dev login test page at /test
-   # (Firebase Console → Project settings → General → Web API Key)
-   FIREBASE_WEB_API_KEY=AIzaSy...
 
    # Optional official bidding schedule. Leave blank to preview the latest catalogue term.
    # Term format: 2026-27_T1. The closing time must include a timezone.
@@ -135,10 +128,7 @@ The application serves as a unified platform where students can:
    ```
 
 2. **Configure frontend environment variables**:
-   ```bash
-   cp .env.example .env.local
-   ```
-   Open `frontend/.env.local` and configure your public Firebase Web settings:
+   Create `frontend/.env.local` with your public Firebase Web settings:
    ```env
    # From Firebase Console → Project settings → General → Your apps (Web app)
    VITE_FIREBASE_API_KEY=AIzaSy...
@@ -184,7 +174,7 @@ pnpm exec playwright test
 Click each section below to toggle and inspect the detailed file tree:
 
 <details open>
-<summary><b>📁 Project Root & Monorepo Configuration</b></summary>
+<summary><b>Project Root & Monorepo Configuration</b></summary>
 
 ```
 WAD2-Project/
@@ -199,42 +189,25 @@ WAD2-Project/
 </details>
 
 <details>
-<summary><b>📁 docs/ — Architecture, Status & Specifications</b></summary>
+<summary><b>docs/: Architecture, Status & Specifications</b></summary>
 
 ```
 docs/
-├── assets/                       # Visual architecture & workflow SVG diagram assets
-│   ├── service-interactions.svg  # Rendered service architecture & data interactions diagram
-│   └── happy-path-flow.svg       # Rendered business happy path flow diagram
-├── admin-panel.md                # Staff admin panel contract, audit trail & permissions
-├── bidding-integration-status.md # BOSS bidding backend & timetable integration specs
-├── rooms-integration-status.md   # Collaborative plan rooms protocol & ballot syncing
-├── vercel-deployment.md          # Production deployment guidelines for Vercel + MongoDB Atlas
-├── quiz/                         # Track Finder scoring design, API contracts & rubrics
-│   ├── api-contract.md
-│   ├── auth-integration.md
-│   ├── browser-preview.md
-│   ├── database-verification.md
-│   ├── module-sources.md
-│   ├── question-review.md
-│   ├── scoring-review.md
-│   └── scoring-revision.md
-└── superpowers/plans/            # Historical feature implementation design plans
-    ├── 2026-10-24-auth-integration.md
-    ├── 2026-10-24-planner-bidding-handoff.md
-    └── 2026-10-24-quiz-planner-basket.md
+└── assets/                       # Visual architecture & workflow SVG diagram assets
+    ├── service-interactions.svg  # Rendered service architecture & data interactions diagram
+    └── happy-path-flow.svg       # Rendered business happy path flow diagram
 ```
 </details>
 
 <details open>
-<summary><b>📁 backend/ — Node.js + Express 5 REST API</b></summary>
+<summary><b>backend/: Node.js + Express 5 REST API</b></summary>
 
 ```
 backend/
 ├── server.js                     # Server entry point: connects to MongoDB Atlas and starts HTTP server
 ├── app.js                        # Express app: CORS, JSON parsing, logging, router mounting & error handling
 ├── vercel.js                     # Serverless adapter for Vercel production hosting
-├── package.json                  # Backend dependencies, engine constraints & npm scripts
+├── package.json                  # Backend dependencies, engine constraints & pnpm scripts
 ├── patches/                      # pnpm dependency patch (jwks-rsa@4.1.0)
 │
 ├── config/                       # Infrastructure configuration
@@ -276,10 +249,6 @@ backend/
 │   ├── migrations/               # Schema migration helpers
 │   └── utils/                    # CSV / HTML table parsers & exam import helpers
 │
-├── test-page/                    # Development auth diagnostic interface
-│   ├── index.html                # Static diagnostic client UI
-│   └── testPage.routes.js        # Routes serving /test in non-production environments
-│
 └── features/                     # Modular, domain-driven feature vertical slices
     ├── auth/                     # User authentication & profile management
     │   ├── users.routes.js       # Routes for /api/users
@@ -292,22 +261,19 @@ backend/
     │   ├── plans.controller.js   # Plan CRUD (limit 3) & requirement validation check
     │   ├── modules.routes.js     # Public /api/modules catalogue endpoints
     │   ├── modules.controller.js
-    │   ├── tracks.routes.js      # Public /api/tracks endpoints
-    │   ├── tracks.controller.js
     │   ├── majors.routes.js      # Public /api/majors endpoints
     │   ├── majors.controller.js
     │   ├── models/               # Mongoose schemas: Plan, Module, Track, Major, Requirement
     │   └── utils/                # Prerequisite/corequisite engine (requirementChecker.js, requisites.js)
     │
     ├── quiz/                     # Track Finder quiz & scoring engine
-    │   ├── quiz.routes.js        # Routes for /api/quiz (v1 and v2)
-    │   ├── quiz.controller.js    # v1 quiz endpoints
+    │   ├── quiz.routes.js        # Routes for /api/quiz/v2
     │   ├── quiz.v2.controller.js # v2 quiz question listing & submission evaluation
     │   ├── quiz.v2.recommendations.js # Generates recommended starter module baskets
     │   ├── quiz.v2.explanation.js # LLM explanation generator powered by Gemini
     │   ├── quiz.v2.storage.js    # Transactional submission persistence & history pruning
     │   ├── content/              # Rubric (rubric.v2.js), 20-question inventory (questions.v2-draft.json) & module list
-    │   ├── models/               # QuizAttempt, QuizSubmission, QuizQuestion, QuizHistoryLock
+    │   ├── models/               # QuizAttempt, QuizSubmission, QuizHistoryLock
     │   └── utils/                # Scoring math, track weightings, scenario analysis & explanations
     │
     ├── bidding/                  # BOSS bidding simulator & timetable clash engine
@@ -347,7 +313,7 @@ Backend tests (`*.test.js`) live next to the files they cover and are picked up 
 </details>
 
 <details open>
-<summary><b>📁 frontend/ — Vue 3 + Tailwind CSS Client</b></summary>
+<summary><b>frontend/: Vue 3 + Tailwind CSS Client</b></summary>
 
 ```
 frontend/
@@ -542,7 +508,7 @@ frontend/
 </details>
 
 <details>
-<summary><b>📁 tests/ & playwright/ — End-to-End Testing</b></summary>
+<summary><b>tests/ & playwright/: End-to-End Testing</b></summary>
 
 ```
 WAD2-Project/
@@ -563,8 +529,6 @@ All endpoints except `/health` and the public catalogue routes require a valid F
 | Method | Path | Access | Description |
 | --- | --- | --- | --- |
 | `GET` | `/health` | Public | Service health probe (`{ ok: true }`). |
-| `GET` | `/tracks` | Public | List tracks (`?intake=2024`). |
-| `GET` | `/tracks/:id` | Public | Get track details and required/elective module lists. |
 | `GET` | `/modules` | Public | Search catalogue (`?track=BA&category=track&q=...`). |
 | `GET` | `/modules/:code` | Public | Get module details, prerequisites & corequisites. |
 | `GET` | `/majors` | Public | List SMU majors. |
@@ -576,15 +540,10 @@ All endpoints except `/health` and the public catalogue routes require a valid F
 | --- | --- | --- | --- |
 | `GET` | `/users/me` | Student | Get authenticated user profile, completed modules & planner basket. |
 | `PATCH` | `/users/me` | Student | Update profile, completed/exempted CUs, degree, and planner basket. |
-| `GET` | `/users/admin-check` | Admin | Verify staff administrative privileges. |
 
 ### 3. Track Finder Quiz & AI Explainer
 | Method | Path | Access | Description |
 | --- | --- | --- | --- |
-| `GET` | `/quiz/questions` | Student | List v1 quiz questions. |
-| `POST` | `/quiz/attempts` | Student | Submit v1 quiz answers `{ answers }` → scored % fit per track. |
-| `GET` | `/quiz/attempts` | Student | List user's past quiz attempts. |
-| `GET` | `/quiz/attempts/:id/recommendations` | Student | Get recommended module starter basket for top tracks. |
 | `GET` | `/quiz/v2/questions` | Student | List 20-question v2 Track Finder quiz (weights hidden). |
 | `POST` | `/quiz/v2/attempts` | Student | Submit v2 quiz attempt → calculated percentile fit per track. |
 | `GET` | `/quiz/v2/attempts` | Student | Retrieve user's v2 quiz attempt history. |
@@ -596,7 +555,6 @@ All endpoints except `/health` and the public catalogue routes require a valid F
 | --- | --- | --- | --- |
 | `GET` | `/plans` | Student | List all degree plans belonging to user (max 3 plans). |
 | `POST` | `/plans` | Student | Create a new degree plan (enforces 3-plan limit; returns 409 if exceeded). |
-| `GET` | `/plans/:id` | Student | Retrieve specific degree plan terms and module placements. |
 | `PUT` | `/plans/:id` | Student | Update semester terms, courses, tracks, or LOA/Exchange status. |
 | `DELETE` | `/plans/:id` | Student | Delete a degree plan. |
 | `GET` | `/plans/:id/check` | Student | Audit plan against graduation requirements (CU counts, prerequisites, corequisites). |
@@ -614,7 +572,6 @@ All endpoints except `/health` and the public catalogue routes require a valid F
 | `GET` | `/bidding/cart` | Student | Fetch current user's active bid cart and allocated e$ credits. |
 | `PUT` | `/bidding/cart` | Student | Save bid cart allocations; returns any detected timetable clashes. |
 | `DELETE` | `/bidding/cart/:code` | Student | Remove a module from the active bid cart. |
-| `POST` | `/bidding/validate-cart` | Student | Validate section list for time clashes, exam clashes, and duplicate courses. |
 | `GET` | `/bidding/co-bids/:partyId` | Student | Aggregated view of which room members are bidding for which sections. |
 
 ### 6. Collaborative Plan Rooms (Parties)
@@ -625,7 +582,6 @@ All endpoints except `/health` and the public catalogue routes require a valid F
 | `POST` | `/parties/join` | Student | Join an existing room using an invite code (`{ inviteCode }`). |
 | `GET` | `/parties/:id` | Member | Get room details, module info, member list & consensus status. |
 | `DELETE` | `/parties/:id` | Owner | Delete plan room (owner only). |
-| `GET` | `/parties/:id/updates` | Member | Short-polling endpoint (`?since=...`); returns `204 No Content` if unchanged. |
 | `DELETE` | `/parties/:id/members/me` | Member | Leave a plan room. |
 | `POST` | `/parties/:id/ban` | Owner | Remove/ban a member from the room (owner only). |
 | `DELETE` | `/parties/:id/ban/:userId` | Owner | Lift a ban so the user can rejoin with the invite code (no frontend UI yet). |
@@ -634,7 +590,6 @@ All endpoints except `/health` and the public catalogue routes require a valid F
 | `PUT` | `/parties/:id/my-section` | Member | Confirm personal section commitment for co-bidding coordination. |
 | `DELETE` | `/parties/:id/my-section` | Member | Clear personal section commitment. |
 | `GET` | `/parties/:id/sections` | Member | Get summary of all member section votes and confirmed selections. |
-| `GET` | `/parties/:id/decision` | Member | Where the vote stands: voting, ready or locked. |
 | `POST` | `/parties/:id/lock` | Owner | Lock the room on a section `{ sectionId }` once everyone has voted. |
 | `DELETE` | `/parties/:id/lock` | Owner | Unlock the room so votes and sections can change again. |
 
@@ -647,7 +602,6 @@ All endpoints except `/health` and the public catalogue routes require a valid F
 | Method | Path | Access | Description |
 | --- | --- | --- | --- |
 | `GET` | `/notifications` | Student | List user notifications, 20 per page (`?before=<id>` cursor). |
-| `GET` | `/notifications/unread-count` | Student | Get total count of unread notifications. |
 | `PATCH` | `/notifications/read-all` | Student | Mark all notifications as read. |
 | `PATCH` | `/notifications/:id/read` | Student | Mark a specific notification as read. |
 

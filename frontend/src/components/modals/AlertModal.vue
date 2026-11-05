@@ -1,11 +1,11 @@
 <script setup>
 // Shared shell for the warning overlays (Prereq Warning, Plan Limit Warning, Prerequisite Ban).
-import BaseModal from '@/components/ui/BaseModal.vue'
-import iconAlert from '@/assets/figma/alert-18.svg'
-import iconClose from '@/assets/figma/icon-close.svg'
+import BaseModal from '@/components/ui/BaseModal.vue';
+import iconAlert from '@/assets/figma/alert-18.svg';
+import iconClose from '@/assets/figma/icon-close.svg';
 
-defineProps({ title: { type: String, required: true } })
-const emit = defineEmits(['close'])
+defineProps({ title: { type: String, required: true } });
+const emit = defineEmits(['close']);
 </script>
 
 <template>
