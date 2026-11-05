@@ -48,7 +48,6 @@ watch(
 const menuRef = ref(null);
 const notifOpen = ref(false);
 const notifRef = ref(null);
-// TODO(backend): notifications come from the backend (no endpoint yet); until then there is never anything unread
 const notifications = ref([]);
 const showRead = ref(false);
 
@@ -85,6 +84,10 @@ async function loadNotifications() {
     console.error("Failed to load notifications:", error);
   }
 }
+
+watch(notifOpen, (open) => {
+  if (open) loadNotifications();
+});
 
 async function handleNotifClick(n) {
   // Mark as read locally and sync with backend if unread
