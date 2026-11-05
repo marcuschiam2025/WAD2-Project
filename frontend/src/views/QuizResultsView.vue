@@ -245,7 +245,7 @@ onMounted(async () => {
             :aria-label="`Open explanation: ${topResults.length === 1 ? 'Why this track?' : 'Why these tracks?'}`"
             @click="assistantOpen = true"
           >
-            <span class="rounded-full bg-primary-foreground p-0.5" aria-hidden="true"
+            <span class="flex shrink-0 rounded-full bg-primary-foreground p-0.5" aria-hidden="true"
               ><AssistantFace :size="28"
             /></span>
             Why?

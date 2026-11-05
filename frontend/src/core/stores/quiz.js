@@ -52,7 +52,9 @@ export const useQuizStore = defineStore('quiz', () => {
 
   // Invalidate in-flight requests and private state when the session changes.
   watch(
-    () => [user.isSignedIn, user.profile.email],
+    // One string, not an array: a getter that returns a new array looks "changed" every time it re-runs, and it re-runs
+    // whenever the profile object is replaced (saving the balance, marking a course done...), which wiped the quiz state.
+    () => `${user.isSignedIn}|${user.profile.email}`,
     () => {
       sessionRevision += 1;
       restoring = true;
