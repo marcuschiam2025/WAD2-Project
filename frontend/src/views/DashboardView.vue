@@ -21,11 +21,11 @@ import TimetableGrid from "@/components/TimetableGrid.vue";
 import TimetableModuleCard from "@/components/TimetableModuleCard.vue";
 import TrackScoreChart from "@/components/TrackScoreChart.vue";
 
-import person1 from "../assets/1.png";
-import person2 from "../assets/2.png";
-import person3 from "../assets/3.png";
-import person4 from "../assets/4.png";
-import person5 from "../assets/5.png";
+import person1 from "../assets/sitting/1.png";
+import person2 from "../assets/sitting/2.png";
+import person3 from "../assets/sitting/3.png";
+import person4 from "../assets/sitting/4.png";
+import person5 from "../assets/sitting/5.png";
 const people = [person1, person2, person3, person4, person5];
 const person = people[Math.floor(Math.random() * people.length)]
 
