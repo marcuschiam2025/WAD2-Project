@@ -77,6 +77,35 @@ test('locking applies to the whole room, rechecks the latest votes, and unlockin
     assert.deepEqual(rooms.pickedForBidding, [], 'it leaves bidding again')
     assert.deepEqual({ ...rooms.getRoom('r').sharedSections }, {})
 
+    // The server saves the lock, then fails sending notifications: the lock did happen, so the room shows it
+    votes = [{ user: 'a', sectionIds: ['g1'] }, { user: 'b', sectionIds: ['g1'] }]
+    await rooms.loadVotes('r')
+    const notificationFailure = () => Object.assign(Error('Notification validation failed'), { status: 500 })
+    api.lockRoom = async (id, sectionId) => { locked = true; lockedSection = sectionId; throw notificationFailure() }
+    assert.equal(await rooms.lockRoom('r', 'g1'), true)
+    assert.equal(rooms.voteErrors.r, '')
+    assert.equal(rooms.voteBoards.r.lockedSection, 'g1')
+    api.unlockRoom = async () => { locked = false; lockedSection = null; throw notificationFailure() }
+    assert.equal(await rooms.unlockRoom('r'), true)
+    assert.equal(rooms.voteBoards.r.locked, false)
+    // A 500 that did not change anything is still an error
+    api.lockRoom = async () => { throw notificationFailure() }
+    assert.equal(await rooms.lockRoom('r', 'g1'), false)
+    assert.match(rooms.voteErrors.r, /Notification validation failed/)
+    assert.equal(rooms.voteBoards.r.locked, false)
+
+    // The server has the same rule. If votes move in the moment after the app's own check, its refusal refreshes the board
+    votes = [{ user: 'a', sectionIds: ['g1'] }, { user: 'b', sectionIds: ['g1'] }]
+    await rooms.loadVotes('r')
+    api.lockRoom = async () => {
+      votes = [{ user: 'a', sectionIds: ['g2'] }, { user: 'b', sectionIds: ['g2'] }]
+      throw Object.assign(Error('Choose one of the leading sections: g2'), { status: 400 })
+    }
+    assert.equal(await rooms.lockRoom('r', 'g1'), false)
+    assert.match(rooms.voteErrors.r, /leading sections/)
+    assert.deepEqual([...rooms.voteBoards.r.leaders], ['g2'], 'the admin sees the new leader straight away')
+    assert.equal(rooms.voteBoards.r.locked, false)
+
     // A failure from the server, such as a member who is not the party admin
     api.unlockRoom = async () => { throw Object.assign(Error('Only the party owner can do this'), { status: 403 }) }
     assert.equal(await rooms.unlockRoom('r'), false)
