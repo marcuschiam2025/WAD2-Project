@@ -151,7 +151,7 @@ async function leave() {
           </div>
         </div>
         <p v-if="rooms.error" role="alert" class="text-[12px] text-destructive">{{ rooms.error }}</p>
-        <BaseButton variant="ghost" class="self-center" @click="confirmLeave = true">Leave room</BaseButton>
+        <BaseButton variant="ghost" class="self-center text-red-500" @click="confirmLeave = true">Leave room</BaseButton>
       </section>
 
       <template v-else>
@@ -201,7 +201,7 @@ async function leave() {
             </div>
 
             <p v-if="rooms.error" role="alert" class="text-[12px] text-destructive">{{ rooms.error }}</p>
-            <BaseButton variant="ghost" class="self-start" @click="confirmLeave = true"
+            <BaseButton variant="ghost" class="self-start text-red-500" @click="confirmLeave = true"
               >Leave room</BaseButton
             >
           </aside>
