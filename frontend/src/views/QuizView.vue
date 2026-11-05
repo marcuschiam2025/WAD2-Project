@@ -6,6 +6,8 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 const explorers = Object.values(import.meta.glob('@/assets/exploring/*.png', { eager: true, import: 'default' }))
 // One explorer, picked at random each time the page loads.
+const swingers = Object.values(import.meta.glob('@/assets/swinging/*.png', { eager: true, import: 'default' }))
+const swinger = swingers[Math.floor(Math.random() * swingers.length)]
 const explorer = explorers[Math.floor(Math.random() * explorers.length)]
 const quiz = useQuizStore()
 const router = useRouter()
@@ -24,7 +26,7 @@ function start() {
 }
 </script>
 <template>
-  <div>
+  <div class="relative">
     <PageHeader class="quiz-header" overline="Track Finder" title="Find a direction worth exploring" subtitle="Explore your interests, current confidence, working style and career goals across four IS tracks." />
     <div class="relative">
     <!-- Decorative explorer, drawn over the empty strip left of the content, so nothing moves. It is as wide as that
@@ -46,10 +48,14 @@ function start() {
       </section>
     </main>
     </div>
+    <!-- Decorative swinger, hung from just under the nav bar, staying in view as the page scrolls, in the empty strip right of the content. Same rules as the
+         explorer: drawn over the strip so nothing moves, as wide as the strip, only where the strip is wide enough. -->
+    <img :src="swinger" alt="" aria-hidden="true" class="swinger pointer-events-none fixed right-4 top-14 hidden h-auto min-[1100px]:block" />
   </div>
 </template>
 
 <style scoped>
+.swinger { width: min(15rem, calc((100vw - 1024px) / 2 + 0.5rem)); }
 .explorer { width: min(20rem, calc((100% - 1024px) / 2 + 0.5rem)); }
 .quiz-header { padding-inline: clamp(1.25rem, 5vw, 3rem); }
 </style>
