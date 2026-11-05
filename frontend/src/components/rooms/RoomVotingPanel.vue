@@ -132,7 +132,6 @@ onBeforeUnmount(() => clearInterval(timer));
             ><span class="h-3 w-[18px] rounded-sm border border-dashed border-border" /> Available
             section</span
           >
-          <span>A section with several weekly classes is picked as a whole.</span>
         </div>
         <p v-if="feedback" role="status" class="text-[13px] text-success">{{ feedback }}</p>
 
