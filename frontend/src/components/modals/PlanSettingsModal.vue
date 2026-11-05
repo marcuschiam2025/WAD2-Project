@@ -29,6 +29,26 @@ const secondTrackOptions = computed(() => [
   { value: '', label: 'None' },
   ...trackOptions.value.filter((o) => o.value !== plan.value.tracks[0]),
 ]);
+// The second majors open to this plan's curriculum, and the tracks of the chosen one
+const secondMajorOptions = computed(() => [
+  { value: '', label: 'None' },
+  ...catalogue.secondMajorsFor(plan.value.majorId).map((s) => ({ value: s._id, label: s.name })),
+]);
+const secondMajorId = computed({
+  get: () => plan.value.secondMajor?.id ?? '',
+  set: (id) => (plan.value.secondMajor = id ? { id, trackCode: null } : null),
+});
+const secondMajorTracks = computed(
+  () => catalogue.secondMajors.find((s) => s._id === secondMajorId.value)?.tracks ?? [],
+);
+const secondMajorTrackOptions = computed(() => [
+  { value: '', label: 'Not decided' },
+  ...secondMajorTracks.value.map((t) => ({ value: t.trackCode, label: t.name })),
+]);
+const secondMajorTrack = computed({
+  get: () => plan.value.secondMajor?.trackCode ?? '',
+  set: (code) => (plan.value.secondMajor = { id: secondMajorId.value, trackCode: code || null }),
+});
 const firstTrack = computed({
   get: () => plan.value.tracks[0] ?? '',
   // A 2nd track needs a 1st, so "Not decided" clears both
@@ -62,8 +82,19 @@ async function deletePlan() {
     </div>
 
     <SelectField v-model="plan.currentSem" label="Current semester" :options="semesterOptions" />
-    <SelectField v-model="firstTrack" label="1st track" :options="firstTrackOptions" />
-    <SelectField v-if="firstTrack" v-model="secondTrack" label="2nd track" :options="secondTrackOptions" />
+    <template v-if="catalogue.tracksApply(plan.majorId)">
+      <SelectField v-model="firstTrack" label="1st track" :options="firstTrackOptions" />
+      <SelectField v-if="firstTrack" v-model="secondTrack" label="2nd track" :options="secondTrackOptions" />
+    </template>
+    <template v-if="secondMajorOptions.length > 1">
+      <SelectField v-model="secondMajorId" label="Second major" :options="secondMajorOptions" />
+      <SelectField
+        v-if="secondMajorTracks.length"
+        v-model="secondMajorTrack"
+        label="Second major track"
+        :options="secondMajorTrackOptions"
+      />
+    </template>
 
     <div class="flex flex-col gap-2">
       <p class="text-[13px] font-medium">Exchange semesters</p>

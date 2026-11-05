@@ -1,6 +1,7 @@
 import Plan, { MAX_PLANS, MAX_LOA_TERMS, INTERNSHIP_CODE } from './models/Plan.js';
 import Module from './models/Module.js';
 import Major from './models/Major.js';
+import SecondMajor from './models/SecondMajor.js';
 import Track from './models/Track.js';
 import Requirement from './models/Requirement.js';
 import BidCart from '../bidding/models/BidCart.js';
@@ -8,7 +9,7 @@ import { checkPlan as checkRequirements, effectiveCode } from './utils/requireme
 import { httpError } from '../../middleware/errorHandler.js';
 
 // Fields a student is allowed to send when creating or editing a plan
-const EDITABLE = ['name', 'majorId', 'tracks', 'currentSem', 'semesters'];
+const EDITABLE = ['name', 'majorId', 'tracks', 'secondMajor', 'currentSem', 'semesters'];
 
 // A semester id looks like Y2S1 (year 1-9, semester 1 or 2)
 const SEM_ID = /^Y([1-9])S([12])$/;
@@ -173,6 +174,29 @@ async function defaultMajorId(user) {
   return candidates[candidates.length - 1]._id;
 }
 
+// The second major must exist, be open to this major, and any track must be one of its own
+async function validateSecondMajor(secondMajor, majorId) {
+  if (secondMajor === null || secondMajor === undefined) {
+    return;
+  }
+  const definition = await SecondMajor.findById(String(secondMajor.id)).lean();
+  if (!definition) {
+    throw httpError(400, `Unknown second major ${secondMajor.id}`);
+  }
+  const major = majorId ? await Major.findById(majorId).lean() : null;
+  if (
+    !major ||
+    !definition.eligibleMajors.includes(major.majorCode) ||
+    major.intakeFrom < definition.curriculumFrom
+  ) {
+    throw httpError(400, `${definition.name} isn't available for this plan's major`);
+  }
+  const { trackCode } = secondMajor;
+  if (trackCode && !definition.tracks.some((track) => track.trackCode === trackCode)) {
+    throw httpError(400, `${trackCode} is not a track of ${definition.name}`);
+  }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Route handlers
 // ---------------------------------------------------------------------------------------------
@@ -214,6 +238,7 @@ export async function createPlan(req, res) {
 
   validate(data);
   await validateRefs(data);
+  await validateSecondMajor(data.secondMajor, data.majorId);
 
   const plan = await Plan.create({ ...data, user: req.user._id });
   res.status(201).json(plan);
@@ -237,6 +262,12 @@ export async function updatePlan(req, res) {
       majorId: data.majorId ?? plan.majorId,
       tracks: data.tracks ?? plan.tracks,
     });
+  }
+  if (data.secondMajor !== undefined || data.majorId !== undefined) {
+    await validateSecondMajor(
+      data.secondMajor !== undefined ? data.secondMajor : plan.secondMajor,
+      data.majorId ?? plan.majorId,
+    );
   }
 
   // One atomic $set rather than plan.save(): save() checks the document version, so two saves that overlap

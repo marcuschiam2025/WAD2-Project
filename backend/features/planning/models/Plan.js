@@ -19,6 +19,14 @@ const semesterSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const secondMajorSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true }, // e.g. T4BS
+    trackCode: { type: String, default: null }, // for second majors with tracks
+  },
+  { _id: false, id: false },
+);
+
 // A What-If plan: up to MAX_PLANS per student.
 const planSchema = new mongoose.Schema(
   {
@@ -26,6 +34,7 @@ const planSchema = new mongoose.Schema(
     name: { type: String, required: true },
     majorId: { type: String, ref: 'Major' }, // whose requirements the plan is checked against
     tracks: { type: [String], validate: (v) => v.length <= 2 }, // track codes, e.g. ['BA', 'SMCT']
+    secondMajor: { type: secondMajorSchema, default: null },
     currentSem: String,
     semesters: [semesterSchema],
   },

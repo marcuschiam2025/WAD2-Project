@@ -844,5 +844,1097 @@
       "SE301",
       "IS421"
     ]
+  },
+  {
+    "_id": "BSC-SE_AY2025_CORE_CAP_FIXED",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Capabilities courses",
+    "order": 1,
+    "cuRequired": 3,
+    "rule": "all",
+    "modules": [
+      "COR-STAT1202",
+      "COR-IS1704",
+      "COR1100"
+    ]
+  },
+  {
+    "_id": "BSC-SE_AY2025_CORE_MANAGING",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Managing",
+    "order": 2,
+    "cuRequired": 2,
+    "rule": "basket",
+    "tag": "CORE:MANAGING"
+  },
+  {
+    "_id": "BSC-SE_AY2025_CORE_INTERNSHIP",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Internship",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:INTERNSHIP"
+  },
+  {
+    "_id": "BSC-SE_AY2025_CORE_ECON_SOCIETY",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Economics & Society",
+    "order": 4,
+    "cuRequired": 1,
+    "rule": "all",
+    "modules": [
+      "COR2100"
+    ]
+  },
+  {
+    "_id": "BSC-SE_AY2025_CORE_TSS",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Technology, Science & Society",
+    "order": 5,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:TECH_SCIENCE_SOCIETY"
+  },
+  {
+    "_id": "BSC-SE_AY2025_CORE_CULTURES",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Cultures of the Modern World",
+    "order": 6,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:CULTURES_MODERN_WORLD"
+  },
+  {
+    "_id": "BSC-SE_AY2025_CORE_COMMUNITY_SERVICE",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Community Service",
+    "order": 7,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:COMMUNITY_SERVICE"
+  },
+  {
+    "_id": "BSC-SE_AY2025_CORE_CIVILISATIONS",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Civilisations",
+    "label": "Ethics & Social Responsibility, Big Questions",
+    "order": 8,
+    "cuRequired": 2,
+    "rule": "all",
+    "modules": [
+      "COR3301",
+      "COR3001"
+    ]
+  },
+  {
+    "_id": "BSC-SE_AY2025_CORE_GLOBAL_EXPOSURE",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "NONE",
+    "heading": "Civilisations",
+    "label": "Global Exposure (non-credit)",
+    "order": 9,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "CORE:GLOBAL_EXPOSURE",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-SE_AY2025_GRAD_DIGITAL_TECH",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Digital Technology / Data Analytics",
+    "order": 10,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:DIGITAL_TECH",
+    "autoFulfilled": true
+  },
+  {
+    "_id": "BSC-SE_AY2025_GRAD_SUSTAINABILITY",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Sustainability",
+    "order": 11,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SUSTAINABILITY",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-SE_AY2025_GRAD_SG_ASIA",
+    "level": "core",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Singapore and Asia Studies",
+    "order": 12,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SG_ASIA_STUDIES",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-SE_AY2025_MAJOR_CORE",
+    "level": "major",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "SE Major Core",
+    "label": "SE Major Core",
+    "order": 1,
+    "cuRequired": 12,
+    "rule": "all",
+    "modules": [
+      "SE101",
+      "IS112",
+      "IS113",
+      "IS115",
+      "CS440",
+      "CS102",
+      "IS216",
+      "IS214",
+      "IS213",
+      "CS203",
+      "CS301",
+      "SE301"
+    ]
+  },
+  {
+    "_id": "BSC-SE_AY2025_APPRENTICESHIP",
+    "level": "major",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "SE 52-Week Apprenticeship",
+    "label": "SE401 Apprenticeship (52 weeks)",
+    "order": 2,
+    "cuRequired": 6,
+    "rule": "all",
+    "modules": [
+      "SE401"
+    ]
+  },
+  {
+    "_id": "BSC-SE_AY2025_FREE_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-SE_AY2025",
+    "countsToward": "FREE_ELECTIVES",
+    "heading": "Free Electives",
+    "label": "Any SMU course",
+    "order": 3,
+    "cuRequired": 6,
+    "rule": "anyFromCategory",
+    "categories": [
+      "ANY"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2025_CORE_CALCULUS",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Calculus",
+    "order": 1,
+    "cuRequired": 1,
+    "rule": "all",
+    "modules": [
+      "COR1201"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2025_CORE_INTERNSHIP",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Internship",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:INTERNSHIP"
+  },
+  {
+    "_id": "BSC-CS_AY2025_CORE_COMMUNITIES",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Technology & Society or Cultures of the Modern World",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "anyFromCategory",
+    "categories": [
+      "COMMUNITIES_BASKET"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2025_CORE_COMMUNITY_SERVICE",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Community Service",
+    "order": 7,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:COMMUNITY_SERVICE"
+  },
+  {
+    "_id": "BSC-CS_AY2025_CORE_CIVILISATIONS",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Civilisations",
+    "label": "Ethics & Social Responsibility, Big Questions",
+    "order": 8,
+    "cuRequired": 2,
+    "rule": "all",
+    "modules": [
+      "COR3301",
+      "COR3001"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2025_CORE_GLOBAL_EXPOSURE",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "NONE",
+    "heading": "Civilisations",
+    "label": "Global Exposure (non-credit)",
+    "order": 9,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "CORE:GLOBAL_EXPOSURE",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-CS_AY2025_GRAD_DIGITAL_TECH",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Digital Technology / Data Analytics",
+    "order": 10,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:DIGITAL_TECH",
+    "autoFulfilled": true
+  },
+  {
+    "_id": "BSC-CS_AY2025_GRAD_SUSTAINABILITY",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Sustainability",
+    "order": 11,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SUSTAINABILITY",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-CS_AY2025_GRAD_SG_ASIA",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Singapore and Asia Studies",
+    "order": 12,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SG_ASIA_STUDIES",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-CS_AY2025_MAJOR_CORE",
+    "level": "major",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "CS Major Core",
+    "label": "CS Major Core",
+    "order": 1,
+    "cuRequired": 17,
+    "rule": "all",
+    "modules": [
+      "CS101",
+      "IS211",
+      "CS104",
+      "CS102",
+      "CS105",
+      "IS112",
+      "CS106",
+      "CS103",
+      "CS201",
+      "CS203",
+      "CS205",
+      "CS202",
+      "CS204",
+      "CS206",
+      "CS301",
+      "CS302",
+      "CS480"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2025_ELECTIVES_ANY",
+    "level": "major",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "CS Major Electives",
+    "label": "Any CS Track Course / CS Elective",
+    "order": 2,
+    "cuRequired": 7,
+    "rule": "anyFromCategory",
+    "categories": [
+      "CS"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2025_FREE_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-CS_AY2025",
+    "countsToward": "FREE_ELECTIVES",
+    "heading": "Free Electives",
+    "label": "Any SMU course",
+    "order": 3,
+    "cuRequired": 6,
+    "rule": "anyFromCategory",
+    "categories": [
+      "ANY"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2026_CORE_CALCULUS",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Calculus",
+    "order": 1,
+    "cuRequired": 1,
+    "rule": "all",
+    "modules": [
+      "COR1201"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2026_CORE_INTERNSHIP",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Internship",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:INTERNSHIP"
+  },
+  {
+    "_id": "BSC-CS_AY2026_CORE_COMMUNITIES",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Technology & Society or Cultures of the Modern World",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "anyFromCategory",
+    "categories": [
+      "COMMUNITIES_BASKET"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2026_CORE_COMMUNITY_SERVICE",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Community Service",
+    "order": 7,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:COMMUNITY_SERVICE"
+  },
+  {
+    "_id": "BSC-CS_AY2026_CORE_CIVILISATIONS",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "UNI_CORE",
+    "heading": "Civilisations",
+    "label": "Ethics & Social Responsibility, Big Questions",
+    "order": 8,
+    "cuRequired": 2,
+    "rule": "all",
+    "modules": [
+      "COR3301",
+      "COR3001"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2026_CORE_GLOBAL_EXPOSURE",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "NONE",
+    "heading": "Civilisations",
+    "label": "Global Exposure (non-credit)",
+    "order": 9,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "CORE:GLOBAL_EXPOSURE",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-CS_AY2026_GRAD_DIGITAL_TECH",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Digital Technology / Data Analytics",
+    "order": 10,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:DIGITAL_TECH",
+    "autoFulfilled": true
+  },
+  {
+    "_id": "BSC-CS_AY2026_GRAD_SUSTAINABILITY",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Sustainability",
+    "order": 11,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SUSTAINABILITY",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-CS_AY2026_GRAD_SG_ASIA",
+    "level": "core",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Singapore and Asia Studies",
+    "order": 12,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SG_ASIA_STUDIES",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-CS_AY2026_MAJOR_CORE",
+    "level": "major",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "MAJOR_CORE",
+    "heading": "CS Major Core",
+    "label": "CS Major Core",
+    "order": 1,
+    "cuRequired": 17,
+    "rule": "all",
+    "modules": [
+      "CS101",
+      "IS211",
+      "CS104",
+      "CS102",
+      "CS105",
+      "IS112",
+      "CS106",
+      "CS103",
+      "CS201",
+      "CS203",
+      "CS205",
+      "CS202",
+      "CS204",
+      "CS420",
+      "CS301",
+      "CS302",
+      "CS480"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2026_ELECTIVES_ANY",
+    "level": "major",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "CS Major Electives",
+    "label": "Any CS Track Course / CS Elective",
+    "order": 2,
+    "cuRequired": 7,
+    "rule": "anyFromCategory",
+    "categories": [
+      "CS"
+    ]
+  },
+  {
+    "_id": "BSC-CS_AY2026_FREE_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-CS_AY2026",
+    "countsToward": "FREE_ELECTIVES",
+    "heading": "Free Electives",
+    "label": "Any SMU course",
+    "order": 3,
+    "cuRequired": 6,
+    "rule": "anyFromCategory",
+    "categories": [
+      "ANY"
+    ]
+  },
+  {
+    "_id": "BSC-CL_AY2025_CORE_CAP_FIXED",
+    "level": "core",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Capabilities courses",
+    "order": 1,
+    "cuRequired": 2,
+    "rule": "all",
+    "modules": [
+      "COR-IS1704",
+      "COR1201"
+    ]
+  },
+  {
+    "_id": "BSC-CL_AY2025_CORE_INTERNSHIP",
+    "level": "core",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Internship",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:INTERNSHIP"
+  },
+  {
+    "_id": "BSC-CL_AY2025_CORE_CULTURES",
+    "level": "core",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Cultures of the Modern World",
+    "order": 6,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:CULTURES_MODERN_WORLD"
+  },
+  {
+    "_id": "BSC-CL_AY2025_CORE_COMMUNITY_SERVICE",
+    "level": "core",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Community Service",
+    "order": 7,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:COMMUNITY_SERVICE"
+  },
+  {
+    "_id": "BSC-CL_AY2025_CORE_CIVILISATIONS",
+    "level": "core",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Civilisations",
+    "label": "Ethics & Social Responsibility, Big Questions",
+    "order": 8,
+    "cuRequired": 2,
+    "rule": "all",
+    "modules": [
+      "COR3301",
+      "COR3001"
+    ]
+  },
+  {
+    "_id": "BSC-CL_AY2025_CORE_GLOBAL_EXPOSURE",
+    "level": "core",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "NONE",
+    "heading": "Civilisations",
+    "label": "Global Exposure (non-credit)",
+    "order": 9,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "CORE:GLOBAL_EXPOSURE",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-CL_AY2025_GRAD_DIGITAL_TECH",
+    "level": "core",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Digital Technology / Data Analytics",
+    "order": 10,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:DIGITAL_TECH",
+    "autoFulfilled": true
+  },
+  {
+    "_id": "BSC-CL_AY2025_GRAD_SUSTAINABILITY",
+    "level": "core",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Sustainability",
+    "order": 11,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SUSTAINABILITY",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-CL_AY2025_GRAD_SG_ASIA",
+    "level": "core",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Singapore and Asia Studies",
+    "order": 12,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SG_ASIA_STUDIES",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-CL_AY2025_MAJOR_CORE",
+    "level": "major",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "CL Major Core",
+    "label": "Computing & Law Core Courses",
+    "order": 1,
+    "cuRequired": 17,
+    "rule": "all",
+    "modules": [
+      "IS115",
+      "IS112",
+      "IS113",
+      "CS105",
+      "IS210",
+      "IS215",
+      "IS211",
+      "CS206",
+      "LAW101_601",
+      "LGST102",
+      "LAW102_602",
+      "LAW103_603",
+      "LAW105_605",
+      "LAW401",
+      "LAW201_621",
+      "LAW486"
+    ]
+  },
+  {
+    "_id": "BSC-CL_AY2025_PROJECT_EXP",
+    "level": "major",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "CL Major Core",
+    "label": "Any 1 Project Experience",
+    "order": 2,
+    "cuRequired": 1,
+    "rule": "chooseN",
+    "n": 1,
+    "modules": [
+      "IS483",
+      "IS484",
+      "IS485"
+    ]
+  },
+  {
+    "_id": "BSC-CL_AY2025_LAW_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "CL Major Electives",
+    "label": "Law Electives (any LAW / LGST course)",
+    "order": 3,
+    "cuRequired": 2,
+    "rule": "anyFromCategory",
+    "categories": [
+      "LAW"
+    ]
+  },
+  {
+    "_id": "BSC-CL_AY2025_COMPUTING_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "CL Major Electives",
+    "label": "Computing Electives (any IS / SMT / CS / SE course)",
+    "order": 4,
+    "cuRequired": 2,
+    "rule": "anyFromCategory",
+    "categories": [
+      "IS",
+      "IS_TRACK",
+      "CS",
+      "SMT",
+      "SE"
+    ]
+  },
+  {
+    "_id": "BSC-CL_AY2025_COMPUTING_RELATED_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "CL Major Electives",
+    "label": "Computing Electives (any IS / SMT / CS / SE / IS Related course)",
+    "order": 5,
+    "cuRequired": 4,
+    "rule": "anyFromCategory",
+    "categories": [
+      "IS",
+      "IS_TRACK",
+      "CS",
+      "SMT",
+      "SE",
+      "IS_RELATED"
+    ]
+  },
+  {
+    "_id": "BSC-CL_AY2025_FREE_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-CL_AY2025",
+    "countsToward": "FREE_ELECTIVES",
+    "heading": "Free Electives",
+    "label": "Any SMU course",
+    "order": 6,
+    "cuRequired": 3,
+    "rule": "anyFromCategory",
+    "categories": [
+      "ANY"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_CORE_CAP_FIXED",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Capabilities courses",
+    "order": 1,
+    "cuRequired": 3,
+    "rule": "all",
+    "modules": [
+      "COR-IS1702",
+      "COR-STAT1202",
+      "COR1100"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_CORE_MANAGING",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Managing",
+    "order": 2,
+    "cuRequired": 2,
+    "rule": "basket",
+    "tag": "CORE:MANAGING"
+  },
+  {
+    "_id": "BSC-SMT_AY2025_CORE_INTERNSHIP",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Capabilities",
+    "label": "Internship",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:INTERNSHIP"
+  },
+  {
+    "_id": "BSC-SMT_AY2025_CORE_ECON_SOCIETY",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Economics & Society",
+    "order": 4,
+    "cuRequired": 1,
+    "rule": "all",
+    "modules": [
+      "COR2100"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_CORE_TSS",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Technology, Science & Society",
+    "order": 5,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:TECH_SCIENCE_SOCIETY"
+  },
+  {
+    "_id": "BSC-SMT_AY2025_CORE_CULTURES",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Cultures of the Modern World",
+    "order": 6,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:CULTURES_MODERN_WORLD"
+  },
+  {
+    "_id": "BSC-SMT_AY2025_CORE_COMMUNITY_SERVICE",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Communities",
+    "label": "Community Service",
+    "order": 7,
+    "cuRequired": 1,
+    "rule": "basket",
+    "tag": "CORE:COMMUNITY_SERVICE"
+  },
+  {
+    "_id": "BSC-SMT_AY2025_CORE_CIVILISATIONS",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "UNI_CORE",
+    "heading": "Civilisations",
+    "label": "Ethics & Social Responsibility, Big Questions",
+    "order": 8,
+    "cuRequired": 2,
+    "rule": "all",
+    "modules": [
+      "COR3301",
+      "COR3001"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_CORE_GLOBAL_EXPOSURE",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "NONE",
+    "heading": "Civilisations",
+    "label": "Global Exposure (non-credit)",
+    "order": 9,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "CORE:GLOBAL_EXPOSURE",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-SMT_AY2025_GRAD_DIGITAL_TECH",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Digital Technology / Data Analytics",
+    "order": 10,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:DIGITAL_TECH",
+    "autoFulfilled": true
+  },
+  {
+    "_id": "BSC-SMT_AY2025_GRAD_SUSTAINABILITY",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Sustainability",
+    "order": 11,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SUSTAINABILITY",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-SMT_AY2025_GRAD_SG_ASIA",
+    "level": "core",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "NONE",
+    "heading": "Additional Graduation Requirements",
+    "label": "Singapore and Asia Studies",
+    "order": 12,
+    "cuRequired": 0,
+    "rule": "flag",
+    "tag": "GRAD:SG_ASIA_STUDIES",
+    "autoFulfilled": false
+  },
+  {
+    "_id": "BSC-SMT_AY2025_SENSORS",
+    "level": "major",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "SMT Major Core",
+    "label": "SMT113 Sensors and IoT Programming or IS114 Computing Fundamentals",
+    "order": 1,
+    "cuRequired": 1,
+    "rule": "chooseN",
+    "n": 1,
+    "modules": [
+      "SMT113",
+      "IS114"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_MAJOR_CORE",
+    "level": "major",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "SMT Major Core",
+    "label": "SMT Major Core",
+    "order": 2,
+    "cuRequired": 10,
+    "rule": "all",
+    "modules": [
+      "IS111",
+      "IS112",
+      "IS217",
+      "POSC101",
+      "IS211",
+      "SMT201",
+      "SMT203",
+      "IS113",
+      "IS212",
+      "SMT481"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_PROJECT_EXP",
+    "level": "major",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "MAJOR_CORE",
+    "heading": "SMT Major Core",
+    "label": "Any 1 Project Experience",
+    "order": 3,
+    "cuRequired": 1,
+    "rule": "chooseN",
+    "n": 1,
+    "modules": [
+      "IS483",
+      "IS484",
+      "IS485"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_SOCIAL_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "SMT Major Electives",
+    "label": "Any 2 Social and Management Electives",
+    "order": 4,
+    "cuRequired": 2,
+    "rule": "chooseN",
+    "n": 2,
+    "modules": [
+      "IS468",
+      "IS457",
+      "SMT401",
+      "IS461",
+      "SOCG201",
+      "SOCG203",
+      "SOCG304",
+      "COR-MGMT2207",
+      "ECON226",
+      "IS463",
+      "IS466",
+      "IS455",
+      "CS447"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_COMPUTING_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "SMT Major Electives",
+    "label": "Any 2 Computing Electives",
+    "order": 5,
+    "cuRequired": 2,
+    "rule": "chooseN",
+    "n": 2,
+    "modules": [
+      "SMT202",
+      "IS216",
+      "CS440",
+      "CS460",
+      "CS462",
+      "IS458",
+      "IS462",
+      "IS428",
+      "IS415",
+      "IS459",
+      "IS467",
+      "IS447",
+      "IS469",
+      "IS4001"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_ELECTIVES_ANY",
+    "level": "major",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "MAJOR_ELECTIVES",
+    "heading": "SMT Major Electives",
+    "label": "Any IS / CS / IS Related Course",
+    "order": 6,
+    "cuRequired": 2,
+    "rule": "anyFromCategory",
+    "categories": [
+      "IS",
+      "IS_TRACK",
+      "CS",
+      "IS_RELATED"
+    ]
+  },
+  {
+    "_id": "BSC-SMT_AY2025_FREE_ELECTIVES",
+    "level": "major",
+    "ownerId": "BSC-SMT_AY2025",
+    "countsToward": "FREE_ELECTIVES",
+    "heading": "Free Electives",
+    "label": "Any SMU course",
+    "order": 7,
+    "cuRequired": 6,
+    "rule": "anyFromCategory",
+    "categories": [
+      "ANY"
+    ]
   }
 ]

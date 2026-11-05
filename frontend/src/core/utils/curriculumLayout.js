@@ -4,7 +4,7 @@
 //   - every requirement gets a recommended semester window from the course progression (data/degree.js), so the
 //     semester tag can be hovered to see every recommended semester. The database stores no semester recommendations.
 // Rows, statuses and credit counts are the curriculum builder's own.
-import { degreeGroups, globalExposure, SEM_IDS, ANY_TERM } from '../data/degree';
+import { degreeGroups, globalExposure, majorCourseWindows, SEM_IDS, ANY_TERM } from '../data/degree';
 import { tracks as trackInfo } from '../data/catalogue';
 import { semTools } from './degreeChecklist';
 
@@ -23,13 +23,15 @@ const BASKET_KEY = {
 };
 
 // When the course progression recommends taking what this requirement asks for
-function windowFor(r) {
+function windowFor(r, majorCode) {
   const wins = [];
   // Listed courses the progression names (IS114 in Y1S1, IS213 in Y2S2, ...)
   if (['all', 'chooseN'].includes(r.rule)) {
     for (const code of r.modules ?? []) {
+      const own = majorCourseWindows[majorCode]?.[code];
       const s = slots.find((x) => x.rule === 'codes' && x.codes.includes(code));
-      if (s) wins.push(s.window);
+      if (own) wins.push(own);
+      else if (s) wins.push(s.window);
     }
   }
   // Baskets and tagged requirements (Managing, Cultures of the Modern World, Internship, Global Exposure, ...)
@@ -151,7 +153,7 @@ export function layoutCurriculum(result, plan, bundle, { majorCode = '' } = {}) 
 
   function present(row) {
     const r = row.requirement;
-    const win = windowFor(r);
+    const win = windowFor(r, majorCode);
     // A row still to do is tagged with the recommended semester; one already in the plan with where it sits
     const placed = row.status === 'todo' ? null : row.semId;
     const track = r.level === 'track' ? bundle.tracks?.find((t) => t._id === r.ownerId) : null;

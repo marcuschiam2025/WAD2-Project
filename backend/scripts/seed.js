@@ -18,6 +18,7 @@ const COLLECTIONS = [
   'bidhistories',
   'sections',
   'bidding_windows',
+  'secondmajors',
 ];
 
 // Safety check: only overwrite a remote database (like Atlas) when --remote is passed

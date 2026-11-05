@@ -1,0 +1,472 @@
+[
+  {
+    "_id": "ITSM",
+    "name": "IT Solution Management",
+    "eligibleMajors": [
+      "BSC-IS",
+      "BSC-SMT",
+      "BSC-CS",
+      "BSC-CL",
+      "BSC-SE"
+    ],
+    "curriculumFrom": 2024,
+    "source": "Majors Offered by SCIS.xlsx (General Requirements)",
+    "requirements": [
+      {
+        "id": "ITSM_CS206",
+        "label": "CS206 Software Product Management",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "CS206"
+        ]
+      },
+      {
+        "id": "ITSM_ARCH",
+        "label": "CS301 Solution Architecture or IS458 Cloud Management & Engineering",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "CS301",
+          "IS458"
+        ]
+      },
+      {
+        "id": "ITSM_LIFECYCLE",
+        "label": "CS302 DevOps Principles and Practices or IS213 Enterprise Solution Development",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "CS302",
+          "IS213"
+        ]
+      },
+      {
+        "id": "ITSM_LAW",
+        "label": "Privacy and Data Protection Law or Intellectual Property Law",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "LAW486",
+          "LAW401"
+        ]
+      },
+      {
+        "id": "ITSM_ACCOUNTING",
+        "label": "Financial Accounting",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "ACCT101",
+          "ACCT111"
+        ]
+      },
+      {
+        "id": "ITSM_MARKETING",
+        "label": "Marketing",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "MKTG101"
+        ]
+      },
+      {
+        "id": "ITSM_INNOVATION",
+        "label": "1 Technology Innovation elective",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "MGMT319",
+          "MGMT318"
+        ]
+      },
+      {
+        "id": "ITSM_BUSINESS",
+        "label": "1 Business / Law elective",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "LGST101",
+          "OPIM101",
+          "FNCE101",
+          "ACCT102",
+          "ACCT112",
+          "OBHR101",
+          "OPIM201",
+          "MGMT102",
+          "COR-MGMT1303"
+        ]
+      }
+    ],
+    "tracks": []
+  },
+  {
+    "_id": "T4BS",
+    "name": "Technology for Business Solutions",
+    "eligibleMajors": [
+      "BSC-SMT",
+      "BSC-CS",
+      "BSC-CL",
+      "BSC-SE"
+    ],
+    "curriculumFrom": 2024,
+    "source": "Majors Offered by SCIS.xlsx (General Requirements)",
+    "requirements": [
+      {
+        "id": "T4BS_COMPULSORY",
+        "label": "CS101 Programming Fundamentals I or IS115 Algorithms & Programming",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "CS101",
+          "IS115"
+        ]
+      },
+      {
+        "id": "T4BS_BASKET_A",
+        "label": "Any 2 from Basket A",
+        "cuRequired": 2,
+        "rule": "chooseN",
+        "n": 2,
+        "modules": [
+          "IS110",
+          "IS114",
+          "SE101",
+          "IS112",
+          "IS105",
+          "IS113",
+          "IS216",
+          "IS212",
+          "CS203",
+          "IS213",
+          "CS302",
+          "IS214"
+        ]
+      },
+      {
+        "id": "T4BS_BASKET_B",
+        "label": "Any 1 from Basket B",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "IS210",
+          "IS211",
+          "IS215"
+        ]
+      }
+    ],
+    "tracks": [
+      {
+        "trackCode": "BA",
+        "name": "Business Analytics",
+        "requirements": [
+          {
+            "label": "1 Compulsory Track Course",
+            "cuRequired": 1,
+            "rule": "all",
+            "modules": [
+              "IS217"
+            ],
+            "id": "T4BS_BA_COMPULSORY"
+          },
+          {
+            "label": "Any 3 Track Courses",
+            "cuRequired": 3,
+            "rule": "chooseN",
+            "modules": [
+              "IS461",
+              "SE201",
+              "IS491",
+              "IS454",
+              "CS420",
+              "IS459",
+              "IS424",
+              "IS466",
+              "CS448",
+              "IS453",
+              "IS469",
+              "IS415",
+              "IS460",
+              "IS446",
+              "IS455",
+              "CS421",
+              "IS4001",
+              "SMT481",
+              "IS434",
+              "IS450",
+              "IS428"
+            ],
+            "n": 3,
+            "id": "T4BS_BA_ELECTIVES"
+          }
+        ]
+      },
+      {
+        "trackCode": "FT",
+        "name": "Financial Technology",
+        "requirements": [
+          {
+            "label": "1 Compulsory Track Course",
+            "cuRequired": 1,
+            "rule": "all",
+            "modules": [
+              "IS444"
+            ],
+            "id": "T4BS_FT_COMPULSORY"
+          },
+          {
+            "label": "Any 3 Track Courses",
+            "cuRequired": 3,
+            "rule": "chooseN",
+            "modules": [
+              "IS4000",
+              "IS452",
+              "IS445",
+              "IS430",
+              "IS453",
+              "IS423",
+              "IS4002",
+              "IS467",
+              "IS465",
+              "IS419"
+            ],
+            "n": 3,
+            "id": "T4BS_FT_ELECTIVES"
+          }
+        ]
+      },
+      {
+        "trackCode": "PD",
+        "name": "Product Development",
+        "requirements": [
+          {
+            "label": "Any 1 Compulsory Track Course",
+            "cuRequired": 1,
+            "rule": "chooseN",
+            "modules": [
+              "IS442",
+              "CS102"
+            ],
+            "n": 1,
+            "id": "T4BS_PD_COMPULSORY"
+          },
+          {
+            "label": "Any 3 Track Courses",
+            "cuRequired": 3,
+            "rule": "chooseN",
+            "modules": [
+              "SE201",
+              "CS465",
+              "SE301",
+              "IS458",
+              "IS492",
+              "IS412",
+              "CS440",
+              "CS464",
+              "IS469",
+              "CS447",
+              "CS460",
+              "IS467",
+              "IS446",
+              "CS461",
+              "CS446",
+              "CS467",
+              "CS449",
+              "CS443",
+              "CS206",
+              "CS301"
+            ],
+            "n": 3,
+            "id": "T4BS_PD_ELECTIVES"
+          }
+        ]
+      },
+      {
+        "trackCode": "SMCT",
+        "name": "Smart-City Management & Technology",
+        "requirements": [
+          {
+            "label": "Any 4 Track Courses",
+            "cuRequired": 4,
+            "rule": "chooseN",
+            "modules": [
+              "IS217",
+              "IS466",
+              "IS463",
+              "SMT201",
+              "CS447",
+              "CS460",
+              "POSC101",
+              "CS461",
+              "IS4001",
+              "IS447",
+              "SMT481",
+              "IS468"
+            ],
+            "n": 4,
+            "id": "T4BS_SMCT_ELECTIVES"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "_id": "COMPST",
+    "name": "Computing Studies",
+    "eligibleMajors": [
+      "BSC-IS",
+      "BSC-SMT",
+      "BSC-CL",
+      "BSC-SE"
+    ],
+    "curriculumFrom": 2024,
+    "source": "Majors Offered by SCIS.xlsx (General Requirements)",
+    "requirements": [
+      {
+        "id": "COMPST_COMPULSORY",
+        "label": "CS101 Programming Fundamentals I or IS115 Algorithms & Programming",
+        "cuRequired": 1,
+        "rule": "chooseN",
+        "n": 1,
+        "modules": [
+          "CS101",
+          "IS115"
+        ]
+      },
+      {
+        "id": "COMPST_CORE",
+        "label": "Any 3 Computer Science Core Courses",
+        "cuRequired": 3,
+        "rule": "chooseN",
+        "n": 3,
+        "modules": [
+          "IS211",
+          "IS112",
+          "CS102",
+          "CS103",
+          "CS104",
+          "CS105",
+          "CS106",
+          "CS201",
+          "CS202",
+          "CS204",
+          "CS205",
+          "CS206",
+          "CS301"
+        ]
+      }
+    ],
+    "tracks": [
+      {
+        "trackCode": "AI",
+        "name": "Frontier Artificial Intelligence",
+        "requirements": [
+          {
+            "id": "COMPST_AI_COMPULSORY",
+            "label": "1 Compulsory Track Course",
+            "cuRequired": 1,
+            "rule": "chooseN",
+            "n": 1,
+            "modules": [
+              "CS420",
+              "CS421"
+            ]
+          },
+          {
+            "id": "COMPST_AI_ELECTIVES",
+            "label": "Any 3 Track Courses",
+            "cuRequired": 3,
+            "rule": "chooseN",
+            "n": 3,
+            "modules": [
+              "CS422",
+              "CS423",
+              "CS424",
+              "CS425",
+              "CS426",
+              "CS427",
+              "CS421"
+            ]
+          }
+        ]
+      },
+      {
+        "trackCode": "CY",
+        "name": "Cybersecurity",
+        "requirements": [
+          {
+            "id": "COMPST_CY_COMPULSORY",
+            "label": "1 Compulsory Track Course",
+            "cuRequired": 1,
+            "rule": "chooseN",
+            "n": 1,
+            "modules": [
+              "CS440"
+            ]
+          },
+          {
+            "id": "COMPST_CY_ELECTIVES",
+            "label": "Any 3 Track Courses",
+            "cuRequired": 3,
+            "rule": "chooseN",
+            "n": 3,
+            "modules": [
+              "CS441",
+              "CS442",
+              "CS443",
+              "CS444",
+              "CS445",
+              "CS446",
+              "CS447",
+              "CS448",
+              "CS449"
+            ]
+          }
+        ]
+      },
+      {
+        "trackCode": "SS",
+        "name": "Software Systems",
+        "requirements": [
+          {
+            "id": "COMPST_SS_COMPULSORY",
+            "label": "1 Compulsory Track Course",
+            "cuRequired": 1,
+            "rule": "chooseN",
+            "n": 1,
+            "modules": [
+              "CS464"
+            ]
+          },
+          {
+            "id": "COMPST_SS_ELECTIVES",
+            "label": "Any 3 Track Courses",
+            "cuRequired": 3,
+            "rule": "chooseN",
+            "n": 3,
+            "modules": [
+              "CS460",
+              "CS461",
+              "CS463",
+              "CS465",
+              "CS466",
+              "CS467",
+              "CS443",
+              "CS206"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

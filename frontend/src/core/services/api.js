@@ -117,6 +117,7 @@ export const api = {
 
   // Catalogue
   majors: (school) => request('GET', `/majors${query({ school })}`),
+  secondMajors: () => request('GET', '/second-majors'),
   majorRequirements: (id) => request('GET', `/majors/${encodeURIComponent(id)}/requirements`),
   // { q, category, fulfils, school, limit }
   modules: (params = {}) => request('GET', `/modules${query(params)}`),

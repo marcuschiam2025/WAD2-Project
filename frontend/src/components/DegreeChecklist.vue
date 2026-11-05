@@ -144,7 +144,16 @@ const FULFILS_LABEL = {
   'GRAD:SG_ASIA_STUDIES': 'Singapore & Asia Studies',
   'GRAD:DIGITAL_TECH': 'Digital Technology',
 };
-const CATEGORY_LABEL = { IS: 'IS course', IS_TRACK: 'IS track course', IS_RELATED: 'IS related course' };
+const CATEGORY_LABEL = {
+  IS: 'IS course',
+  IS_TRACK: 'IS track course',
+  IS_RELATED: 'IS related course',
+  CS: 'CS course',
+  SMT: 'SMT course',
+  SE: 'SE course',
+  LAW: 'Law course',
+  COMMUNITIES_BASKET: 'Communities course',
+};
 
 // Internship, Community Service and Global Exposure can be marked as done; the line then counts as cleared
 // and leaves the list (undo it from the profile page)

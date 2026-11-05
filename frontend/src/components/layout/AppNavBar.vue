@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@core/stores/user';
+import { useCatalogueStore } from '@core/stores/catalogue';
 import { useThemeStore } from '@core/stores/theme';
 import { api } from '@/core/services/api';
 import { parseBalance } from '@core/utils/balance';
@@ -17,6 +18,7 @@ import iconLogout from '@/assets/v2/logout.svg';
 const route = useRoute();
 const router = useRouter();
 const user = useUserStore();
+const catalogue = useCatalogueStore();
 const theme = useThemeStore();
 
 const links = [
@@ -32,8 +34,17 @@ const activeKey = computed(() => route.meta.nav ?? (route.path.startsWith('/quiz
 
 const menuOpen = ref(false);
 const navOpen = ref(false); // hamburger drawer below md
+// The track quiz is for majors with tracks
+const showQuiz = computed(() =>
+  catalogue.tracksApply(catalogue.majorIdFor(user.profile.major, user.profile.intakeYear)),
+);
+watch(
+  () => user.onboarded,
+  (onboarded) => onboarded && catalogue.load(),
+  { immediate: true },
+);
 const allLinks = computed(() => [
-  ...links,
+  ...links.filter((link) => link.key !== 'quiz' || showQuiz.value),
   ...(user.profile.role === 'admin' ? [{ key: 'admin', label: 'Admin', to: '/admin' }] : []),
 ]);
 watch(

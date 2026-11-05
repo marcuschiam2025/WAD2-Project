@@ -227,6 +227,9 @@ for (const requirement of requirements) {
 
 const modules = {}; // code -> module
 
+// The courses report lists these as 1 unit; the curriculum sheets count them differently
+const CU_OVERRIDES = { SE401: 6, LGST102: 0.75, LAW103_603: 1.25, LAW105_605: 1.5, LAW201_621: 1.5 };
+
 for (const row of csvRows) {
   const level = row[0];
   const subject = row[1].trim();
@@ -246,8 +249,11 @@ for (const row of csvRows) {
 
   // Categories used by "anyFromCategory" requirements
   const categories = new Set(seed?.categories ?? []);
-  if (subject === 'IS') {
-    categories.add('IS');
+  if (['IS', 'CS', 'SMT', 'SE'].includes(subject)) {
+    categories.add(subject);
+  }
+  if (['LAW', 'LGST'].includes(subject)) {
+    categories.add('LAW');
   }
   const isTrackCourse = attributes.some((attribute) => IS_TRACK_ATTRIBUTE.test(attribute));
   if (isTrackCourse || trackListed.has(code)) {
@@ -265,12 +271,20 @@ for (const row of csvRows) {
     }
   }
 
+  // The CS curriculum's Communities choice: Technology & Society or Cultures of the Modern World
+  if (fulfils.has('CORE:TECH_SCIENCE_SOCIETY') || fulfils.has('CORE:CULTURES_MODERN_WORLD')) {
+    categories.add('COMMUNITIES_BASKET');
+  }
+
   // CU: from a "UNIT - 1.0 Unit" attribute, else the seed, else 1
   let cu = seed?.cu ?? 1;
   const unitText = attributeValue(attributes, 'UNIT');
   const unitNumber = Number(unitText?.match(/[\d.]+/)?.[0]);
   if (Number.isFinite(unitNumber)) {
     cu = unitNumber;
+  }
+  if (CU_OVERRIDES[code] !== undefined) {
+    cu = CU_OVERRIDES[code];
   }
 
   // Terms: from the bidding data, else the seed

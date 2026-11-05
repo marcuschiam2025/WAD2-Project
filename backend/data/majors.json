@@ -33,6 +33,37 @@
     "lastChecked": "2026-10-13"
   },
   {
+    "_id": "BSC-SMT_AY2025",
+    "majorCode": "BSC-SMT",
+    "name": "Smart-City Management & Technology",
+    "degreeCode": "BSC-IS",
+    "degreeName": "Bachelor of Science (Information Systems)",
+    "schoolId": "SCIS",
+    "intakeFrom": 2025,
+    "intakeVerified": true,
+    "totalCU": 36,
+    "trackRequired": false,
+    "requirementsAvailable": true,
+    "source": "General Course Progression.xlsx (SCIS_2023_SMT, SMT_Basket)",
+    "lastChecked": "2026-11-06"
+  },
+  {
+    "_id": "BSC-CS_AY2025",
+    "majorCode": "BSC-CS",
+    "name": "AI Solution Development",
+    "degreeCode": "BSC-CS",
+    "degreeName": "Bachelor of Science (Computer Science)",
+    "schoolId": "SCIS",
+    "intakeFrom": 2025,
+    "intakeVerified": true,
+    "totalCU": 36,
+    "requirementsAvailable": true,
+    "source": "General Course Progression.xlsx (SCIS_2024-2025_CS); name from computing.smu.edu.sg/bsc-computer-science",
+    "lastChecked": "2026-11-06",
+    "trackRequired": false,
+    "intakeTo": 2025
+  },
+  {
     "_id": "BSC-CS_AY2026",
     "majorCode": "BSC-CS",
     "name": "AI Solution Development",
@@ -42,9 +73,10 @@
     "intakeFrom": 2026,
     "intakeVerified": true,
     "totalCU": 36,
-    "requirementsAvailable": false,
-    "source": "https://computing.smu.edu.sg/bsc-computer-science/curriculum",
-    "lastChecked": "2026-10-13"
+    "requirementsAvailable": true,
+    "source": "General Course Progression.xlsx (SCIS_2026_CS); name from computing.smu.edu.sg/bsc-computer-science",
+    "lastChecked": "2026-11-06",
+    "trackRequired": false
   },
   {
     "_id": "BSC-CL_AY2025",
@@ -56,9 +88,10 @@
     "intakeFrom": 2025,
     "intakeVerified": true,
     "totalCU": 36,
-    "requirementsAvailable": false,
-    "source": "https://computing.smu.edu.sg/bsc-computing-law/curriculum",
-    "lastChecked": "2026-10-13"
+    "requirementsAvailable": true,
+    "source": "General Course Progression.xlsx (SCIS_2024_C&L)",
+    "lastChecked": "2026-11-06",
+    "trackRequired": false
   },
   {
     "_id": "BSC-SE_AY2025",
@@ -70,9 +103,10 @@
     "intakeFrom": 2025,
     "intakeVerified": true,
     "totalCU": 36,
-    "requirementsAvailable": false,
-    "source": "https://computing.smu.edu.sg/bsc-software-engineering/curriculum",
-    "lastChecked": "2026-10-13"
+    "requirementsAvailable": true,
+    "source": "General Course Progression.xlsx (SCIS_2024_SE)",
+    "lastChecked": "2026-11-06",
+    "trackRequired": false
   },
   {
     "_id": "BACC_AY2025",

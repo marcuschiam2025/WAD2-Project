@@ -20,6 +20,7 @@ import BaseButton from '@/components/ui/BaseButton.vue';
 import UserAvatar from '@/components/ui/UserAvatar.vue';
 import StatusPill from '@/components/ui/StatusPill.vue';
 import DegreeChecklist from '@/components/DegreeChecklist.vue';
+import SecondMajorChecklist from '@/components/SecondMajorChecklist.vue';
 import PrereqWarningModal from '@/components/modals/PrereqWarningModal.vue';
 import PlanLimitModal from '@/components/modals/PlanLimitModal.vue';
 import DeletePlanModal from '@/components/modals/DeletePlanModal.vue';
@@ -1056,6 +1057,7 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
 
       <!-- Degree checklist: the 36 courses, what is cleared and what is still to take -->
       <DegreeChecklist />
+      <SecondMajorChecklist />
     </main>
 
     <PrereqWarningModal

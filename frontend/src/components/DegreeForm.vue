@@ -27,10 +27,24 @@ const saved = editing ? user.profile : {};
 const savedTracks = (saved.tracks ?? []).map((c) => (c === 'SMT' ? 'SMCT' : c));
 
 const MAX_TRACKS = 2;
-// TODO(backend): programmes come from GET /api/programmes. Only Information Systems is open for now.
-const programmes = [{ value: 'Information Systems', label: 'BSc Information Systems' }];
+// TODO(backend): programmes come from GET /api/programmes.
+const programmes = [
+  { value: 'Information Systems', label: 'BSc Information Systems' },
+  { value: 'Software Engineering', label: 'BSc Software Engineering', fromIntake: 2025 },
+  {
+    value: 'AI Solution Development',
+    label: 'BSc Computer Science (AI Solution Development)',
+    fromIntake: 2025,
+  },
+  { value: 'Computing & Law', label: 'BSc Computing & Law', fromIntake: 2025 },
+  {
+    value: 'Smart-City Management & Technology',
+    label: 'BSc Information Systems (Smart-City Management & Technology)',
+    fromIntake: 2025,
+  },
+];
 
-const major = ref(programmes[0].value);
+const major = ref(programmes.some((p) => p.value === saved.major) ? saved.major : programmes[0].value);
 const selectedTracks = ref(savedTracks);
 const undecided = ref(editing && !savedTracks.length); // wants to take the track quiz instead of picking now
 const currentSem = ref(saved.currentSem ?? null);
@@ -161,8 +175,8 @@ const eValid = computed(
 
 // Every section is required. Tracks can be "undecided", which sends you to the quiz.
 const sections = [
-  { label: 'course', done: () => !!major.value },
-  { label: 'tracks', done: () => selectedTracks.value.length > 0 || undecided.value },
+  { label: 'course', done: () => !!major.value && !intakeTooEarly.value },
+  { label: 'tracks', done: () => !hasTracks.value || selectedTracks.value.length > 0 || undecided.value },
   { label: 'semester', done: () => !!currentSem.value },
   // every done semester needs at least one module, and nothing may be left in the basket
   { label: 'modules', done: () => !!currentSem.value && !basket.value.length && !emptySems.value.length },
@@ -183,6 +197,14 @@ const catalogue = useCatalogueStore();
 catalogue.load();
 const curriculumId = computed(() => catalogue.majorIdFor(major.value, intakeYear.value));
 const trackOptions = computed(() => catalogue.tracksFor(curriculumId.value));
+const hasTracks = computed(() => catalogue.tracksApply(curriculumId.value));
+// A programme we only hold the curriculum of from a certain intake onwards
+const programmeStart = computed(() => programmes.find((p) => p.value === major.value)?.fromIntake);
+const intakeTooEarly = computed(
+  () => !!programmeStart.value && Number(intakeYear.value) < programmeStart.value,
+);
+// The section numbers close up when the track section is hidden
+const sectionNumber = (n) => (!hasTracks.value && n > 2 ? n - 1 : n);
 watch(curriculumId, (id) => catalogue.loadMajor(id), { immediate: true });
 // Once that curriculum has loaded, drop any chosen track it doesn't have
 watch(
@@ -207,7 +229,7 @@ async function submit() {
     await user.completeOnboarding({
       intakeYear: Number(intakeYear.value),
       major: major.value,
-      tracks: selectedTracks.value,
+      tracks: hasTracks.value ? selectedTracks.value : [],
       currentSem: currentSem.value,
       loaSemesters: [...loaSemesters.value],
       takenBySem: Object.fromEntries(
@@ -217,7 +239,7 @@ async function submit() {
       freeExemptions: freeExempt.value,
       balance: eValue.value,
     });
-    emit('saved', { undecided: undecided.value });
+    emit('saved', { undecided: hasTracks.value && undecided.value });
   } catch (error) {
     saveError.value = error.message;
   } finally {
@@ -255,11 +277,13 @@ const badge = (n) => [
           <h2 class="text-h4">Which course are you in?</h2>
         </div>
         <SelectMenu v-model="major" :options="programmes" />
-        <p class="text-[12px] text-muted-foreground">Only Information Systems is available for now.</p>
+        <p v-if="intakeTooEarly" role="alert" class="text-[12px] text-destructive">
+          {{ major }} is only available for the {{ programmeStart }} intake onwards for now.
+        </p>
       </section>
 
       <!-- 2. Tracks -->
-      <section class="flex flex-col gap-3 p-6">
+      <section v-if="hasTracks" class="flex flex-col gap-3 p-6">
         <div class="flex items-center gap-3">
           <span :class="badge(2)">{{ sectionDone[1] ? '✓' : 2 }}</span>
           <h2 class="text-h4">Which tracks are you taking?</h2>
@@ -312,7 +336,7 @@ const badge = (n) => [
       <!-- 3. Current semester -->
       <section class="flex flex-col gap-3 p-6">
         <div class="flex items-center gap-3">
-          <span :class="badge(3)">{{ sectionDone[2] ? '✓' : 3 }}</span>
+          <span :class="badge(3)">{{ sectionDone[2] ? '✓' : sectionNumber(3) }}</span>
           <h2 class="text-h4">Which semester are you in now?</h2>
         </div>
         <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup">
@@ -344,7 +368,7 @@ const badge = (n) => [
       <!-- 4. Modules already taken -->
       <section class="flex flex-col gap-3 p-6">
         <div class="flex items-center gap-3">
-          <span :class="badge(4)">{{ sectionDone[3] ? '✓' : 4 }}</span>
+          <span :class="badge(4)">{{ sectionDone[3] ? '✓' : sectionNumber(4) }}</span>
           <h2 class="text-h4">Which modules have you taken, or are taking now?</h2>
         </div>
 
@@ -504,7 +528,7 @@ const badge = (n) => [
           <span
             class="flex size-6 shrink-0 items-center justify-center rounded-full font-mono text-[12px] font-bold"
             :class="hasExemptions ? 'bg-success-tint text-success' : 'bg-secondary text-muted-foreground'"
-            >{{ hasExemptions ? '✓' : 5 }}</span
+            >{{ hasExemptions ? '✓' : sectionNumber(5) }}</span
           >
           <h2 class="text-h4">Are you exempted from any modules?</h2>
           <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
@@ -568,7 +592,7 @@ const badge = (n) => [
       <!-- 6. e-credits -->
       <section class="flex flex-col gap-3 p-6">
         <div class="flex items-center gap-3">
-          <span :class="badge(5)">{{ sectionDone[4] ? '✓' : 6 }}</span>
+          <span :class="badge(5)">{{ sectionDone[4] ? '✓' : sectionNumber(6) }}</span>
           <h2 class="text-h4">How many e-credits do you have?</h2>
         </div>
         <label

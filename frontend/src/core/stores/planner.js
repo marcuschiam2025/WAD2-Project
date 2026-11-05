@@ -5,6 +5,7 @@ import { SEM_IDS } from '../data/degree';
 import { api } from '../services/api';
 import { buildCurriculumChecklist, effectiveCode } from '../utils/curriculumChecklist';
 import { layoutCurriculum } from '../utils/curriculumLayout';
+import { buildSecondMajor } from '../utils/secondMajor';
 import { useCatalogueStore } from './catalogue';
 import { useUserStore } from './user';
 
@@ -25,6 +26,9 @@ function fromApi(p) {
     name: p.name,
     majorId: p.majorId,
     tracks: [...p.tracks],
+    secondMajor: p.secondMajor?.id
+      ? { id: p.secondMajor.id, trackCode: p.secondMajor.trackCode ?? null }
+      : null,
     currentSem: p.currentSem,
     semesters: p.semesters.map((s) => ({
       id: s.id,
@@ -41,6 +45,7 @@ function toApi(p) {
   return {
     name: p.name,
     tracks: p.tracks,
+    secondMajor: p.secondMajor ?? null,
     currentSem: p.currentSem,
     semesters: p.semesters.map(({ id, label, exchange, loa, modules: mods }) => ({
       id,
@@ -455,7 +460,9 @@ export const usePlannerStore = defineStore('planner', () => {
     const term = termOfSem(semId);
     const at = semIndex(plan, semId);
     if (!terms.length || !term || terms.includes(term) || at < 0 || plan.semesters[at].exchange) return null;
-    const next = plan.semesters.slice(at + 1).find((s) => !s.loa && !s.exchange && terms.includes(termOfSem(s.id)));
+    const next = plan.semesters
+      .slice(at + 1)
+      .find((s) => !s.loa && !s.exchange && terms.includes(termOfSem(s.id)));
     return { terms, next: next ?? null };
   }
 
@@ -779,6 +786,16 @@ export const usePlannerStore = defineStore('planner', () => {
     };
   });
 
+  // The active plan's second major, on top of its first-major checklist
+  const secondMajorProgress = computed(() => {
+    const chosen = activePlan.value.secondMajor;
+    const definition = chosen && catalogue.secondMajors.find((s) => s._id === chosen.id);
+    if (!definition || checklist.value.unavailable) return null;
+    return buildSecondMajor(activePlan.value, checklistCatalogue.value, definition, checklist.value, {
+      exempted: exempted.value,
+    });
+  });
+
   const hasAnyWarning = computed(() => {
     const plan = activePlan.value;
     return plan.semesters.some((s) => s.modules.some((m) => hasWarning(plan, m, s.id)));
@@ -786,6 +803,7 @@ export const usePlannerStore = defineStore('planner', () => {
 
   return {
     plans,
+    secondMajorProgress,
     activePlanId,
     activePlan,
     online,

@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@core/stores/user';
+import { useCatalogueStore } from '@core/stores/catalogue';
 import { sectionCode, sectionMeetings } from '@core/utils/clash';
 import { useBiddingStore } from '@core/stores/bidding';
 import { usePlannerStore, effectiveCode } from '@core/stores/planner';
@@ -35,6 +36,10 @@ const pointers = Object.values(
 const pointer = pointers[Math.floor(Math.random() * pointers.length)];
 
 const user = useUserStore();
+const catalogue = useCatalogueStore();
+const showQuiz = computed(() =>
+  catalogue.tracksApply(catalogue.majorIdFor(user.profile.major, user.profile.intakeYear)),
+);
 const bidding = useBiddingStore();
 const planner = usePlannerStore();
 const rooms = useRoomsStore();
@@ -109,7 +114,8 @@ const accentClass = {
   success: 'border-l-success',
   destructive: 'border-l-destructive',
 };
-const sections = computed(() => [
+const sections = computed(() =>
+  [
   {
     key: 'window',
     label: `${round.value.name} ${windowStatus.value.state === 'upcoming' ? 'opens in' : windowStatus.value.state === 'open' ? 'closes in' : 'status'}`,
@@ -168,7 +174,8 @@ const sections = computed(() => [
     subDanger: roomsNeedingYou.value > 0,
     accent: 'primary',
   },
-]);
+  ].filter((s) => s.key !== 'quiz' || showQuiz.value),
+);
 
 // The open tab is kept in the address (?tab=cart) so a reload or the back button returns to it
 const keys = computed(() => sections.value.map((s) => s.key));
@@ -444,7 +451,7 @@ const biddingWindows = computed(() => {
 
       <!-- Undecided about a track -->
       <section
-        v-if="!user.profile.tracks.length"
+        v-if="showQuiz && !user.profile.tracks.length"
         v-enter
         class="flex flex-col gap-3 rounded-lg border border-primary bg-primary-tint px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
       >

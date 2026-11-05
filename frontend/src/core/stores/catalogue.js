@@ -20,6 +20,7 @@ const FIXED_CODES = new Set(degreeGroups.flatMap((g) => g.slots).flatMap((s) => 
 export const useCatalogueStore = defineStore('catalogue', () => {
   const online = ref(false);
   const majors = ref([]);
+  const secondMajors = ref([]);
   const details = reactive({}); // code -> GET /api/modules/:code (the list leaves descriptions out)
   const curricula = reactive({}); // curriculum id -> complete backend requirement bundle
   const loadedMajors = new Set();
@@ -31,10 +32,15 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     // The whole catalogue, including courses not offered in about 2 years (all: true): modules a student took
     // years ago must still be found. The planner's search leaves those out (see search below).
     if (!loading) catalogueLoading.value = true;
-    loading ??= Promise.all([api.modules({ includeArchived: true, all: true }), api.majors()])
-      .then(([mods, majorList]) => {
+    loading ??= Promise.all([
+      api.modules({ includeArchived: true, all: true }),
+      api.majors(),
+      api.secondMajors().catch(() => []), // a plan's first major still works without them
+    ])
+      .then(([mods, majorList, secondMajorList]) => {
         mods.forEach((m) => (liveModules[m._id] = m));
         majors.value = majorList;
+        secondMajors.value = secondMajorList;
         online.value = true;
       })
       .catch(() => {
@@ -52,6 +58,20 @@ export const useCatalogueStore = defineStore('catalogue', () => {
       majors.value
         .filter((m) => m.name === name && m.intakeFrom <= year && (m.intakeTo == null || year <= m.intakeTo))
         .sort((a, b) => b.intakeFrom - a.intakeFrom)[0]?._id ?? null
+    );
+  }
+
+  const majorOf = (majorId) => majors.value.find((m) => m._id === majorId);
+  // Only IS has tracks (and the track quiz, which scores IS tracks); other majors have neither for now
+  function tracksApply(majorId) {
+    return majorOf(majorId)?.trackRequired !== false;
+  }
+  // The second majors open to this curriculum
+  function secondMajorsFor(majorId) {
+    const major = majorOf(majorId);
+    if (!major) return [];
+    return secondMajors.value.filter(
+      (s) => s.eligibleMajors.includes(major.majorCode) && major.intakeFrom >= s.curriculumFrom,
     );
   }
 
@@ -147,6 +167,9 @@ export const useCatalogueStore = defineStore('catalogue', () => {
     details,
     curricula,
     tracksFor,
+    tracksApply,
+    secondMajors,
+    secondMajorsFor,
     checklistModulesFor,
     load,
     loadMajor,
