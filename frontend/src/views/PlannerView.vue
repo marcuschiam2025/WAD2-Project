@@ -38,7 +38,13 @@ import iconCheck from "@/assets/figma/check-success.svg";
 import iconAlert from "@/assets/figma/alert-12.svg";
 import iconGrip from "@/assets/figma/icon-grip.svg";
 import iconPlus from "@/assets/figma/plus-14.svg";
-
+const doneColumnsCount = computed(
+  () =>
+    columns.value.filter(
+      (c) =>
+        c.type === "sem" && planner.semStatus(plan.value, c.sem.id) === "done",
+    ).length,
+);
 const importingToBidding = ref(false);
 const handoffError = ref("");
 async function importToBidding() {
@@ -796,10 +802,11 @@ const onTrack = computed(() => !planner.hasAnyWarning);
               <!-- Semester -->
               <div
                 v-else
-                class="relative flex min-h-[330px] min-w-[140px] flex-1 flex-col gap-2 rounded-md p-2 transition-colors"
+                class="relative flex min-w-[140px] flex-1 flex-col gap-2 rounded-md p-2 transition-colors"
                 :class="[
+                  /* USE MARGIN (mb) instead of padding. This forces the dark grey background to physically stop early! */
                   status(col.sem) === 'done'
-                    ? 'min-h-[276px] self-start mb-[44px]'
+                    ? 'min-h-[286px] mb-[44px]'
                     : 'min-h-[330px]',
                   {
                     'border-[1.5px] border-primary bg-card':
