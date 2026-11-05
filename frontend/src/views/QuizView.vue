@@ -57,7 +57,10 @@ function start() {
 <style scoped>
 /* Both pictures are sized and placed in vw, so they take the same share of the window on every screen. Measured on a
    1914px-wide window: the explorer is 16.7vw wide, the swinger 12.5vw. The swinger hangs just under the 64px nav bar. */
-.explorer { width: 16.7vw; left: 0.85vw; top: 12.5vw; }
-.swinger { width: 12.5vw; right: 0.85vw; top: 65px; }
+.explorer { width: min(16.7vw, var(--strip)); left: 0.85vw; top: 12.5vw; }
+.swinger { width: min(12.5vw, var(--strip)); right: 0.85vw; top: 65px; }
+/* On narrower windows the empty strip beside the content is smaller than 16.7vw, so the pictures shrink to leave about
+   4rem of air between them and the cards (the content column is 1024px wide, with 48px of padding inside it). */
+.explorer, .swinger { --strip: calc((100vw - 1024px) / 2 + 48px - 4rem); }
 .quiz-header { padding-inline: clamp(1.25rem, 5vw, 3rem); }
 </style>
