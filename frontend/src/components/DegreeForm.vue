@@ -5,7 +5,7 @@
 // the saved answers. Saving calls user.completeOnboarding, which also updates every What-If plan.
 import { computed, ref, watch } from 'vue'
 import { useUserStore } from '@core/stores/user'
-import { usePlannerStore, effectiveCode } from '@core/stores/planner'
+import { usePlannerStore, effectiveCode, MAX_LOA_TERMS, INTERNSHIP_CODE } from '@core/stores/planner'
 import { useCatalogueStore } from '@core/stores/catalogue'
 import { moduleName } from '@core/data/catalogue'
 import { SEM_IDS } from '@core/data/degree'
@@ -51,6 +51,7 @@ function toggleUndecided() {
 // Only semesters before the current one are open, because those are the ones that are done.
 const basket = ref([])
 const placed = ref(Object.fromEntries(SEM_IDS.map((id) => [id, [...(saved.takenBySem?.[id] ?? [])]])))
+const loaSemesters = ref([...(saved.loaSemesters ?? [])])
 const dragging = ref(null)
 const dragOver = ref(null)
 
@@ -74,7 +75,16 @@ function removeExemption(code) {
 const MAX_FREE_EXEMPT = 6
 const freeExempt = ref(saved.freeExemptions ?? 0)
 const hasExemptions = computed(() => exempted.value.length > 0 || freeExempt.value > 0)
-const emptySems = computed(() => doneSems.value.filter((id) => !placed.value[id].length))
+const emptySems = computed(() => doneSems.value.filter((id) => !loaSemesters.value.includes(id) && !placed.value[id].length))
+
+function toggleLoa(id) {
+  if (!doneSems.value.includes(id)) return
+  if (loaSemesters.value.includes(id)) loaSemesters.value = loaSemesters.value.filter(sem => sem !== id)
+  else if (loaSemesters.value.length < MAX_LOA_TERMS) {
+    loaSemesters.value.push(id)
+    placed.value[id].filter(code => code !== INTERNSHIP_CODE).forEach(backToBasket)
+  }
+}
 
 function unplace(code) {
   if (picked.value === code) picked.value = null
@@ -96,6 +106,7 @@ function drop(semId) {
   const code = dragging.value
   dragging.value = dragOver.value = null
   if (!code) return
+  if (semId && loaSemesters.value.includes(semId) && code !== INTERNSHIP_CODE) return
   unplace(code)
   if (semId) placed.value[semId] = [...placed.value[semId], code]
   else basket.value = [...basket.value, code]
@@ -117,6 +128,7 @@ function placePicked(semId) {
 // Editing: those modules just leave the list (the plan keeps them as planned), and a semester that has
 // just become done or current starts with the modules the active plan has in it.
 watch(currentSem, () => {
+  loaSemesters.value = loaSemesters.value.filter(id => doneSems.value.includes(id))
   SEM_IDS.filter((id) => !openSems.value.includes(id)).forEach((id) => {
     if (!editing) basket.value = [...basket.value, ...placed.value[id]]
     placed.value[id] = []
@@ -126,7 +138,7 @@ watch(currentSem, () => {
     openSems.value
       .filter((id) => !placed.value[id].length)
       .forEach((id) => {
-        const fromPlan = planner.activePlan.semesters.find((s) => s.id === id)?.modules.map(effectiveCode) ?? []
+        const fromPlan = (planner.activePlan.semesters.find((s) => s.id === id)?.modules.map(effectiveCode) ?? []).filter(code => !loaSemesters.value.includes(id) || code === INTERNSHIP_CODE)
         placed.value[id] = fromPlan.filter((c) => !taken.has(c))
       })
   }
@@ -172,6 +184,8 @@ watch(
 
 async function submit() {
   if (missing.value) return
+  saveError.value = planner.profileLoaError({ currentSem: currentSem.value, loaSemesters: loaSemesters.value })
+  if (saveError.value) return
   saving.value = true
   saveError.value = ''
   try {
@@ -180,6 +194,7 @@ async function submit() {
     major: major.value,
     tracks: selectedTracks.value,
     currentSem: currentSem.value,
+    loaSemesters: [...loaSemesters.value],
     takenBySem: Object.fromEntries(openSems.value.filter((id) => placed.value[id].length).map((id) => [id, placed.value[id]])),
     exempted: exempted.value,
     freeExemptions: freeExempt.value,
@@ -347,8 +362,12 @@ const badge = (n) => [
               <div class="flex items-center justify-between">
                 <span class="font-mono text-[12px] font-bold">{{ id }}</span>
                 <span v-if="id === currentSem" class="text-[11px] font-medium text-warning">Now · in progress</span>
-                <span v-else class="text-[11px] text-muted-foreground">Done</span>
+                <span v-else class="text-[11px] text-muted-foreground">{{ loaSemesters.includes(id) ? 'LOA' : 'Done' }}</span>
               </div>
+              <label v-if="id !== currentSem" class="flex items-center gap-1.5 text-[11px] text-muted-foreground" @click.stop>
+                <input type="checkbox" :aria-label="`${id} leave of absence`" :checked="loaSemesters.includes(id)" :disabled="!loaSemesters.includes(id) && loaSemesters.length >= MAX_LOA_TERMS" @change="toggleLoa(id)" />
+                Leave of absence
+              </label>
               <div
                 v-for="code in placed[id]"
                 :key="code"
@@ -368,7 +387,8 @@ const badge = (n) => [
                   @click.stop="backToBasket(code)"
                 >✕</button>
               </div>
-              <p v-if="!placed[id].length && id === currentSem" class="m-auto text-center text-[11px] text-muted-foreground">
+              <p v-if="loaSemesters.includes(id)" class="m-auto text-center text-[11px] text-muted-foreground">No classes required. Internship ({{ INTERNSHIP_CODE }}) is optional.</p>
+              <p v-else-if="!placed[id].length && id === currentSem" class="m-auto text-center text-[11px] text-muted-foreground">
                 Optional: what you're taking this semester
               </p>
               <p v-else-if="!placed[id].length" class="m-auto text-center text-[11px] font-medium text-destructive">Needs a module</p>
@@ -378,11 +398,12 @@ const badge = (n) => [
             {{ basket.length }} module{{ basket.length === 1 ? '' : 's' }} still need{{ basket.length === 1 ? 's' : '' }} a semester. Drag {{ basket.length === 1 ? 'it' : 'them' }} into the semester you took {{ basket.length === 1 ? 'it' : 'them' }}.
           </p>
           <p v-else-if="emptySems.length" class="text-[12px] font-medium text-destructive">
-            Every finished semester needs at least one module. Still empty: {{ emptySems.join(', ') }}.
+            Every finished study semester needs a module, or mark it as leave of absence. Still empty: {{ emptySems.join(', ') }}.
           </p>
           <p v-else class="text-[12px] text-muted-foreground">
             Drag a module card into the semester you took it, or into {{ currentSem }} if you're taking it now. Drag it again to move it.
           </p>
+          <p class="text-[12px] text-muted-foreground">Up to {{ MAX_LOA_TERMS }} LOA terms per plan. Marking a term as LOA returns its regular modules to the basket; place them in another semester or remove them before saving.</p>
         </template>
       </section>
 
