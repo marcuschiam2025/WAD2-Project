@@ -124,7 +124,7 @@ export const api = {
   // Party admin only: hands the role to another member
   transferRoomAdmin: (id, userId) => request('PUT', `/parties/${id}/owner`, { userId }),
 
- notifications: () => request('GET', '/notifications'),
+ notifications: (before) => request('GET', `/notifications${query({ before })}`),
   unreadNotificationCount: () => request('GET', '/notifications/unread-count'),
   markNotificationRead: (id) => request('PATCH', `/notifications/${id}/read`),
   markAllNotificationsRead: () => request('PATCH', '/notifications/read-all'),

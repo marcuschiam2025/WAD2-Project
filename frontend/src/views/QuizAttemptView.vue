@@ -44,7 +44,11 @@ function onKey(event) {
   if (Number.isInteger(index) && index >= 0 && index < options.value.length) { event.preventDefault(); choose(options.value[index].id) }
   else if (event.key === 'Enter' && !['BUTTON', 'A'].includes(event.target?.tagName)) { event.preventDefault(); next() }
 }
-onMounted(async () => { await quiz.initialize(); if (quiz.questions.length && !quiz.hasDraft) quiz.start(); window.addEventListener('keydown', onKey) })
+async function loadAttempt() {
+  await quiz.initialize()
+  if (!quiz.error && quiz.questions.length && !quiz.hasDraft) quiz.start()
+}
+onMounted(async () => { await loadAttempt(); window.addEventListener('keydown', onKey) })
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 <template>
@@ -52,7 +56,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <PageHeader class="quiz-header" overline="Track Finder" title="What feels like you?" subtitle="Choose honestly. There are no right answers, and your confidence can grow." />
     <main class="mx-auto flex max-w-3xl flex-col gap-5 px-5 py-8 sm:px-12">
       <p v-if="quiz.loading" role="status">Loading questions…</p>
-      <div v-if="quiz.error" role="alert" class="rounded-md border border-destructive p-4"><p>{{ quiz.error }}</p><div class="mt-3 flex flex-wrap gap-2"><BaseButton v-if="!quiz.questions.length" variant="outline" @click="quiz.initialize">Retry loading</BaseButton><BaseButton v-for="section in [...new Set(quiz.issues.map((issue) => issue.section).filter(Boolean))]" :key="section" variant="outline" @click="jump(section)">Review {{ sectionLabels[section] }}</BaseButton><BaseButton variant="ghost" to="/quiz">Back to Track Finder</BaseButton></div></div>
+      <div v-if="quiz.error" role="alert" class="rounded-md border border-destructive p-4"><p>{{ quiz.error }}</p><div class="mt-3 flex flex-wrap gap-2"><BaseButton v-if="!quiz.questions.length" variant="outline" @click="loadAttempt">Retry loading</BaseButton><BaseButton v-for="section in [...new Set(quiz.issues.map((issue) => issue.section).filter(Boolean))]" :key="section" variant="outline" @click="jump(section)">Review {{ sectionLabels[section] }}</BaseButton><BaseButton variant="ghost" to="/quiz">Back to Track Finder</BaseButton></div></div>
       <section v-if="question && !quiz.loading" class="card flex flex-col gap-5 p-5 sm:p-7" :aria-busy="quiz.submitting">
         <div class="flex items-center justify-between gap-2 text-xs text-muted-foreground"><span>Section {{ sectionNumber }} of 4 · {{ sectionLabels[question.section] }}</span><span>{{ quiz.answeredCount }} / 20 answered</span></div>
         <progress :value="quiz.current + 1" :max="quiz.questions.length" class="h-2 w-full accent-primary" aria-label="Question position" />

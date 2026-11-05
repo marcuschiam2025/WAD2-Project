@@ -59,3 +59,48 @@ test('opening the notification bell refreshes new items without remounting and r
     assert.equal(mounts.length, 1, 'the navbar was never remounted')
   } finally { scope.stop() }
 })
+
+test('the bell counts older unread notifications and can load their page without losing the current list on failure', async () => {
+  const source = await readFile(new URL('../src/components/layout/AppNavBar.vue', import.meta.url), 'utf8')
+  const setup = source.split('<script setup>')[1].split('</script>')[0].replace(/^import .*$/gm, '')
+  const scope = effectScope(), mounts = [], requests = []
+  const recent = Array.from({ length: 20 }, (_, i) => ({ _id: `read-${i}`, read: true }))
+  let offline = false
+  const context = vm.createContext({
+    computed, ref, watch, nextTick, onMounted: callback => mounts.push(callback), onBeforeUnmount() {},
+    useRoute: () => ({ meta: {}, path: '/dashboard' }), useRouter: () => ({ push() {} }),
+    useUserStore: () => ({ profile: {} }), useThemeStore: () => ({}),
+    document: { addEventListener() {} }, console: { error() {} },
+    api: {
+      notifications: async before => {
+        requests.push(before)
+        if (offline) throw new Error('Offline')
+        return before ? { notifications: [recent[19], { _id: 'old-unread', read: false }], next: null, unreadCount: 1 } : { notifications: recent, next: 'cursor-20', unreadCount: 1 }
+      },
+      markNotificationRead: async () => {},
+    },
+  })
+  try {
+    scope.run(() => vm.runInContext(`${setup}\nglobalThis.state = { notifications, unreadCount, filteredNotifications, nextNotifications: typeof nextNotifications === 'undefined' ? null : nextNotifications, notificationsError: typeof notificationsError === 'undefined' ? null : notificationsError, loadNotifications, handleNotifClick };`, context))
+    mounts.forEach(callback => callback())
+    await new Promise(setImmediate)
+    assert.equal(context.state.unreadCount.value, 1)
+    assert.equal(context.state.filteredNotifications.value.length, 0)
+    assert.equal(context.state.nextNotifications.value, 'cursor-20')
+
+    offline = true
+    await context.state.loadNotifications(true)
+    assert.equal(context.state.notifications.value.length, 20)
+    assert.equal(context.state.nextNotifications.value, 'cursor-20')
+    assert.ok(context.state.notificationsError.value)
+    offline = false
+    await context.state.loadNotifications(true)
+    assert.equal(requests.at(-1), 'cursor-20')
+    assert.equal(context.state.notifications.value.length, 21, 'overlapping page entries are deduplicated')
+    assert.equal(context.state.nextNotifications.value, null)
+    assert.equal(context.state.notificationsError.value, '')
+    assert.equal(context.state.filteredNotifications.value[0]._id, 'old-unread')
+    await context.state.handleNotifClick(context.state.filteredNotifications.value[0])
+    assert.equal(context.state.unreadCount.value, 0, 'successfully reading a notification updates the count')
+  } finally { scope.stop() }
+})

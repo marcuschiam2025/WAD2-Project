@@ -180,16 +180,17 @@ async function leave() {
           room.members.length === 1
             ? 'You are the last member. Leaving deletes this room and its votes.'
             : room.ownerId === 'me'
-              ? 'You are the party admin. Make another member party admin (in Members) before leaving.'
+              ? 'Your votes are removed. The longest-standing remaining member automatically becomes party admin.'
               : room.locked
                 ? 'Your votes are removed. This room is locked, so you can only rejoin after the party admin unlocks it.'
                 : 'Your votes are removed. You can rejoin with the room code.'
         }}
       </p>
+      <p v-if="room.ownerId === 'me' && room.members.length > 1 && room.locked" class="text-[14px] leading-[22px] text-muted-foreground">The room stays locked. The new party admin can unlock it.</p>
       <p v-if="error" role="alert" class="text-[13px] text-destructive">{{ error }}</p>
       <div class="flex justify-end gap-2">
         <BaseButton variant="ghost" :disabled="leaving" @click="confirmLeave = false">Stay</BaseButton>
-        <BaseButton variant="destructive-outline" :disabled="leaving || (room.ownerId === 'me' && room.members.length > 1)" @click="leave">
+        <BaseButton variant="destructive-outline" :disabled="leaving" @click="leave">
           {{ leaving ? 'Leaving…' : 'Leave room' }}
         </BaseButton>
       </div>
