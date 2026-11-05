@@ -1,21 +1,22 @@
 # BidMaxxer
 
+**Live app:** https://bidmaxxer.vercel.app/
+
 A track finder, What-If degree planner and BOSS bidding simulator for SMU students, built for IS216 Web Application Development II.
 
 ## Links
 
-- **Deployed application:** `<DEPLOYED_APP_URL>`
+- **Deployed application:** https://bidmaxxer.vercel.app/
 - **Git repository:** https://github.com/marcuschiam2025/WAD2-Project
-- **Presentation video:** `<YOUTUBE_VIDEO_URL>`
+- **Presentation video:** https://youtu.be/nx03Fh1oStM
 
 ## Login details
 
 Sign-in is with Google only, and only `@smu.edu.sg` accounts are accepted. The admin portal also needs an account with admin access (see [Admin access](#admin-access)).
 
-| Role             | Username / email  | Password             |
-| ---------------- | ----------------- | -------------------- |
-| Student          | `<STUDENT_EMAIL>` | `<STUDENT_PASSWORD>` |
-| Admin (optional) | `<ADMIN_EMAIL>`   | `<ADMIN_PASSWORD>`   |
+| Role    | Username / email  | Password             |
+| ------- | ----------------- | -------------------- |
+| Student | `<STUDENT_EMAIL>` | `<STUDENT_PASSWORD>` |
 
 ## Features
 
@@ -149,13 +150,25 @@ pnpm grant-admin --uid <FIREBASE_USER_UID> --operator "<YOUR_NAME>"
 
 ## Testing
 
-Playwright is set up for end-to-end tests, but there are no test cases yet. Add them to a `tests/` folder in the project root, then run them from the root with the backend and frontend both running:
+The project has 35 end-to-end tests, written with Playwright, in `frontend/e2e`.
+
+Start the backend and frontend first, then run these from `frontend/`:
 
 ```bash
-pnpm install
-pnpm exec playwright install   # first run only: downloads the browsers
-pnpm exec playwright test
+pnpm exec playwright install             # first run only: downloads the browsers
+
+# First run only: log in as each test account in the window that opens
+node e2e/save-login.mjs student-a
+node e2e/save-login.mjs student-b
+node e2e/save-login.mjs student-c
+
+pnpm exec playwright test --project=chromium   # leave out --project to run all three browsers
+pnpm exec playwright show-report               # open the last report
 ```
+
+The accounts must already be onboarded. Saved logins go in `frontend/playwright/.auth/`, which is git-ignored. They work like passwords, so don't share them.
+
+> **Warning:** the tests use real accounts against whichever database the backend is connected to. Before and after each test they reset student-a's first plan and saved bids, delete its extra plans with nothing planned ahead, and remove rooms named "E2E ...". Use a separate test database where possible.
 
 ## Project structure
 
@@ -173,12 +186,13 @@ WAD2-Project/
 │   ├── server.js     # Local entry point
 │   └── vercel.js     # Vercel entry point
 ├── frontend/
-│   └── src/
-│       ├── assets/
-│       ├── components/
-│       ├── core/     # Router, stores, API client, data and utilities
-│       └── views/    # One per page
-├── playwright.config.js
+│   ├── e2e/          # End-to-end tests
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── core/     # Router, stores, API client, data and utilities
+│   │   └── views/    # One per page
+│   └── playwright.config.js
 └── vercel.json       # Deploys the frontend and backend together
 ```
 
