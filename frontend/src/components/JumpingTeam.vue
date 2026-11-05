@@ -1,35 +1,87 @@
 <script setup>
-// Five friends jumping together, built from the five separate pictures in assets/jumping (3 to 7) so each one can
-// jump on its own when the pointer is over it. Every picture is 525x810, drawn at 0.93 scale and offset to form the
-// group. Numbers are percentages of a 1140x780 box that
-// frames the group, so the whole thing scales with whatever size it is given.
+import { ref } from 'vue';
 import yellow from '@/assets/jumping/3.png';
 import pink from '@/assets/jumping/4.png';
 import blue from '@/assets/jumping/5.png';
 import green from '@/assets/jumping/6.png';
 import purple from '@/assets/jumping/7.png';
 
-// z is the stacking order from the group picture (later = in front); the arm and leg overlaps depend on it.
+// Spatial coordinates (x center percentage) left-to-right:
+// Yellow (~20%), Pink (~35%), Blue (~52%), Green (~68%), Purple (~84%)
 const friends = [
-  { src: purple, left: 62.8, top: 4.4, z: 1 },
-  { src: yellow, left: -1.2, top: 0.5, z: 2 },
-  { src: blue, left: 31.1, top: -5.3, z: 3 },
-  { src: pink, left: 14.0, top: 5.9, z: 4 },
-  { src: green, left: 46.3, top: 5.6, z: 5 },
+  { id: 'yellow', src: yellow, left: -1.2, top: 0.5, z: 2, centerX: 20 },
+  { id: 'pink', src: pink, left: 14.0, top: 5.9, z: 4, centerX: 35 },
+  { id: 'blue', src: blue, left: 31.1, top: -5.3, z: 3, centerX: 52 },
+  { id: 'green', src: green, left: 46.3, top: 5.6, z: 5, centerX: 68 },
+  { id: 'purple', src: purple, left: 62.8, top: 4.4, z: 1, centerX: 84 },
 ];
+
+const teamRef = ref(null);
+const activeX = ref(null);
+
+function handleMouseMove(event) {
+  if (!teamRef.value) return;
+  const rect = teamRef.value.getBoundingClientRect();
+  // Calculate cursor X relative position as a percentage (0 to 100)
+  const relativeX = ((event.clientX - rect.left) / rect.width) * 100;
+  activeX.value = relativeX;
+}
+
+function handleMouseLeave() {
+  activeX.value = null;
+}
+
+/**
+ * Calculates dynamic vertical lift offset (-15% max translateY) 
+ * based on how close the cursor X is to each friend's center X.
+ */
+function getOffsetStyle(friendX) {
+  if (activeX.value === null) {
+    return { transform: 'translateY(0%) scale(1, 1)' };
+  }
+
+  const distance = Math.abs(activeX.value - friendX);
+  // Influence distance threshold (within 30% width of cursor)
+  const maxDistance = 30; 
+
+  if (distance >= maxDistance) {
+    return { transform: 'translateY(0%) scale(1, 1)' };
+  }
+
+  // Smooth continuous bell curve ratio (1 at exact hover, tapering to 0)
+  const influence = Math.cos((distance / maxDistance) * (Math.PI / 2));
+  
+  // Max lift is -14% top translation
+  const lift = -14 * influence;
+  // Subtle squash/stretch scaling based on height
+  const scaleY = 1 + 0.05 * influence;
+  const scaleX = 1 - 0.03 * influence;
+
+  return {
+    transform: `translateY(${lift}%) scale(${scaleX}, ${scaleY})`,
+  };
+}
 </script>
 
 <template>
-  <div class="team" aria-hidden="true">
+  <div
+    ref="teamRef"
+    class="team"
+    aria-hidden="true"
+    @mousemove="handleMouseMove"
+    @mouseleave="handleMouseLeave"
+  >
     <div
       v-for="f in friends"
-      :key="f.src"
+      :key="f.id"
       class="friend"
       :style="{ left: f.left + '%', top: f.top + '%', zIndex: f.z }"
     >
-      <!-- The pictures overlap and have see-through corners, so only the middle of each figure reacts to the pointer. -->
-      <div class="hit" />
-      <img :src="f.src" alt="" />
+      <img
+        :src="f.src"
+        alt=""
+        :style="getOffsetStyle(f.centerX)"
+      />
     </div>
   </div>
 </template>
@@ -48,36 +100,8 @@ const friends = [
   display: block;
   width: 100%;
   height: auto;
-}
-.hit {
-  position: absolute;
-  left: 28%;
-  top: 28%;
-  width: 44%;
-  height: 62%;
-  pointer-events: auto;
-  cursor: default;
-}
-.hit:hover + img {
-  animation: hop 0.55s cubic-bezier(0.3, 0.7, 0.4, 1);
-}
-@keyframes hop {
-  0% {
-    transform: translateY(0) scale(1, 1);
-  }
-  15% {
-    transform: translateY(0) scale(1.03, 0.96);
-  }
-  50% {
-    transform: translateY(-12%) scale(0.98, 1.03);
-  }
-  100% {
-    transform: translateY(0) scale(1, 1);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hit:hover + img {
-    animation: none;
-  }
+  will-change: transform;
+  /* Smooth CSS transition as the mouse slides across */
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.4, 1);
 }
 </style>
