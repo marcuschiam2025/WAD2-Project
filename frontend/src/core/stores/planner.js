@@ -418,6 +418,14 @@ export const usePlannerStore = defineStore('planner', () => {
     basket.value.push(code)
   }
 
+  // Takes a module out of one plan's semesters and puts it back in the basket. The bidding page can be showing a plan
+  // other than the active one, and an exchange entry ("CS412 → IS460") counts as the module it maps to.
+  function returnToBasketFrom(planId, code) {
+    const plan = plans.value.find((p) => p.id === planId) ?? activePlan.value
+    plan.semesters.forEach((s) => { s.modules = s.modules.filter((m) => effectiveCode(m) !== code) })
+    if (!basket.value.includes(code)) basket.value.push(code)
+  }
+
   function addToBasket(code) {
     if (!basket.value.includes(code)) basket.value.push(code)
   }
@@ -732,6 +740,7 @@ export const usePlannerStore = defineStore('planner', () => {
     hasWarning,
     placeModule,
     returnToBasket,
+    returnToBasketFrom,
     addToBasket,
     removeFromBasket,
     clearBasket,

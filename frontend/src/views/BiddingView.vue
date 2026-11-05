@@ -8,6 +8,7 @@ import { planLabel } from '@/trackLabels'
 import { moduleName } from '@core/data/catalogue'
 import { sectionMeetings, sectionCode } from '@core/utils/clash'
 import { termLabel } from '@core/data/bidding'
+import { MAX_MODULES_PER_SEM } from '@core/stores/planner'
 import { roundStatus } from '@core/utils/biddingWindows'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -18,6 +19,7 @@ import TimetableGrid from '@/components/TimetableGrid.vue'
 import TimetableModuleCard from '@/components/TimetableModuleCard.vue'
 import BidSidebar from '@/components/BidSidebar.vue'
 import ExamSchedule from '@/components/ExamSchedule.vue'
+import BidLimitModal from '@/components/modals/BidLimitModal.vue'
 import { popEnter, popLeave } from '@/motion'
 
 // Booked sections, bids and alternatives come from the bidding store (backend data, live section catalogue)
@@ -32,6 +34,21 @@ watch(() => route.query.plan, id => {
 watch(() => bidding.planId, id => {
   if (id && route.query.plan !== id) router.replace({ query: { ...route.query, plan: id } })
 })
+// More modules than a semester holds (collab rooms add their modules by themselves): ask which one to take out.
+// "Decide later" closes it; the banner below stays until the cart is back within the limit.
+const limitOpen = ref(false)
+watch(() => bidding.overLimit, (now, before) => {
+  if (now > 0 && !(before > 0)) limitOpen.value = true
+  if (now === 0) limitOpen.value = false
+}, { immediate: true })
+const limitRows = computed(() => bidding.inCart.map((code) => {
+  const lock = bidding.locked[code]
+  return { code, name: moduleName(code), roomId: lock?.roomId ?? null, roomName: lock?.roomName ?? '' }
+}))
+function removeFromCart(code) {
+  planner.returnToBasketFrom(bidding.planId, code)
+  bidding.selectedModule = null
+}
 const dragging = ref(null)
 
 // Pick up a section the party admin locks or unlocks, without changing ballots or membership.
@@ -191,6 +208,10 @@ const scrollToPanel = () => sidebarRef.value?.$el.scrollIntoView({ behavior: 'sm
       </div>
 
       <p v-if="!bidding.roundInfo.configured" class="text-sm text-muted-foreground">Catalogue preview: {{ round.term }}. An active bidding term and round have not been configured.</p>
+      <p v-if="bidding.overLimit" role="alert" class="text-sm text-destructive">
+        Your bid cart has {{ bidding.inCart.length }} modules, and a semester holds at most {{ MAX_MODULES_PER_SEM }}.
+        <button type="button" class="underline" @click="limitOpen = true">Choose what to remove</button>
+      </p>
       <p v-if="bidding.loadError" role="alert" class="text-sm text-destructive">{{ bidding.loadError }} <button type="button" class="underline" @click="bidding.load()">Retry</button></p>
       <p v-if="bidding.roomConflicts.length" role="alert" class="text-sm text-destructive">You picked different sections for {{ bidding.roomConflicts.join(', ') }} in different rooms. Change your pick in those rooms before saving bids.</p>
       <p v-if="bidding.notOffered.length" role="status" class="text-sm text-muted-foreground">
@@ -321,5 +342,14 @@ const scrollToPanel = () => sidebarRef.value?.$el.scrollIntoView({ behavior: 'sm
         >View {{ bidding.selectedModule }} bid details ↓</button>
       </div>
     </main>
+    <BidLimitModal
+      v-if="limitOpen && bidding.overLimit"
+      :count="bidding.inCart.length"
+      :max="MAX_MODULES_PER_SEM"
+      :plan-name="bidding.plan.name"
+      :rows="limitRows"
+      @close="limitOpen = false"
+      @remove="removeFromCart"
+    />
   </div>
 </template>
