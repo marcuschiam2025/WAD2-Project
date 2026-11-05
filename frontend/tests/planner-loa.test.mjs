@@ -5,6 +5,40 @@ import { createPinia, setActivePinia } from 'pinia'
 
 const ids = (plan) => plan.semesters.map((s) => `${s.id}${s.loa ? '(LOA)' : ''}`)
 
+test('LOA additions stop at two per plan and become available again after removal', async () => {
+  globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }
+  const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom', logLevel: 'error' })
+  try {
+    const { usePlannerStore } = await server.ssrLoadModule('/src/core/stores/planner.js')
+    setActivePinia(createPinia())
+    const planner = usePlannerStore()
+    planner.plans = [{ id: 'p', tracks: [], currentSem: 'Y1S1', semesters: [{ id: 'Y1S1', modules: [] }, { id: 'Y1S2', modules: [] }] }]
+    planner.activePlanId = 'p'
+    planner.addSemester({ loa: true })
+    planner.addSemester({ loa: true })
+    const before = ids(planner.activePlan)
+    planner.addSemester({ loa: true })
+    assert.deepEqual(ids(planner.activePlan), before, 'a third LOA must never enter the plan or reach autosave')
+    assert.equal(planner.canAddLoa, false)
+    planner.removeLoa('Y2S2')
+    assert.equal(planner.canAddLoa, true)
+    planner.addSemester({ loa: true })
+    assert.equal(planner.activePlan.semesters.filter(s => s.loa).length, 2)
+
+    planner.plans.push({ id: 'other', tracks: [], currentSem: 'Y1S1', semesters: [{ id: 'Y1S1', modules: [] }] })
+    planner.activePlanId = 'other'
+    assert.equal(planner.canAddLoa, true, 'the LOA limit belongs to each plan')
+    planner.activePlan.semesters = [{ id: 'Y9S1', modules: [] }]
+    planner.addSemester()
+    assert.equal(planner.activePlan.semesters.at(-1).id, 'Y9S2')
+    planner.addSemester({ loa: true })
+    planner.addSemester()
+    assert.equal(planner.activePlan.semesters.length, 2, 'neither action may create unsupported Y10 terms')
+    assert.equal(planner.canAddSemester, false)
+    assert.equal(planner.canAddLoa, false)
+  } finally { await server.close() }
+})
+
 test('LOA terms move and delete within future terms, renumbering the terms after them', async () => {
   globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} }
   const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' })

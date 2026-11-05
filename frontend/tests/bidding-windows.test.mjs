@@ -2,6 +2,20 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 
+test('the round countdown switches from opening to closing and then closed at the exact boundaries', async () => {
+  const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom', logLevel: 'error' })
+  try {
+    const { roundStatus } = await server.ssrLoadModule('/src/core/utils/biddingWindows.js')
+    const round = { opensAt: new Date('2026-11-04T09:00:00Z'), closesAt: new Date('2026-11-06T02:00:00Z'), isOpen: false }
+    assert.equal(roundStatus(round, Date.parse('2026-11-04T08:00:00Z')).label, 'Opens in 1h 0m')
+    assert.equal(roundStatus(round, Date.parse('2026-11-04T09:00:00Z')).state, 'open', 'the original isOpen flag must not freeze the status before opening')
+    assert.equal(roundStatus(round, Date.parse('2026-11-06T01:00:00Z')).label, 'Closes in 1h 0m')
+    assert.equal(roundStatus(round, Date.parse('2026-11-06T02:00:00Z')).label, 'Round closed')
+    assert.equal(roundStatus({ closesAt: round.closesAt }, Date.parse('2026-11-04T09:00:00Z')).state, 'open', 'staff deadlines without an opening date remain supported')
+    assert.equal(roundStatus({}, Date.now()).label, 'Deadline not configured')
+  } finally { await server.close() }
+})
+
 test('every window of the term is listed in order and marked closed, open or upcoming in Singapore time', async () => {
   const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom', logLevel: 'error' })
   try {

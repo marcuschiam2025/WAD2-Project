@@ -130,10 +130,12 @@ export const useBiddingStore = defineStore('bidding', () => {
   const saving = ref(false)
   const roundInfo = computed(() => {
     const date = round.value.closesAt ? new Date(round.value.closesAt) : null
+    const opens = round.value.opensAt ? new Date(round.value.opensAt) : null
     return {
       term: termLabel(round.value.term) ?? 'No section catalogue',
       name: round.value.round ? `Round ${round.value.round}` : 'Round not configured',
       closesAt: date && Number.isFinite(date.getTime()) ? date : null,
+      opensAt: opens && Number.isFinite(opens.getTime()) ? opens : null,
       configured: round.value.configured === true,
     }
   })
