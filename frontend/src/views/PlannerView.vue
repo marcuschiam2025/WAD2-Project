@@ -355,7 +355,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
       </template>
       <!-- Decorative, md and up only. Absolutely placed in the header's empty space, so nothing moves. Cropped to the
            top ~half of the picture (head to waist) and as tall as the header. -->
-      <div aria-hidden="true" class="pointer-events-none absolute bottom-0 right-6 top-0 hidden aspect-[525/405] overflow-hidden md:block xl:left-[19.5rem] xl:right-auto">
+      <div aria-hidden="true" class="thinker pointer-events-none absolute bottom-0 right-6 hidden aspect-[525/405] overflow-hidden md:block xl:left-[19.5rem] xl:right-auto">
         <img :src="thinker" alt="" class="h-auto w-full" />
       </div>
     </PageHeader>
@@ -749,6 +749,8 @@ const onTrack = computed(() => !planner.hasAnyWarning)
 </template>
 
 <style scoped>
+/* The thinker's height is 7.1vw (measured on a 1914px-wide window) so it scales with the window; it never grows past the header. */
+.thinker { height: min(7.1vw, 100%); }
 .fade-enter-active,
 .fade-leave-active { transition: opacity 0.15s; }
 .fade-enter-from,

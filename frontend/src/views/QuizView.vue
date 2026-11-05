@@ -31,7 +31,7 @@ function start() {
     <div class="relative">
     <!-- Decorative explorer, drawn over the empty strip left of the content, so nothing moves. It is as wide as that
          strip (page width minus the 1024px content column, halved) and only shows where the strip is wide enough. -->
-    <img :src="explorer" alt="" aria-hidden="true" class="explorer pointer-events-none absolute left-4 top-60 hidden h-auto min-[1100px]:block" />
+    <img :src="explorer" alt="" aria-hidden="true" class="explorer pointer-events-none absolute hidden h-auto min-[1280px]:block" />
     <main class="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8 sm:px-12">
       <p v-if="quiz.loading" role="status">Loading your quiz…</p>
       <div v-if="quiz.error" role="alert" class="card p-5"><p>{{ quiz.error }}</p><BaseButton class="mt-3" variant="outline" @click="quiz.initialize">Retry loading</BaseButton></div>
@@ -49,13 +49,15 @@ function start() {
     </main>
     </div>
     <!-- Decorative swinger, hung from just under the nav bar, staying in view as the page scrolls, in the empty strip right of the content. Same rules as the
-         explorer: drawn over the strip so nothing moves, as wide as the strip, only where the strip is wide enough. -->
-    <img :src="swinger" alt="" aria-hidden="true" class="swinger pointer-events-none fixed right-4 top-14 hidden h-auto min-[1100px]:block" />
+         explorer: drawn over the strip so nothing moves, sized in vw (see the style block), only where the window is wide enough for the strip. -->
+    <img :src="swinger" alt="" aria-hidden="true" class="swinger pointer-events-none fixed hidden h-auto min-[1280px]:block" />
   </div>
 </template>
 
 <style scoped>
-.swinger { width: min(15rem, calc((100vw - 1024px) / 2 + 0.5rem)); }
-.explorer { width: min(20rem, calc((100% - 1024px) / 2 + 0.5rem)); }
+/* Both pictures are sized and placed in vw, so they take the same share of the window on every screen. Measured on a
+   1914px-wide window: the explorer is 16.7vw wide, the swinger 12.5vw. The swinger hangs just under the 64px nav bar. */
+.explorer { width: 16.7vw; left: 0.85vw; top: 12.5vw; }
+.swinger { width: 12.5vw; right: 0.85vw; top: 65px; }
 .quiz-header { padding-inline: clamp(1.25rem, 5vw, 3rem); }
 </style>
