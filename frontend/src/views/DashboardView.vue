@@ -1178,6 +1178,7 @@ const biddingWindows = computed(() => {
                 class="min-w-0 flex-1 truncate text-[14px] hover:underline"
               >
                 <span class="font-mono font-bold">{{ c.code }}</span>
+                <span> · </span>
                 <span class="text-muted-foreground">{{ c.name }}</span>
               </RouterLink>
               <StatusPill v-if="c.rating" :tone="ratingPill[c.rating][0]">{{
