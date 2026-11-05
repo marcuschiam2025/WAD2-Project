@@ -282,7 +282,7 @@ async function logOut() {
           <Transition :css="false" @enter="popEnter" @leave="popLeave">
             <div
               v-if="notifOpen"
-              class="absolute top-11 right-0 z-50 flex w-80 max-w-[calc(100vw-2rem)] origin-top-right flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-md"
+              class="fixed inset-x-3 top-[68px] z-50 flex origin-top-right flex-col gap-3 sm:absolute sm:inset-x-auto sm:top-11 sm:right-0 sm:w-80 rounded-lg border border-border bg-card p-4 shadow-md"
             >
               <!-- Top Bar Header -->
               <div class="flex items-center justify-between border-b border-border pb-2">

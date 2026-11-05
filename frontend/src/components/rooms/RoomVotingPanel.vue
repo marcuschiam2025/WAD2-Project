@@ -77,8 +77,9 @@ onBeforeUnmount(() => clearInterval(timer));
 
 <template>
   <section class="flex min-w-0 flex-1 flex-col gap-4 p-5" aria-labelledby="room-voting-heading">
-    <div class="flex items-start justify-between gap-4">
-      <div class="flex flex-col gap-0.5 leading-normal">
+    <!-- On a phone the title takes the full width and the actions sit under it; side by side only from sm up -->
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div class="flex min-w-0 flex-col gap-0.5 leading-normal sm:flex-1">
         <h2 id="room-voting-heading" class="text-h4">Modules for bid · {{ module }}</h2>
         <p class="text-[13px] text-muted-foreground">
           <template v-if="board">{{ termLabel(board.term) }} · </template>
@@ -91,7 +92,7 @@ onBeforeUnmount(() => clearInterval(timer));
           }}
         </p>
       </div>
-      <div v-if="board?.rows.length && !locked" class="flex shrink-0 items-center gap-2">
+      <div v-if="board?.rows.length && !locked" class="flex items-center justify-end gap-3 sm:shrink-0 sm:gap-2">
         <span v-if="dirty" class="text-[12px] text-muted-foreground">Unsaved changes</span>
         <BaseButton v-if="submitted" variant="outline" :disabled="saving" @click="unselect">{{
           saving ? 'Saving…' : 'Unselect my picks'
