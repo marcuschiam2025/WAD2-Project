@@ -4,6 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useBiddingStore } from '@core/stores/bidding';
 import { usePlannerStore } from '@core/stores/planner';
 import { useRoomsStore } from '@core/stores/rooms';
+import { useUserStore } from '@core/stores/user';
+import { fmtE } from '@core/utils/money';
 import { planLabel } from '@/trackLabels';
 import { moduleName } from '@core/data/catalogue';
 import { sectionMeetings, sectionCode } from '@core/utils/clash';
@@ -26,6 +28,7 @@ import { popEnter, popLeave } from '@/motion';
 const bidding = useBiddingStore();
 const planner = usePlannerStore();
 const rooms = useRoomsStore();
+const user = useUserStore();
 const route = useRoute();
 const router = useRouter();
 watch(
@@ -308,6 +311,18 @@ const scrollToPanel = () => sidebarRef.value?.$el.scrollIntoView({ behavior: 'sm
         Your bid cart has {{ bidding.inCart.length }} modules, and a semester holds at most
         {{ MAX_MODULES_PER_SEM }}.
         <button type="button" class="underline" @click="limitOpen = true">Choose what to remove</button>
+      </p>
+      <!-- Shown the moment the bids pass the balance, not only when saving. A room lock can do this on its own. -->
+      <p v-if="bidding.overBudget" role="alert" class="text-sm text-destructive">
+        Your bids total e$ {{ fmtE(bidding.allocated) }}, which is e$ {{ fmtE(bidding.overBudget) }} over your e$
+        {{ fmtE(user.balance) }} balance. Lower a bid to save.
+        <template v-if="bidding.roomBids.length">
+          A room lock added
+          <template v-for="(room, i) in bidding.roomBids" :key="room.code">
+            <template v-if="i">, </template><RouterLink :to="`/rooms/${room.roomId}`" class="underline">{{ room.code }} ({{ room.roomName }})</RouterLink>
+            with a bid of e$ {{ fmtE(room.amount) }}</template
+          >.
+        </template>
       </p>
       <p v-if="bidding.loadError" role="alert" class="text-sm text-destructive">
         {{ bidding.loadError }} <button type="button" class="underline" @click="bidding.load()">Retry</button>

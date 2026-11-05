@@ -164,6 +164,19 @@ export const useBiddingStore = defineStore('bidding', () => {
     () => Object.values(bids.value).reduce((sum, bid) => sum + toCents(Number(bid) || 0), 0) / 100,
   );
 
+  // How far the bids are over the student's balance, in e$ (0 when they fit). Shown as soon as it happens, not only when
+  // saving: a room lock adds its module with a bid already filled in, so the total can pass the balance by itself.
+  const overBudget = computed(() => Math.max(0, toCents(allocated.value) - toCents(user.balance)) / 100);
+  // The bids that came from a room lock, so the warning can name the room that pushed the total up
+  const roomBids = computed(() =>
+    Object.values(locked.value).map((lock) => ({
+      code: lock.module,
+      roomId: lock.roomId,
+      roomName: lock.roomName,
+      amount: Number(bids.value[lock.module]) || 0,
+    })),
+  );
+
   function sectionsFor(code) {
     return sections.filter((s) => s.module === code && !s.archived && liveSections.has(s.id));
   }
@@ -403,7 +416,10 @@ export const useBiddingStore = defineStore('bidding', () => {
       return false;
     }
     if (items.reduce((sum, item) => sum + toCents(item.amount), 0) > toCents(user.balance)) {
-      saveError.value = 'Your bids exceed your available balance.';
+      const room = roomBids.value[0];
+      saveError.value = `Your bids exceed your available balance by e$ ${overBudget.value.toFixed(2)}. Lower a bid to save${
+        room ? `. ${room.roomName} locked ${room.code}, which added a bid of e$ ${room.amount.toFixed(2)}` : ''
+      }.`;
       return false;
     }
     const payload = { planId: plan.value.id, term: round.value.term, items };
@@ -476,6 +492,8 @@ export const useBiddingStore = defineStore('bidding', () => {
     notOffered,
     inCart,
     overLimit,
+    overBudget,
+    roomBids,
     fromRooms,
     roomConflicts,
     locked,
