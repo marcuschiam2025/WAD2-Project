@@ -64,7 +64,7 @@ async function join() {
         <p>{{ rooms.error }}</p>
         <BaseButton class="mt-2" variant="outline" @click="rooms.load">Retry</BaseButton>
       </div>
-      <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Your rooms">
+      <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <RouterLink
           v-for="room in rooms.rooms"
           :key="room.id"
@@ -101,7 +101,6 @@ async function join() {
               class="h-1.5 w-full accent-primary"
               :value="room.summary.votedCount"
               :max="room.summary.memberCount || 1"
-              :aria-label="`${room.summary.votedCount} members voted`"
             />
           </div>
           <p v-if="room.lockedSection" class="text-xs font-medium text-primary">

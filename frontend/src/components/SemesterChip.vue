@@ -42,7 +42,6 @@ const summary = computed(() => {
       ref="chip"
       class="rounded-[5px] border px-1.5 py-0.5 font-mono text-[11px] leading-none font-medium"
       :class="semesterTone[item.chip.tone]"
-      :aria-label="`${summary}. Recommended ${item.rec.label}`"
       @mouseenter="show"
       @mouseleave="open = false"
       >{{ item.chip.text }}</span

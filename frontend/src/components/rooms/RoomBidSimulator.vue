@@ -180,7 +180,6 @@ const verdictText = computed(() => {
               inputmode="decimal"
               placeholder="e.g. 30"
               @input="onBidInput"
-              aria-label="Bid amount in e$"
               class="min-w-0 flex-1 bg-transparent font-medium outline-none"
             />
           </span>

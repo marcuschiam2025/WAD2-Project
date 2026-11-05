@@ -111,12 +111,11 @@ async function confirmAsk() {
         class="mt-2 h-1.5 w-full accent-primary"
         :value="board.votedCount"
         :max="board.memberCount || 1"
-        :aria-label="`${board.votedCount} of ${board.memberCount} members voted`"
       />
       <p v-if="waiting" class="mt-2 text-xs text-muted-foreground">Waiting for {{ waiting }}</p>
     </div>
     <p v-if="nextStep" class="text-xs text-muted-foreground">{{ nextStep }}</p>
-    <ol class="flex max-h-72 flex-col gap-2 overflow-y-auto" aria-label="Section ranking">
+    <ol class="flex max-h-72 flex-col gap-2 overflow-y-auto">
       <li
         v-for="row in ranking"
         :key="row.section.id"

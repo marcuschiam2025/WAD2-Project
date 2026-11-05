@@ -106,7 +106,7 @@ test('the prompt lists every module, offers Remove on plan modules and Open room
     let html = await render({ count: 7, max: 6, planName: 'Plan 1', rows })
     assert.match(html, /7 modules is too many/)
     assert.match(html, /at most 6 modules.*7.*Remove one/s)
-    assert.match(html, /aria-label="Remove IS111 from Plan 1"/)
+    assert.equal((html.match(/>Remove</g) ?? []).length, 1, 'one Remove button, for the plan module')
     assert.doesNotMatch(html, /Remove IS211/, 'a locked module has no Remove button')
     assert.match(html, /Locked by OOP gang/)
     assert.match(html, /href="\/rooms\/r0"/)
@@ -116,6 +116,6 @@ test('the prompt lists every module, offers Remove on plan modules and Open room
     html = await render({ count: 8, max: 6, planName: 'Plan 1', rows: [{ code: 'IS211', name: 'Design', roomId: 'r0', roomName: 'OOP gang' }, { code: 'IS212', name: 'Algorithms', roomId: 'r1', roomName: 'Study group' }] })
     assert.match(html, /Remove 2/)
     assert.match(html, /Every module here is locked by a collab room/)
-    assert.doesNotMatch(html, /aria-label="Remove /)
+    assert.doesNotMatch(html, />Remove</, 'no Remove button when every module is room-locked')
   } finally { await server.close() }
 })

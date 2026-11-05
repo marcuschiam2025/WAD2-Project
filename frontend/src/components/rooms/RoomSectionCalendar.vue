@@ -25,12 +25,10 @@ const visibleDays = computed(() =>
     <div
       class="overflow-x-auto rounded-lg border border-border bg-card"
       tabindex="0"
-      aria-label="Weekly section calendar; scroll horizontally to see all days"
     >
       <div
         class="min-w-[720px]"
         role="table"
-        aria-label="Weekly section calendar. Select any meeting to select or deselect its whole section."
       >
         <div class="flex bg-muted" role="row">
           <div
@@ -74,7 +72,6 @@ const visibleDays = computed(() =>
               role="checkbox"
               :aria-checked="selected.includes(event.section.id)"
               :disabled="disabled"
-              :aria-label="`${event.section.module} ${event.section.section}, ${day.name} ${time.start} to ${time.end}, ${event.count} votes. ${selected.includes(event.section.id) ? 'Deselect' : 'Select'} whole section`"
               class="flex w-full flex-col gap-0.5 rounded-sm px-2.5 py-2 text-left text-[11px] leading-normal transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-default"
               :class="
                 selected.includes(event.section.id)

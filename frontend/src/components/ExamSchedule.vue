@@ -47,7 +47,6 @@ const perDay = computed(() => {
   <section
     v-if="rows.length"
     class="flex flex-col gap-2 rounded-lg border border-border bg-card p-4"
-    aria-label="Final exam schedule"
   >
     <div class="flex items-baseline justify-between gap-2">
       <h2 class="text-[15px] font-semibold">Final exams</h2>

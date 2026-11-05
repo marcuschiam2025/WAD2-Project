@@ -569,7 +569,6 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
             <button
               v-show="query"
               type="button"
-              aria-label="Clear search"
               class="flex size-4 shrink-0 items-center justify-center rounded-full bg-muted/60 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               @click.prevent="query = ''"
             >
@@ -613,7 +612,6 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
                 v-if="!roomDecision(m.code)"
                 type="button"
                 draggable="false"
-                :aria-label="`Remove ${m.code} from the basket`"
                 class="shrink-0 rounded-sm px-1 text-[12px] text-muted-foreground hover:text-destructive lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
                 @click.stop="planner.removeFromBasket(m.code)"
               >
@@ -683,7 +681,6 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
                 <button
                   v-if="planner.plans.length > 1"
                   type="button"
-                  :aria-label="`Delete ${p.name}`"
                   :title="`Delete ${p.name}`"
                   :disabled="!planner.online || planner.planActionPending"
                   class="rounded-sm px-1 text-[12px] leading-5 text-muted-foreground hover:bg-muted hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
@@ -776,7 +773,6 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
                     <button
                       type="button"
                       draggable="false"
-                      :aria-label="`Delete LOA term ${col.sem.label}`"
                       title="Delete this LOA term"
                       class="rounded-sm px-1 font-sans text-[12px] leading-5 text-muted-foreground hover:bg-card hover:text-destructive max-lg:min-h-11 max-lg:min-w-11"
                       @click.stop="removeLoa(col.sem)"
@@ -825,7 +821,6 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
                     ]"
                     :key="dir"
                     type="button"
-                    :aria-label="`Move LOA term ${col.sem.label} one term ${word}`"
                     :title="`Move one term ${word}`"
                     :disabled="!loaNeighbour(col.sem, dir)"
                     class="rounded-sm border border-border bg-card px-2 py-0.5 text-[12px] text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40 max-lg:min-h-11 max-lg:min-w-11"
@@ -872,7 +867,6 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
                     v-if="cardState(code, col.sem) === 'warning'"
                     type="button"
                     class="text-left text-[11px] text-destructive hover:underline"
-                    :aria-label="`Review academic warnings for ${effectiveCode(code)}`"
                     @click.stop="warning = { code, semId: col.sem.id }"
                   >
                     {{ planner.warningMessages(plan, code, col.sem.id).join('; ') }}
@@ -894,7 +888,6 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
                   <button
                     v-if="status(col.sem) !== 'done' && !roomDecision(code)"
                     type="button"
-                    :aria-label="`Move ${code} back to basket`"
                     class="absolute top-1 right-1.5 text-[11px] text-muted-foreground hover:text-foreground lg:hidden lg:group-hover:block"
                     @click="planner.returnToBasket(code)"
                   >
@@ -1017,7 +1010,6 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
             <div
               class="flex h-1.5 overflow-hidden rounded-full bg-border"
               role="img"
-              :aria-label="`${b.label}: ${b.cleared} cleared, ${b.inProgress} in progress, ${b.planned} planned, of ${b.required}`"
             >
               <span
                 class="bg-success transition-[width] duration-500"

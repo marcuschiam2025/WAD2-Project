@@ -187,7 +187,6 @@ async function logOut() {
         <button
           type="button"
           class="flex size-9 shrink-0 items-center justify-center rounded-md hover:bg-muted md:hidden"
-          :aria-label="navOpen ? 'Close menu' : 'Open menu'"
           :aria-expanded="navOpen"
           @click.stop="navOpen = !navOpen"
         >
@@ -205,7 +204,7 @@ async function logOut() {
           </svg>
         </button>
         <BrandLogo to="/dashboard" class="max-lg:[&>span]:hidden" />
-        <nav class="hidden items-start gap-3 md:flex lg:gap-6" aria-label="Main">
+        <nav class="hidden items-start gap-3 md:flex lg:gap-6">
           <RouterLink
             v-for="link in allLinks"
             :key="link.key"
@@ -260,7 +259,6 @@ async function logOut() {
         <div ref="notifRef" class="relative">
           <button
             type="button"
-            :aria-label="unreadCount ? `Notifications (${unreadCount} unread)` : 'Notifications'"
             :aria-expanded="notifOpen"
             class="relative block size-8 rounded-full hover:bg-muted"
             @click="
@@ -381,7 +379,6 @@ async function logOut() {
         <button
           type="button"
           class="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          :aria-label="theme.isDark ? 'Switch to light mode' : 'Switch to dark mode'"
           :aria-pressed="theme.isDark"
           :title="theme.isDark ? 'Light mode' : 'Dark mode'"
           @click="theme.toggle()"
@@ -408,7 +405,6 @@ async function logOut() {
         <div ref="menuRef" class="relative">
           <button
             type="button"
-            aria-label="Account menu"
             :aria-expanded="menuOpen"
             class="block rounded-full"
             @click="
@@ -454,7 +450,7 @@ async function logOut() {
       </div>
     </div>
     <!-- Mobile / tablet nav drawer -->
-    <nav v-if="navOpen" class="flex flex-col border-t border-border px-4 py-2 md:hidden" aria-label="Main">
+    <nav v-if="navOpen" class="flex flex-col border-t border-border px-4 py-2 md:hidden">
       <RouterLink
         v-for="link in allLinks"
         :key="link.key"

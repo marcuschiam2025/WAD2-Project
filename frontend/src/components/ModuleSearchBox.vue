@@ -49,7 +49,6 @@ function pick(m) {
         :disabled="disabled"
         autocomplete="off"
         :placeholder="placeholder"
-        aria-label="Search modules"
         class="min-w-0 flex-1 bg-transparent text-[14px] leading-normal outline-none"
         @keydown.enter.prevent="matches[0] && pick(matches[0])"
       />

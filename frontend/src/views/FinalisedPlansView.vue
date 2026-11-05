@@ -222,7 +222,7 @@ async function confirmDelete() {
         <p v-if="copies.length > 1" class="text-[12px] text-muted-foreground md:hidden">
           Swipe the table sideways to compare your plans.
         </p>
-        <section class="card overflow-x-auto" aria-label="Saved section comparison">
+        <section class="card overflow-x-auto">
           <table class="w-full text-left text-sm">
             <thead class="bg-muted">
               <tr>

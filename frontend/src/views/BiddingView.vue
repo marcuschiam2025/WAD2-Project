@@ -375,7 +375,6 @@ const scrollToPanel = () => sidebarRef.value?.$el.scrollIntoView({ behavior: 'sm
           <BaseButton
             variant="destructive-outline"
             size="sm"
-            :aria-label="`Remove unavailable ${item.module} from bidding`"
             @click="bidding.dropModule(item.module)"
             >Remove module</BaseButton
           >

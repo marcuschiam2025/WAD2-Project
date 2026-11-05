@@ -89,7 +89,6 @@ onBeforeUnmount(() => chart?.destroy());
       <canvas
         ref="canvas"
         role="img"
-        aria-label="Bar chart of your score out of 100 for each track, highest first. The same figures are listed in the table below."
       />
     </div>
     <details class="text-xs text-muted-foreground">

@@ -82,7 +82,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
       >
         {{ summary || placeholder }}
       </span>
-      <button type="button" :aria-expanded="open" aria-label="Toggle options" @click.stop="open = !open">
+      <button type="button" :aria-expanded="open" @click.stop="open = !open">
         <img :src="open ? chevronUp : chevronDown" alt="" class="size-4" />
       </button>
     </div>

@@ -56,7 +56,7 @@ async function deletePlan() {
         <p class="text-overline text-primary">{{ plan.name }}</p>
         <h2 class="text-h3">Plan settings</h2>
       </div>
-      <button type="button" aria-label="Close" class="rounded-sm p-0.5 hover:bg-muted" @click="emit('close')">
+      <button type="button" class="rounded-sm p-0.5 hover:bg-muted" @click="emit('close')">
         <img :src="iconX" alt="" class="size-4" />
       </button>
     </div>

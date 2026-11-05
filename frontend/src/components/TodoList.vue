@@ -47,7 +47,6 @@ function add() {
         :disabled="!user.isSignedIn"
         maxlength="120"
         placeholder="Add a to-do"
-        aria-label="New to-do"
         class="min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-[9px] text-[14px] leading-normal outline-none transition-colors focus:border-ring"
       />
       <BaseButton :disabled="!user.isSignedIn || !text.trim()" @click="add">Add</BaseButton>
@@ -64,7 +63,6 @@ function add() {
           type="button"
           role="checkbox"
           :aria-checked="item.done"
-          :aria-label="`${item.done ? 'Mark not done' : 'Mark done'}: ${item.text}`"
           class="flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-colors"
           :class="item.done ? 'border-primary bg-primary' : 'border-border bg-card hover:border-primary'"
           @click="todos.toggle(item.id)"
@@ -78,7 +76,6 @@ function add() {
         >
         <button
           type="button"
-          :aria-label="`Delete: ${item.text}`"
           class="rounded-sm p-1 opacity-60 transition-opacity hover:bg-muted hover:opacity-100 focus-visible:opacity-100"
           @click="todos.remove(item.id)"
         >

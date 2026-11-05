@@ -19,7 +19,7 @@ test('degree form accepts credit balances with up to two decimals and rejects ex
       const app = createSSRApp(DegreeForm, { mode: 'edit' }).use(pinia)
       app.directive('stagger', { getSSRProps: () => ({}) })
       const html = await renderToString(app)
-      const input = html.match(/<input[^>]*aria-label="E-credit amount in e\$"[^>]*>/)?.[0]
+      const input = html.match(/<input[^>]*step="0.01"[^>]*>/)?.[0]
       const saveButton = html.match(/<button[^>]*>Save changes/)?.[0]
       assert.ok(input)
       assert.ok(saveButton)

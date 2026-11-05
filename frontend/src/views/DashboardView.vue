@@ -464,7 +464,6 @@ const biddingWindows = computed(() => {
         <!-- A vertical list on wide screens, a sideways strip on small ones -->
         <div
           role="tablist"
-          aria-label="Dashboard summary"
           aria-orientation="vertical"
           class="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-5 xl:flex xl:flex-col"
         >
@@ -528,7 +527,7 @@ const biddingWindows = computed(() => {
                   <p class="text-overline text-muted-foreground">Bidding window · {{ round.term }}</p>
                   <h2 class="text-h3">{{ round.name }}</h2>
                 </header>
-                <div class="flex flex-col gap-2" role="timer" :aria-label="windowStatus.label">
+                <div class="flex flex-col gap-2" role="timer">
                   <span
                     class="font-mono text-[56px] leading-none font-bold tracking-tight sm:text-[80px] lg:text-[96px]"
                     :class="countdown === 'Closed' && 'text-muted-foreground'"
@@ -578,7 +577,6 @@ const biddingWindows = computed(() => {
               <div
                 class="flex gap-1.5"
                 role="img"
-                :aria-label="`${termWindows.filter((w) => w.state === 'closed').length} of ${termWindows.length} bidding windows have closed`"
               >
                 <span
                   v-for="w in termWindows"
@@ -633,7 +631,6 @@ const biddingWindows = computed(() => {
             <div
               class="flex h-3 overflow-hidden rounded-full bg-border"
               role="img"
-              :aria-label="`${fmtE(bidding.allocated)} of ${user.balance} e$ in your cart`"
             >
               <template v-if="over">
                 <span class="bg-primary transition-[width] duration-500" :style="{ width: withinPct }" />
@@ -721,7 +718,6 @@ const biddingWindows = computed(() => {
                 <div
                   class="flex h-2.5 overflow-hidden rounded-full bg-border"
                   role="img"
-                  :aria-label="`${degree.cleared} of ${degree.required} courses cleared`"
                 >
                   <span
                     v-for="p in degreeParts.filter((x) => !x.bare)"
@@ -847,7 +843,6 @@ const biddingWindows = computed(() => {
                   <span class="text-[13px] text-muted-foreground">{{ r.note }}</span>
                   <div
                     class="mt-auto flex items-center gap-2 pt-1"
-                    :aria-label="`${r.voted} of ${r.total} voted`"
                   >
                     <span class="flex h-1.5 flex-1 overflow-hidden rounded-full bg-border"
                       ><span
@@ -880,7 +875,6 @@ const biddingWindows = computed(() => {
               <div
                 class="flex rounded-md border border-border p-0.5"
                 role="tablist"
-                aria-label="Schedule range"
               >
                 <button
                   v-for="t in [

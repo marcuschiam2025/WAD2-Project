@@ -455,7 +455,6 @@ onBeforeUnmount(() => {
           v-if="operation"
           class="rounded-md border border-border bg-muted p-4 text-sm"
           role="region"
-          aria-label="Confirm section action"
         >
           <h4 class="font-semibold">
             {{ operation === 'archive' ? 'Archive' : 'Restore' }} {{ form.moduleCode }}

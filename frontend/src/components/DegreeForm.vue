@@ -315,7 +315,7 @@ const badge = (n) => [
           <span :class="badge(3)">{{ sectionDone[2] ? '✓' : 3 }}</span>
           <h2 class="text-h4">Which semester are you in now?</h2>
         </div>
-        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Current semester">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup">
           <button
             v-for="id in SEM_IDS"
             :key="id"
@@ -381,7 +381,7 @@ const badge = (n) => [
                 <img :src="iconGrip" alt="" class="size-3" />
                 <span class="font-mono font-bold">{{ code }}</span>
                 <span class="max-w-[160px] truncate text-muted-foreground">{{ moduleName(code) }}</span>
-                <button type="button" :aria-label="`Remove ${code}`" @click.stop="unplace(code)">
+                <button type="button" @click.stop="unplace(code)">
                   <img :src="iconRemove" alt="" class="size-3" />
                 </button>
               </div>
@@ -430,7 +430,6 @@ const badge = (n) => [
               >
                 <input
                   type="checkbox"
-                  :aria-label="`${id} leave of absence`"
                   :checked="loaSemesters.includes(id)"
                   :disabled="!loaSemesters.includes(id) && loaSemesters.length >= MAX_LOA_TERMS"
                   @change="toggleLoa(id)"
@@ -451,7 +450,6 @@ const badge = (n) => [
                 <span class="line-clamp-2 text-[11px] text-muted-foreground">{{ moduleName(code) }}</span>
                 <button
                   type="button"
-                  :aria-label="`Move ${code} back to the basket`"
                   class="absolute top-1 right-1.5 text-[11px] text-muted-foreground hover:text-foreground lg:hidden lg:group-hover:block"
                   @click.stop="backToBasket(code)"
                 >
@@ -526,7 +524,7 @@ const badge = (n) => [
           >
             <span class="font-mono font-bold">{{ code }}</span>
             <span class="max-w-[200px] truncate text-muted-foreground">{{ moduleName(code) }}</span>
-            <button type="button" :aria-label="`Remove exemption for ${code}`" @click="removeExemption(code)">
+            <button type="button" @click="removeExemption(code)">
               <img :src="iconRemove" alt="" class="size-3" />
             </button>
           </span>
@@ -539,10 +537,9 @@ const badge = (n) => [
               >Free electives you're exempted from without a specific module, e.g. diploma credit.</span
             >
           </span>
-          <div class="flex shrink-0 items-center gap-2" role="group" aria-label="Free elective exemptions">
+          <div class="flex shrink-0 items-center gap-2" role="group">
             <button
               type="button"
-              aria-label="One fewer free elective exemption"
               :disabled="freeExempt === 0"
               class="flex size-8 items-center justify-center rounded-md border border-border text-[16px] hover:bg-muted disabled:opacity-40"
               @click="freeExempt--"
@@ -554,7 +551,6 @@ const badge = (n) => [
             }}</span>
             <button
               type="button"
-              aria-label="One more free elective exemption"
               :disabled="freeExempt >= MAX_FREE_EXEMPT"
               class="flex size-8 items-center justify-center rounded-md border border-border text-[16px] hover:bg-muted disabled:opacity-40"
               @click="freeExempt++"
@@ -585,7 +581,6 @@ const badge = (n) => [
             min="0"
             step="0.01"
             placeholder="e.g. 1200"
-            aria-label="E-credit amount in e$"
             class="min-w-0 flex-1 bg-transparent font-mono text-[14px] font-medium outline-none"
           />
         </label>

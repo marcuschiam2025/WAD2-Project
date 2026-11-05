@@ -16,7 +16,6 @@ function finished({ undecided }) {
     <header class="flex items-center gap-4 bg-card px-8 py-5">
       <button
         type="button"
-        aria-label="Back"
         class="rounded-md border border-border bg-card p-2 hover:bg-muted"
         @click="router.push('/')"
       >

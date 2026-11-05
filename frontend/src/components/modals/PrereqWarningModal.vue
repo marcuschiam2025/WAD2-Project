@@ -46,7 +46,6 @@ const emit = defineEmits(['close', 'add-prereq', 'add-coreq', 'move-next', 'drop
             v-if="prevSemLabel"
             variant="outline"
             size="sm"
-            :aria-label="`Add ${c} to ${prevSemLabel}`"
             @click="emit('add-prereq', c)"
           >
             <img :src="iconPlus" alt="" class="size-3.5" /> Add to {{ prevSemLabel }}
@@ -65,7 +64,6 @@ const emit = defineEmits(['close', 'add-prereq', 'add-coreq', 'move-next', 'drop
           <BaseButton
             variant="outline"
             size="sm"
-            :aria-label="`Add ${c} to ${semLabel}`"
             @click="emit('add-coreq', c)"
           >
             <img :src="iconPlus" alt="" class="size-3.5" /> Add to {{ semLabel }}
@@ -82,7 +80,6 @@ const emit = defineEmits(['close', 'add-prereq', 'add-coreq', 'move-next', 'drop
             v-if="droppableExclusions.includes(c)"
             variant="outline"
             size="sm"
-            :aria-label="`Move ${c} back to basket`"
             @click="emit('drop-module', c)"
             >Drop {{ c }}</BaseButton
           >
@@ -90,7 +87,6 @@ const emit = defineEmits(['close', 'add-prereq', 'add-coreq', 'move-next', 'drop
             v-if="canDrop"
             variant="outline"
             size="sm"
-            :aria-label="`Move ${code} back to basket`"
             @click="emit('drop-module', code)"
             >Drop {{ code }}</BaseButton
           >

@@ -59,7 +59,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         <aside
           :role="docked ? 'complementary' : 'dialog'"
           :aria-modal="docked ? undefined : 'false'"
-          :aria-label="title"
           class="flex h-full flex-col bg-card"
           :class="
             docked
@@ -81,7 +80,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
               ref="closeButton"
               type="button"
               class="flex size-11 shrink-0 items-center justify-center self-start rounded-full text-[16px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:size-9"
-              aria-label="Close explanation"
               @click="emit('close')"
             >
               ✕

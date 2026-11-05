@@ -82,7 +82,6 @@ async function execute() {
         <button
           v-if="owner && id !== 'me'"
           type="button"
-          :aria-label="`Manage ${rooms.person(id).name}`"
           :aria-expanded="menuFor === id"
           :disabled="rooms.busy || rooms.voteSaving[roomId] || !board"
           class="rounded-sm px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"

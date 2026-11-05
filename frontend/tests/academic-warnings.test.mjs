@@ -80,8 +80,9 @@ test('the warning dialog lists every module that satisfies a prerequisite or cor
     const { default: Warning } = await server.ssrLoadModule('/src/components/modals/PrereqWarningModal.vue')
     const render = async props => { const context = {}; await renderToString(createSSRApp(Warning, { code: 'CS465', semLabel: 'Y3 · S2', ...props }), context); return context.teleports.body }
     const html = await render({ prevSemLabel: 'Y3 · S1', prereqGroups: [['CS201', 'IS115'], ['IS112']], coreqGroups: [['IS999']] })
-    for (const c of ['CS201', 'IS115', 'IS112']) assert.match(html, new RegExp(`Add ${c} to Y3 · S1`), `${c} gets its own add button for the earlier semester`)
-    assert.match(html, /Add IS999 to Y3 · S2/, 'a corequisite is added to the same semester')
+    for (const c of ['CS201', 'IS115', 'IS112', 'IS999']) assert.match(html, new RegExp(c), `${c} is listed`)
+    assert.equal((html.match(/Add to Y3 · S1/g) ?? []).length, 3, 'each prerequisite option gets its own add button for the earlier semester')
+    assert.equal((html.match(/Add to Y3 · S2/g) ?? []).length, 1, 'a corequisite is added to the same semester')
     assert.match(html, /one of these/)
     const closed = await render({ prevSemLabel: '', prereqGroups: [['CS201']] })
     assert.match(closed, /CS201/)

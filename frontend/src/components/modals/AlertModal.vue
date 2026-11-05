@@ -15,7 +15,7 @@ const emit = defineEmits(['close']);
         <img :src="iconAlert" alt="" class="size-[18px]" />
       </span>
       <h2 class="flex-1 text-[18px] leading-normal font-semibold">{{ title }}</h2>
-      <button type="button" aria-label="Close" class="rounded-sm p-0.5 hover:bg-muted" @click="emit('close')">
+      <button type="button" class="rounded-sm p-0.5 hover:bg-muted" @click="emit('close')">
         <img :src="iconClose" alt="" class="size-[18px]" />
       </button>
     </div>

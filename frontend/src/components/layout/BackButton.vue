@@ -7,7 +7,6 @@ defineProps({ to: { type: String, required: true } });
 <template>
   <RouterLink
     :to="to"
-    aria-label="Back"
     class="rounded-md border border-border bg-card p-2 transition-colors hover:bg-muted"
   >
     <img :src="iconBack" alt="" class="size-4" />

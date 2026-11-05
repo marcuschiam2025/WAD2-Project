@@ -130,7 +130,6 @@ async function create() {
               <button
                 type="button"
                 class="flex size-10 items-center justify-center rounded-md border border-border text-lg hover:bg-muted disabled:opacity-40"
-                aria-label="Fewer members"
                 :disabled="maxMembers <= MIN_SIZE"
                 @click="step(-1)"
               >
@@ -142,7 +141,6 @@ async function create() {
               <button
                 type="button"
                 class="flex size-10 items-center justify-center rounded-md border border-border text-lg hover:bg-muted disabled:opacity-40"
-                aria-label="More members"
                 :disabled="maxMembers >= MAX_SIZE"
                 @click="step(1)"
               >

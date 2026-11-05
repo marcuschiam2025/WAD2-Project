@@ -222,7 +222,6 @@ watch(
             </div>
             <button
               type="button"
-              aria-label="Close"
               class="rounded-sm p-1 hover:bg-muted"
               @click="emit('close')"
             >
@@ -290,7 +289,6 @@ watch(
                   :min="MIN_BID"
                   step="0.01"
                   inputmode="decimal"
-                  aria-label="Bid amount in e$"
                   @input="onBidInput"
                   class="min-w-0 flex-1 bg-transparent font-medium outline-none"
                 />

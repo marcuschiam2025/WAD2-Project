@@ -131,7 +131,6 @@ const degree = computed(() => {
               {{ MARK_DONE[id] }}
               <button
                 type="button"
-                :aria-label="`Undo: ${MARK_DONE[id]} is not done`"
                 class="text-muted-foreground hover:text-foreground"
                 @click="user.unmarkDone(id)"
               >

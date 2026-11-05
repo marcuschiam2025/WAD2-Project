@@ -47,7 +47,6 @@ const emit = defineEmits(['close', 'remove']);
           v-else
           variant="destructive-outline"
           size="sm"
-          :aria-label="`Remove ${row.code} from ${planName}`"
           @click="emit('remove', row.code)"
           >Remove</BaseButton
         >

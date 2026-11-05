@@ -65,7 +65,7 @@ for (const editing of [false, true]) test(`${editing ? 'profile editing' : 'onbo
   const reopened = await mount('edit')
   assert.deepEqual([...reopened.state.loaSemesters.value], ['Y1S2'])
   assert.equal(reopened.state.missing.value, '')
-  assert.match(reopened.html, /Y1S2 leave of absence/)
+  assert.match(reopened.html, />LOA</, 'the LOA term is shown as LOA')
   await reopened.state.submit(); await nextTick()
   assert.equal(planner.activePlan.semesters.length, 9, 'saving the same LOA again must not keep extending the plan')
   reopened.state.toggleLoa('Y1S2')

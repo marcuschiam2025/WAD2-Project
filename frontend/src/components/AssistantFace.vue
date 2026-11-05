@@ -1,16 +1,12 @@
 <script setup>
-// The AI assistant's mascot: a warm, glossy smiley whose eyes follow the cursor. The face, eyes and cheeks shift by
-// different amounts, so it turns slightly towards whatever you point at. It keeps its own colours (a mascot, not UI
-// chrome), which read well on both the light and the dark theme.
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 defineProps({ size: { type: Number, default: 44 } });
 
 let counter = 0;
-const uid = `face${++counter}-${Math.random().toString(36).slice(2, 7)}`; // gradient ids must be unique per instance
-
+const uid = `face${++counter}-${Math.random().toString(36).slice(2, 7)}`; 
 const root = ref(null);
-const look = ref({ x: 0, y: 0 }); // -1..1 towards the cursor
+const look = ref({ x: 0, y: 0 }); 
 let frame = 0;
 let last = null;
 
@@ -21,17 +17,17 @@ function aim() {
   const dx = last.x - (box.left + box.width / 2);
   const dy = last.y - (box.top + box.height / 2);
   const distance = Math.hypot(dx, dy);
-  // Full stretch from about 180px away, easing in as the cursor gets closer
+ 
   const reach = Math.min(1, distance / 180);
   look.value = distance ? { x: (dx / distance) * reach, y: (dy / distance) * reach } : { x: 0, y: 0 };
 }
 function onMove(event) {
   last = { x: event.clientX, y: event.clientY };
-  if (!frame) frame = requestAnimationFrame(aim); // at most one update per frame
+  if (!frame) frame = requestAnimationFrame(aim); 
 }
 
 onMounted(() => {
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return; // a still face for people who ask for less motion
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return; 
   window.addEventListener('pointermove', onMove, { passive: true });
 });
 onBeforeUnmount(() => {
@@ -39,7 +35,6 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(frame);
 });
 
-// How far each part travels, in SVG units: the eyes the most, the cheeks and smile a little, the shine the least
 const shift = (k) => `translate(${(look.value.x * k).toFixed(2)} ${(look.value.y * k).toFixed(2)})`;
 </script>
 

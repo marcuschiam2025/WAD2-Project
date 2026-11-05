@@ -119,7 +119,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
           :value="quiz.current + 1"
           :max="quiz.questions.length"
           class="h-2 w-full accent-primary"
-          aria-label="Question position"
         />
         <p class="text-sm text-muted-foreground">{{ intros[question.section] }}</p>
         <fieldset :key="question.id" :disabled="quiz.submitting" class="flex min-w-0 flex-col gap-4">
@@ -168,7 +167,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
       <div
         v-if="question"
         class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4"
-        aria-label="Section completion"
       >
         <button
           v-for="section in quiz.sectionCoverage"

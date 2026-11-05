@@ -80,7 +80,7 @@ onMounted(() => load());
     </button>
     <p v-if="busy && !verified" class="mt-6" role="status">Checking staff access…</p>
     <template v-if="verified">
-      <nav class="mt-8 flex flex-wrap gap-2" aria-label="Catalogue editors">
+      <nav class="mt-8 flex flex-wrap gap-2">
         <button
           v-for="[key, label] in [
             ['modules', 'Modules'],
