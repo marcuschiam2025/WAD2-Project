@@ -4,6 +4,9 @@ import { useRouter } from 'vue-router'
 import { useQuizStore, quizTrackNames } from '@core/stores/quiz'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+const explorers = Object.values(import.meta.glob('@/assets/exploring/*.png', { eager: true, import: 'default' }))
+// One explorer, picked at random each time the page loads.
+const explorer = explorers[Math.floor(Math.random() * explorers.length)]
 const quiz = useQuizStore()
 const router = useRouter()
 onMounted(() => quiz.initialize())
@@ -23,6 +26,10 @@ function start() {
 <template>
   <div>
     <PageHeader class="quiz-header" overline="Track Finder" title="Find a direction worth exploring" subtitle="Explore your interests, current confidence, working style and career goals across four IS tracks." />
+    <div class="relative">
+    <!-- Decorative explorer, drawn over the empty strip left of the content, so nothing moves. It is as wide as that
+         strip (page width minus the 1024px content column, halved) and only shows where the strip is wide enough. -->
+    <img :src="explorer" alt="" aria-hidden="true" class="explorer pointer-events-none absolute left-4 top-60 hidden h-auto min-[1100px]:block" />
     <main class="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8 sm:px-12">
       <p v-if="quiz.loading" role="status">Loading your quiz…</p>
       <div v-if="quiz.error" role="alert" class="card p-5"><p>{{ quiz.error }}</p><BaseButton class="mt-3" variant="outline" @click="quiz.initialize">Retry loading</BaseButton></div>
@@ -38,9 +45,11 @@ function start() {
         <RouterLink v-for="attempt in quiz.attempts" :key="attempt.id" :to="`/quiz/results?attempt=${attempt.id}`" class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-4 hover:border-primary"><div><p class="font-medium">{{ new Date(attempt.createdAt).toLocaleString() }}</p><p class="text-sm text-muted-foreground">{{ alignmentLabel(attempt) }} · {{ quizTrackNames[attempt.results[0]?.track] ?? 'Track results' }}</p></div><span class="text-sm text-primary">View results →</span></RouterLink>
       </section>
     </main>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.explorer { width: min(20rem, calc((100% - 1024px) / 2 + 0.5rem)); }
 .quiz-header { padding-inline: clamp(1.25rem, 5vw, 3rem); }
 </style>

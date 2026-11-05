@@ -18,6 +18,9 @@ import PlanLimitModal from '@/components/modals/PlanLimitModal.vue'
 import DeletePlanModal from '@/components/modals/DeletePlanModal.vue'
 import PlanSettingsModal from '@/components/modals/PlanSettingsModal.vue'
 import SemesterFullModal from '@/components/modals/SemesterFullModal.vue'
+const thinkers = Object.values(import.meta.glob('@/assets/thinking/*.png', { eager: true, import: 'default' }))
+// One thinker, picked at random each time the page loads.
+const thinker = thinkers[Math.floor(Math.random() * thinkers.length)]
 import iconSearch from '@/assets/v2/search.svg'
 import iconCheck from '@/assets/figma/check-success.svg'
 import iconAlert from '@/assets/figma/alert-12.svg'
@@ -350,6 +353,11 @@ const onTrack = computed(() => !planner.hasAnyWarning)
         <span v-if="!planner.canAddLoa" class="text-xs text-muted-foreground">{{ planner.canAddSemester ? `Maximum of ${MAX_LOA_TERMS} LOA terms per plan.` : 'Semester limit reached (Y9 · S2).' }}</span>
         <BaseButton size="lg" :disabled="!planner.online || planner.planActionPending" @click="addPlan">Add plan</BaseButton>
       </template>
+      <!-- Decorative, md and up only. Absolutely placed in the header's empty space, so nothing moves. Cropped to the
+           top ~half of the picture (head to waist) and as tall as the header. -->
+      <div aria-hidden="true" class="pointer-events-none absolute bottom-0 right-6 top-0 hidden aspect-[525/405] overflow-hidden md:block xl:left-[19.5rem] xl:right-auto">
+        <img :src="thinker" alt="" class="h-auto w-full" />
+      </div>
     </PageHeader>
 
     <main class="flex flex-col gap-6 px-5 md:px-8 lg:px-16 pt-8 pb-12">
