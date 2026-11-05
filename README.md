@@ -23,7 +23,7 @@ The application serves as a unified platform where students can:
 | **Vignesh Sundararaj** | `vignesh.s.2024` | Frontend 1 & Project Coordinator | Design system & Figma tokens, app shell layout & navigation, landing page, sign-in & onboarding, Track Finder quiz flow & results view, stand-ups & project tracking. |
 | **Ng Min Xie** | `minxie.ng.2025` | Frontend 2 (Planner & Plan Rooms) | Multi-track What-If planner (term grid, drag-and-drop, LOA/Exchange terms, CU progress bars), side-by-side plan compare, collaborative plan room interfaces & comments. |
 | **Ong Jun Hong** | `junhong.ong.2025` | Frontend 3 (Bidding Simulator) | Section picker, weekly timetable grid with clash detection, bid cart with e$ budget bar, Safe/Competitive/At-Risk badges, co-bidding view & Google Calendar export UI. |
-| **Marcus Chiam Hao Yi** | `marcuschiam.2025` | Backend 1 (Catalogue, Quiz & AI) | Catalogue schemas & seed pipelines, quiz scoring algorithm, module recommender, Gemini LLM track explanation service (`services/gemini.js`), unit tests. |
+| **Marcus Chiam Hao Yi** | `marcuschiam.2025` | Backend 1 (Catalogue, Quiz & AI) | Catalogue schemas & seed pipelines, quiz scoring algorithm, module recommender, Gemini LLM track explanation service (`services/gemini.js`). |
 | **Noah Gan** | `noah.gan.2025` | Backend 2 (Auth, Plans & Rooms) | Firebase Auth token verification, user profile API, What-If plans CRUD, degree requirement & prerequisite checker engine, collaborative plan rooms & notification system. |
 | **Chew Kuo Kai Regen** | `regen.chew.2025` | Backend 3 (Bidding API, Deployment) | BOSS bidding API, section timetable clash checking, reference bid algorithm (median ± 1 SD), Google Calendar export, Vercel deployment & database configuration. |
 
@@ -33,7 +33,7 @@ The application serves as a unified platform where students can:
 
 - **Frontend**: Vue 3 (`<script setup>`) + Vite, Tailwind CSS v4, Pinia (state management), Vue Router 4, Motion animations, Chart.js.
 - **Backend**: Node.js (v24) + Express 5 REST API, MongoDB Atlas via Mongoose 8, Firebase Admin SDK for auth token verification, Google Gemini REST API.
-- **Testing**: Node.js built-in test runner (`node --test`) for backend & frontend unit/integration tests; Playwright for end-to-end browser tests.
+- **Testing**: Playwright for end-to-end browser tests.
 - **Deployment**: Vercel Serverless Functions (`vercel.json`, `backend/vercel.js`).
 
 ---
@@ -151,16 +151,11 @@ The application serves as a unified platform where students can:
 ### Step 3: Running Tests & Verification
 
 ```bash
-# 1. Run Backend Unit & Integration Tests (28 *.test.js files, co-located with the code they test)
-cd backend
-pnpm test
-
-# 2. Run Frontend Store, Component & Utility Tests (60 test files in frontend/tests)
-cd ../frontend
-pnpm test
+# 1. Verify the frontend builds
+cd frontend
 pnpm build
 
-# 3. Run End-to-End Playwright Tests (from project root). Playwright is configured; tests/example.spec.js is still Playwright's
+# 2. Run End-to-End Playwright Tests (from project root). Playwright is configured; tests/example.spec.js is still Playwright's
 #    sample spec, so replace it with specs for the app's main user journeys
 cd ..
 pnpm install                      # installs @playwright/test from the root package.json
@@ -310,7 +305,6 @@ backend/
         ├── bootstrap.js          # grantAdmin logic used by scripts/grant-admin.js
         └── models/AuditEntry.js  # Audit log Mongoose schema
 ```
-Backend tests (`*.test.js`) live next to the files they cover and are picked up by `node --test`.
 </details>
 
 <details open>
@@ -325,189 +319,135 @@ frontend/
 │
 ├── public/                       # Static browser assets (favicon.svg)
 │
-├── src/                          # Vue 3 application source code
-│   ├── main.js                   # Application bootstrap (mounts Pinia, Vue Router)
-│   ├── App.vue                   # Root application shell & layout router-view
-│   ├── style.css                 # Global Tailwind CSS v4 design tokens, theme & fonts
-│   ├── motion.js                 # Motion animation presets
-│   ├── semesterTones.js          # Color tokens for semester chips
-│   ├── trackLabels.js            # Track code to human-readable label resolver
-│   │
-│   ├── assets/                   # Exported Figma vector icons & illustrations
-│   │   ├── bidmaxxer_logo.png    # Brand logo
-│   │   ├── figma/                # Navigation, action & state icons
-│   │   ├── v2/                   # Updated design system icons
-│   │   └── exploring/ jumping/ pointingUp/ sitting/ swinging/ thinking/  # Mascot pose illustrations
-│   │
-│   ├── views/                    # Top-level screen views (mapped to Vue Router routes)
-│   │   ├── LandingView.vue       # Public hero landing page
-│   │   ├── SignInView.vue        # Google authentication screen
-│   │   ├── OnboardingView.vue    # Student profile setup (school, degree, intake, completed CUs)
-│   │   ├── DashboardView.vue     # Student dashboard (current term schedule, alerts, quick links)
-│   │   ├── QuizView.vue          # Track Finder introduction & quiz history
-│   │   ├── QuizAttemptView.vue   # Interactive 20-question quiz with progress bar & save/resume
-│   │   ├── QuizResultsView.vue   # Quiz results (percentage fit, recommended starter baskets, AI explanation)
-│   │   ├── PlannerView.vue       # Multi-track What-If planner (8-semester grid, drag-and-drop, CU checklist)
-│   │   ├── BiddingView.vue       # BOSS bidding simulator (section picker, timetable grid, bid cart)
-│   │   ├── FinalisedPlansView.vue# Saved bidding plans & timetable exports
-│   │   ├── RoomsView.vue         # Collaborative plan rooms directory & join modal
-│   │   ├── RoomCreateView.vue    # Create new plan room with shared target module
-│   │   ├── RoomDetailView.vue    # Live room dashboard (members, section voting, co-bidding timetable)
-│   │   ├── ProfileView.vue       # Student profile details, completed modules & credit balance
-│   │   ├── SettingsView.vue      # Account preferences, Google Calendar connection & data controls
-│   │   └── AdminView.vue         # Staff portal: module, section, round & curriculum management
-│   │
-│   ├── components/               # Reusable Vue components
-│   │   ├── AssistantFace.vue     # AI assistant mascot face whose eyes follow the cursor
-│   │   ├── BidSidebar.vue        # Bidding cart panel with e$ allocation & budget progress
-│   │   ├── DegreeChecklist.vue   # Live graduation requirement progress breakdown
-│   │   ├── DegreeChecklistRow.vue# Individual requirement bucket progress row
-│   │   ├── DegreeForm.vue        # Degree details form used in onboarding & profile
-│   │   ├── ExamSchedule.vue      # Final exam schedule table with clash warning badges
-│   │   ├── JumpingTeam.vue       # Decorative group of five friends, each jumping on hover (Collab Rooms)
-│   │   ├── ModuleSearchBox.vue   # Searchable module autocomplete input
-│   │   ├── QuizAssistant.vue     # Read-only AI explanation drawer / docked panel on quiz results
-│   │   ├── SemesterChip.vue      # Semester indicator chip with status badge
-│   │   ├── TimetableGrid.vue     # 5-day / 6-day weekly class timetable visual grid
-│   │   ├── TimetableModuleCard.vue # Interactive section card inside timetable slots
-│   │   ├── TodoList.vue          # Student personal to-do list widget
-│   │   ├── TrackScoreChart.vue   # Chart.js radar / bar visualization of track fit %
-│   │   │
-│   │   ├── admin/                # Staff administrative management components
-│   │   │   ├── CurriculumEditor.vue # Edit degree requirements & track module lists
-│   │   │   ├── ModuleEditor.vue     # Create, edit, archive & restore catalogue modules
-│   │   │   ├── RoundEditor.vue      # Configure BOSS bidding round dates & windows
-│   │   │   └── SectionEditor.vue    # Manage sections, class times, instructors & exam slots
-│   │   │
-│   │   ├── layout/               # Structural layout components
-│   │   │   ├── AppNavBar.vue     # Authenticated top navigation bar with unread alerts
-│   │   │   ├── BackButton.vue    # Contextual back navigation button
-│   │   │   ├── BrandLogo.vue     # BidMaxxer vector branding logo
-│   │   │   └── PageHeader.vue    # Standardized page title header with actions slot
-│   │   │
-│   │   ├── modals/               # Modal dialogs & notification drawers
-│   │   │   ├── AlertModal.vue    # Generic alert confirmation dialog
-│   │   │   ├── BidLimitModal.vue # Too many modules in the bid cart; choose one to remove
-│   │   │   ├── DeletePlanModal.vue # Confirm deletion of What-If degree plan
-│   │   │   ├── NoticeRow.vue     # Prerequisite warning item row
-│   │   │   ├── PlanLimitModal.vue# Maximum 3 plans limit warning dialog
-│   │   │   ├── PlanSettingsModal.vue # Configure track selection (Track 1 / Track 2) for a plan
-│   │   │   ├── PrereqWarningModal.vue # Prerequisite & corequisite violation explanation modal
-│   │   │   ├── SemesterFullModal.vue # Semester course unit overload warning modal
-│   │   │   └── TermNotOfferedModal.vue # A one-term module dropped in the other term; offers the next semester that has it
-│   │   │
-│   │   ├── rooms/                # Collaborative plan room components
-│   │   │   ├── RoomBidHistory.vue   # Historical bid outcomes for the room's module
-│   │   │   ├── RoomBidSimulator.vue # Room-level co-bidding coordination view
-│   │   │   ├── RoomMembers.vue      # Room member list with owner/admin indicators
-│   │   │   ├── RoomResults.vue      # Aggregated voting outcome & consensus section
-│   │   │   ├── RoomSectionCalendar.vue # Visual timetable overlay of friends' chosen sections
-│   │   │   └── RoomVotingPanel.vue  # Section preference voting ballot
-│   │   │
-│   │   └── ui/                   # Design-system primitive components
-│   │       ├── BaseButton.vue    # Button with variants (primary, secondary, danger, ghost)
-│   │       ├── BaseModal.vue     # Accessible backdrop modal container
-│   │       ├── SelectField.vue   # Form select dropdown field
-│   │       ├── SelectMenu.vue    # Custom floating selection menu
-│   │       ├── StatusPill.vue    # Status pill badge (Safe, Competitive, At-Risk)
-│   │       ├── ToggleSwitch.vue  # Accessible boolean toggle switch
-│   │       └── UserAvatar.vue    # Student avatar circle with initials/photo
-│   │
-│   └── core/                     # Shared core business logic (aliased as @core/*)
-│       ├── data/                 # Client fallback data & default constants
-│       │   ├── bidding.js        # Bidding round sample models & fallbacks
-│       │   ├── biddingWindows.js # Every BOSS bidding window of the term (shown in Singapore time)
-│       │   ├── catalogue.js      # Curated module & track seed fallbacks
-│       │   └── degree.js         # Default SMU degree requirement buckets
-│       │
-│       ├── router/               # Routing configuration
-│       │   ├── index.js          # Route definitions & navigation guards
-│       │   └── access.js         # Role & onboarding access gatekeeper
-│       │
-│       ├── services/             # API & authentication clients
-│       │   ├── api.js            # Central fetch client with token refresh & error handling
-│       │   └── firebase.js       # Firebase client SDK initialization & auth helpers
-│       │
-│       ├── stores/               # Pinia reactive state stores
-│       │   ├── user.js           # User session, profile, completed CUs & role
-│       │   ├── quiz.js           # Track Finder questions, answers & results state
-│       │   ├── planner.js        # What-If degree plans, term grids & basket state
-│       │   ├── bidding.js        # BOSS bidding cart, section filters & budget state
-│       │   ├── rooms.js          # Plan rooms state, polling sync & member ballots
-│       │   ├── todos.js          # User personal to-do tasks state
-│       │   ├── catalogue.js      # Cached modules, tracks & requirements catalogue
-│       │   ├── calendarExport.js # Google Calendar export flow state
-│       │   └── theme.js          # Light / dark theme preference
-│       │
-│       └── utils/                # Client computation utilities
-│           ├── biddingWindows.js # Bidding window open / closed / upcoming status
-│           ├── clash.js          # Timetable slot & exam overlap calculation
-│           ├── curriculumChecklist.js # Graduation requirement audit calculations
-│           ├── curriculumLayout.js    # Degree checklist layout categorizer
-│           ├── dashboardSchedule.js   # Dashboard timetable event organizer
-│           ├── degreeChecklist.js     # Credit count & exemption evaluator
-│           ├── balance.js        # Parses and validates the e$ balance a student types
-│           ├── ics.js            # iCalendar (.ics) format file generator
-│           ├── money.js          # Currency & e$ bid formatting helpers
-│           ├── roomBoard.js      # Collaborative room consensus algorithms
-│           ├── roomCalendar.js   # Room member timetable overlay builder
-│           ├── roomEligibility.js # Which sections a room member can still vote for
-│           ├── roomInvite.js     # Shareable /rooms?join=CODE invite links
-│           └── roundTime.js      # Bidding round deadline & countdown formatter
-│
-└── tests/                        # Frontend unit & integration test suites (60 test files)
-    ├── academic-warnings.test.mjs
-    ├── admin-access.test.mjs
-    ├── api-unreachable.test.mjs
-    ├── archived-sections.test.mjs
-    ├── auth.test.mjs
-    ├── basket.test.mjs
-    ├── bid-estimates.test.mjs
-    ├── bid-input.test.mjs
-    ├── bid-total-display.test.mjs
-    ├── bidding-budget.test.mjs
-    ├── bidding-cart-loading.test.mjs
-    ├── bidding-limit.test.mjs
-    ├── bidding-live.test.mjs
-    ├── bidding-round-status.test.mjs
-    ├── bidding-windows.test.mjs
-    ├── calendar-export-session.test.mjs
-    ├── calendar-token.test.mjs
-    ├── calendar.test.mjs
-    ├── credit-balance.test.mjs
-    ├── curriculum-checklist.test.mjs
-    ├── curriculum-coverage.test.mjs
-    ├── curriculum-layout.test.mjs
-    ├── curriculum-scope.test.mjs
-    ├── curriculum-tracks.test.mjs
-    ├── dashboard-schedule.test.mjs
-    ├── exam-uncertainty.test.mjs
-    ├── intake-curriculum.test.mjs
-    ├── navbar-notifications.test.mjs
-    ├── notification-read.test.mjs
-    ├── plan-curriculum-recovery.test.mjs
-    ├── plan-management.test.mjs
-    ├── plan-profile-merge.test.mjs
-    ├── plan-settings-track.test.mjs
-    ├── planner-handoff.test.mjs
-    ├── planner-loa.test.mjs
-    ├── profile-loa.test.mjs
-    ├── quiz-history-score.test.mjs
-    ├── quiz-load-retry.test.mjs
-    ├── quiz-required-answers.test.mjs
-    ├── quiz-session.test.mjs
-    ├── room-auto-bidding.test.mjs
-    ├── room-bidding.test.mjs
-    ├── room-calendar.test.mjs
-    ├── room-invite.test.mjs
-    ├── room-management.test.mjs
-    ├── room-owner-leave.test.mjs
-    ├── room-votes.test.mjs
-    ├── rooms-live.test.mjs
-    ├── round-time.test.mjs
-    ├── settings.test.mjs
-    ├── todos.test.mjs
-    └── unavailable-sections.test.mjs
+└── src/                          # Vue 3 application source code
+    ├── main.js                   # Application bootstrap (mounts Pinia, Vue Router)
+    ├── App.vue                   # Root application shell & layout router-view
+    ├── style.css                 # Global Tailwind CSS v4 design tokens, theme & fonts
+    ├── motion.js                 # Motion animation presets
+    ├── semesterTones.js          # Color tokens for semester chips
+    ├── trackLabels.js            # Track code to human-readable label resolver
+    │
+    ├── assets/                   # Exported Figma vector icons & illustrations
+    │   ├── bidmaxxer_logo.png    # Brand logo
+    │   ├── figma/                # Navigation, action & state icons
+    │   ├── v2/                   # Updated design system icons
+    │   └── exploring/ jumping/ pointingUp/ sitting/ swinging/ thinking/  # Mascot pose illustrations
+    │
+    ├── views/                    # Top-level screen views (mapped to Vue Router routes)
+    │   ├── LandingView.vue       # Public hero landing page
+    │   ├── SignInView.vue        # Google authentication screen
+    │   ├── OnboardingView.vue    # Student profile setup (school, degree, intake, completed CUs)
+    │   ├── DashboardView.vue     # Student dashboard (current term schedule, alerts, quick links)
+    │   ├── QuizView.vue          # Track Finder introduction & quiz history
+    │   ├── QuizAttemptView.vue   # Interactive 20-question quiz with progress bar & save/resume
+    │   ├── QuizResultsView.vue   # Quiz results (percentage fit, recommended starter baskets, AI explanation)
+    │   ├── PlannerView.vue       # Multi-track What-If planner (8-semester grid, drag-and-drop, CU checklist)
+    │   ├── BiddingView.vue       # BOSS bidding simulator (section picker, timetable grid, bid cart)
+    │   ├── FinalisedPlansView.vue# Saved bidding plans & timetable exports
+    │   ├── RoomsView.vue         # Collaborative plan rooms directory & join modal
+    │   ├── RoomCreateView.vue    # Create new plan room with shared target module
+    │   ├── RoomDetailView.vue    # Live room dashboard (members, section voting, co-bidding timetable)
+    │   ├── ProfileView.vue       # Student profile details, completed modules & credit balance
+    │   ├── SettingsView.vue      # Account preferences, Google Calendar connection & data controls
+    │   └── AdminView.vue         # Staff portal: module, section, round & curriculum management
+    │
+    ├── components/               # Reusable Vue components
+    │   ├── AssistantFace.vue     # AI assistant mascot face whose eyes follow the cursor
+    │   ├── BidSidebar.vue        # Bidding cart panel with e$ allocation & budget progress
+    │   ├── DegreeChecklist.vue   # Live graduation requirement progress breakdown
+    │   ├── DegreeChecklistRow.vue# Individual requirement bucket progress row
+    │   ├── DegreeForm.vue        # Degree details form used in onboarding & profile
+    │   ├── ExamSchedule.vue      # Final exam schedule table with clash warning badges
+    │   ├── JumpingTeam.vue       # Decorative group of five friends, each jumping on hover (Collab Rooms)
+    │   ├── ModuleSearchBox.vue   # Searchable module autocomplete input
+    │   ├── QuizAssistant.vue     # Read-only AI explanation drawer / docked panel on quiz results
+    │   ├── SemesterChip.vue      # Semester indicator chip with status badge
+    │   ├── TimetableGrid.vue     # 5-day / 6-day weekly class timetable visual grid
+    │   ├── TimetableModuleCard.vue # Interactive section card inside timetable slots
+    │   ├── TodoList.vue          # Student personal to-do list widget
+    │   ├── TrackScoreChart.vue   # Chart.js radar / bar visualization of track fit %
+    │   │
+    │   ├── admin/                # Staff administrative management components
+    │   │   ├── CurriculumEditor.vue # Edit degree requirements & track module lists
+    │   │   ├── ModuleEditor.vue     # Create, edit, archive & restore catalogue modules
+    │   │   ├── RoundEditor.vue      # Configure BOSS bidding round dates & windows
+    │   │   └── SectionEditor.vue    # Manage sections, class times, instructors & exam slots
+    │   │
+    │   ├── layout/               # Structural layout components
+    │   │   ├── AppNavBar.vue     # Authenticated top navigation bar with unread alerts
+    │   │   ├── BackButton.vue    # Contextual back navigation button
+    │   │   ├── BrandLogo.vue     # BidMaxxer vector branding logo
+    │   │   └── PageHeader.vue    # Standardized page title header with actions slot
+    │   │
+    │   ├── modals/               # Modal dialogs & notification drawers
+    │   │   ├── AlertModal.vue    # Generic alert confirmation dialog
+    │   │   ├── BidLimitModal.vue # Too many modules in the bid cart; choose one to remove
+    │   │   ├── DeletePlanModal.vue # Confirm deletion of What-If degree plan
+    │   │   ├── NoticeRow.vue     # Prerequisite warning item row
+    │   │   ├── PlanLimitModal.vue# Maximum 3 plans limit warning dialog
+    │   │   ├── PlanSettingsModal.vue # Configure track selection (Track 1 / Track 2) for a plan
+    │   │   ├── PrereqWarningModal.vue # Prerequisite & corequisite violation explanation modal
+    │   │   ├── SemesterFullModal.vue # Semester course unit overload warning modal
+    │   │   └── TermNotOfferedModal.vue # A one-term module dropped in the other term; offers the next semester that has it
+    │   │
+    │   ├── rooms/                # Collaborative plan room components
+    │   │   ├── RoomBidHistory.vue   # Historical bid outcomes for the room's module
+    │   │   ├── RoomBidSimulator.vue # Room-level co-bidding coordination view
+    │   │   ├── RoomMembers.vue      # Room member list with owner/admin indicators
+    │   │   ├── RoomResults.vue      # Aggregated voting outcome & consensus section
+    │   │   ├── RoomSectionCalendar.vue # Visual timetable overlay of friends' chosen sections
+    │   │   └── RoomVotingPanel.vue  # Section preference voting ballot
+    │   │
+    │   └── ui/                   # Design-system primitive components
+    │       ├── BaseButton.vue    # Button with variants (primary, secondary, danger, ghost)
+    │       ├── BaseModal.vue     # Accessible backdrop modal container
+    │       ├── SelectField.vue   # Form select dropdown field
+    │       ├── SelectMenu.vue    # Custom floating selection menu
+    │       ├── StatusPill.vue    # Status pill badge (Safe, Competitive, At-Risk)
+    │       ├── ToggleSwitch.vue  # Accessible boolean toggle switch
+    │       └── UserAvatar.vue    # Student avatar circle with initials/photo
+    │
+    └── core/                     # Shared core business logic (aliased as @core/*)
+        ├── data/                 # Client fallback data & default constants
+        │   ├── bidding.js        # Bidding round sample models & fallbacks
+        │   ├── biddingWindows.js # Every BOSS bidding window of the term (shown in Singapore time)
+        │   ├── catalogue.js      # Curated module & track seed fallbacks
+        │   └── degree.js         # Default SMU degree requirement buckets
+        │
+        ├── router/               # Routing configuration
+        │   ├── index.js          # Route definitions & navigation guards
+        │   └── access.js         # Role & onboarding access gatekeeper
+        │
+        ├── services/             # API & authentication clients
+        │   ├── api.js            # Central fetch client with token refresh & error handling
+        │   └── firebase.js       # Firebase client SDK initialization & auth helpers
+        │
+        ├── stores/               # Pinia reactive state stores
+        │   ├── user.js           # User session, profile, completed CUs & role
+        │   ├── quiz.js           # Track Finder questions, answers & results state
+        │   ├── planner.js        # What-If degree plans, term grids & basket state
+        │   ├── bidding.js        # BOSS bidding cart, section filters & budget state
+        │   ├── rooms.js          # Plan rooms state, polling sync & member ballots
+        │   ├── todos.js          # User personal to-do tasks state
+        │   ├── catalogue.js      # Cached modules, tracks & requirements catalogue
+        │   ├── calendarExport.js # Google Calendar export flow state
+        │   └── theme.js          # Light / dark theme preference
+        │
+        └── utils/                # Client computation utilities
+            ├── biddingWindows.js # Bidding window open / closed / upcoming status
+            ├── clash.js          # Timetable slot & exam overlap calculation
+            ├── curriculumChecklist.js # Graduation requirement audit calculations
+            ├── curriculumLayout.js    # Degree checklist layout categorizer
+            ├── dashboardSchedule.js   # Dashboard timetable event organizer
+            ├── degreeChecklist.js     # Credit count & exemption evaluator
+            ├── balance.js        # Parses and validates the e$ balance a student types
+            ├── ics.js            # iCalendar (.ics) format file generator
+            ├── money.js          # Currency & e$ bid formatting helpers
+            ├── roomBoard.js      # Collaborative room consensus algorithms
+            ├── roomCalendar.js   # Room member timetable overlay builder
+            ├── roomEligibility.js # Which sections a room member can still vote for
+            ├── roomInvite.js     # Shareable /rooms?join=CODE invite links
+            └── roundTime.js      # Bidding round deadline & countdown formatter
 ```
 </details>
 
