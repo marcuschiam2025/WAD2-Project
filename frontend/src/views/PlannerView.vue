@@ -25,6 +25,7 @@ import PlanLimitModal from '@/components/modals/PlanLimitModal.vue';
 import DeletePlanModal from '@/components/modals/DeletePlanModal.vue';
 import PlanSettingsModal from '@/components/modals/PlanSettingsModal.vue';
 import SemesterFullModal from '@/components/modals/SemesterFullModal.vue';
+import TermNotOfferedModal from '@/components/modals/TermNotOfferedModal.vue';
 const thinkers = Object.values(
   import.meta.glob('@/assets/thinking/*.png', {
     eager: true,
@@ -156,6 +157,8 @@ const slowPlansSave = whenSlow(() => planner.plansSaving);
 const slowBasketSave = whenSlow(() => planner.basketSaving);
 
 const warning = ref(null); // { code, semId }
+const termRefused = ref(null); // { code, sem, terms, next }: a module dropped into a term that does not offer it
+const termWords = (terms) => `${terms.length === 1 ? 'Term' : 'Terms'} ${terms.map((t) => t.replace(/^T/, '')).join(' & ')}`;
 const fullSem = ref(null); // semester that refused a module because it already holds the maximum
 const dragging = ref(null);
 const dragOver = ref(null); // semester id under the cursor while dragging
@@ -222,6 +225,12 @@ const isFull = (sem) => sem.modules.length >= MAX_MODULES_PER_SEM;
 // semester can never go over the maximum even if the store still holds older code (e.g. after a live reload).
 function place(code, semId) {
   const sem = plan.value.semesters.find((s) => s.id === semId);
+  // A module taught in one term only cannot go in a semester of the other: refuse, and offer the next one that works
+  const block = planner.termBlock(plan.value, code, semId);
+  if (block) {
+    termRefused.value = { code, sem, ...block };
+    return false;
+  }
   if (!hasRoom(sem, code)) {
     fullSem.value = sem;
     return false;
@@ -283,6 +292,13 @@ function dropOnSemester(sem) {
   if (!code || !canDrop(sem)) return;
   if (!place(code, sem.id)) return;
   if (planner.hasWarning(plan.value, code, sem.id)) warning.value = { code, semId: sem.id };
+}
+
+// "Move to the next": place it there, with the same checks as any other drop
+function moveToNextTerm() {
+  const { code, next } = termRefused.value;
+  termRefused.value = null;
+  if (place(code, next.id) && planner.hasWarning(plan.value, code, next.id)) warning.value = { code, semId: next.id };
 }
 
 // Tap a module, then tap a semester: dragging doesn't work on touch screens
@@ -1086,6 +1102,15 @@ const noWarnings = computed(() => !planner.hasAnyWarning);
         {{ slowPlansSave ? 'Saving semester changes…' : 'Saving basket…' }}
       </p>
     </Transition>
+    <TermNotOfferedModal
+      v-if="termRefused"
+      :code="termRefused.code"
+      :sem-label="termRefused.sem.label"
+      :offered="termWords(termRefused.terms)"
+      :next-label="termRefused.next?.label ?? ''"
+      @close="termRefused = null"
+      @move="moveToNextTerm"
+    />
     <SemesterFullModal
       v-if="fullSem"
       :sem-label="fullSem.label"

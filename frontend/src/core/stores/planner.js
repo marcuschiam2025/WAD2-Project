@@ -446,6 +446,19 @@ export const usePlannerStore = defineStore('planner', () => {
     };
   }
 
+  // Some modules are taught in one term only. Semester ids follow position, and S1 is Term 1, S2 is Term 2.
+  // Returns null when the module may go in the semester (offered then, offered terms unknown, or an exchange semester),
+  // otherwise the terms it is offered in and the next semester of the plan that offers it (null when none does).
+  const termOfSem = (semId) => /S(\d)$/.exec(semId)?.[0].replace('S', 'T') ?? null;
+  function termBlock(plan, code, semId) {
+    const terms = liveModules[effectiveCode(code)]?.termsOffered ?? [];
+    const term = termOfSem(semId);
+    const at = semIndex(plan, semId);
+    if (!terms.length || !term || terms.includes(term) || at < 0 || plan.semesters[at].exchange) return null;
+    const next = plan.semesters.slice(at + 1).find((s) => !s.loa && !s.exchange && terms.includes(termOfSem(s.id)));
+    return { terms, next: next ?? null };
+  }
+
   function warningMessages(plan, code, semId) {
     const check = checkModule(plan, code, semId);
     return [
@@ -799,6 +812,7 @@ export const usePlannerStore = defineStore('planner', () => {
     checkModule,
     warningMessages,
     hasWarning,
+    termBlock,
     placeModule,
     returnToBasket,
     returnToBasketFrom,
