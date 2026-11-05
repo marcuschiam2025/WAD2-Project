@@ -122,7 +122,7 @@ export const api = {
   // Owner only: remove a member and stop them rejoining (unban lets them back in)
   banRoomMember: (id, userId) => request('POST', `/parties/${id}/ban`, { userId }),
 
- notifications: () => request('GET', '/notifications'),
+ notifications: (before) => request('GET', `/notifications${query({ before })}`),
   unreadNotificationCount: () => request('GET', '/notifications/unread-count'),
   markNotificationRead: (id) => request('PATCH', `/notifications/${id}/read`),
   markAllNotificationsRead: () => request('PATCH', '/notifications/read-all'),
