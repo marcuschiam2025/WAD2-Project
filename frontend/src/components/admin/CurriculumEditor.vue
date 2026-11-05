@@ -2,6 +2,8 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { api } from '@core/services/api';
 import { useUserStore } from '@core/stores/user';
+import ChipSelect from './ChipSelect.vue';
+import SelectMenu from '@/components/ui/SelectMenu.vue';
 const emit = defineEmits(['saved']);
 const user = useUserStore();
 const curricula = ref([]),
@@ -16,6 +18,30 @@ const busy = ref(false),
 let generation = 0;
 const copy = (value) => JSON.parse(JSON.stringify(value));
 const dirty = computed(() => form.value && JSON.stringify(form.value) !== JSON.stringify(original.value));
+const options = ref({ modules: [], categories: [], fulfils: [] });
+const asOptions = (values) => values.map((value) => ({ value, label: value }));
+const moduleOptions = computed(() =>
+  options.value.modules.map((m) => ({
+    value: m._id,
+    label: `${m._id} ${m.title}${m.archived ? ' (archived)' : ''}`,
+  })),
+);
+// ANY means "any course": it is only meaningful on a requirement, so it isn't one of the catalogue's categories
+const categoryOptions = computed(() => asOptions(['ANY', ...options.value.categories]));
+const tagOptions = computed(() => {
+  const saved = form.value?.tag;
+  const tags = options.value.fulfils;
+  return asOptions(saved && !tags.includes(saved) ? [...tags, saved] : tags);
+});
+// These pickers aren't native inputs, so the browser's "required" check can't cover them
+const missingPick = computed(() => {
+  const f = form.value;
+  if (f?.kind !== 'requirement') return '';
+  if (['all', 'chooseN'].includes(f.rule) && !f.modules.length) return 'Choose at least one module.';
+  if (f.rule === 'anyFromCategory' && !f.categories.length) return 'Choose at least one category.';
+  if (['basket', 'flag'].includes(f.rule) && !f.tag) return 'Choose a requirement tag.';
+  return '';
+});
 const readOnly = computed(
   () =>
     form.value?.kind === 'requirement' &&
@@ -67,8 +93,8 @@ function fill(row) {
     order: row.order ?? 0,
     countsToward: row.countsToward ?? 'NONE',
     cuRequired: row.cuRequired ?? 0,
-    modules: (row.modules ?? []).join(', '),
-    categories: (row.categories ?? []).join(', '),
+    modules: [...(row.modules ?? [])],
+    categories: [...(row.categories ?? [])],
     n: row.n ?? 1,
     tag: row.tag ?? '',
     autoFulfilled: row.autoFulfilled === true,
@@ -128,11 +154,6 @@ async function reload() {
     review.value = false;
   });
 }
-const split = (value) =>
-  value
-    .split(/[,\n]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
 function payload() {
   const f = form.value;
   if (f.kind === 'track')
@@ -151,9 +172,9 @@ function payload() {
     cuRequired: Number(f.cuRequired),
     revision: f.revision,
   };
-  if (['all', 'chooseN'].includes(f.rule)) data.modules = split(f.modules);
+  if (['all', 'chooseN'].includes(f.rule)) data.modules = f.modules;
   if (f.rule === 'chooseN') data.n = Number(f.n);
-  if (f.rule === 'anyFromCategory') data.categories = split(f.categories);
+  if (f.rule === 'anyFromCategory') data.categories = f.categories;
   if (['basket', 'flag'].includes(f.rule)) data.tag = f.tag;
   if (f.rule === 'flag') data.autoFulfilled = f.autoFulfilled;
   return data;
@@ -201,6 +222,10 @@ watch(
 );
 onMounted(() => {
   window.addEventListener('beforeunload', beforeUnload);
+  api
+    .adminModuleOptions()
+    .then((result) => (options.value = result))
+    .catch((failure) => (error.value = failure.message));
   run(async (current) => {
     const rows = await api.adminCurricula();
     if (current()) {
@@ -332,22 +357,22 @@ onBeforeUnmount(() => {
                   maxlength="300"
                   class="mt-1 block w-full rounded-md border border-border bg-background p-2"
               /></label>
-              <label v-if="['all', 'chooseN'].includes(form.rule)" class="block text-sm"
-                >Module codes<textarea
+              <div v-if="['all', 'chooseN'].includes(form.rule)" class="text-sm">
+                <span class="mb-1 block">Modules</span>
+                <ChipSelect
                   v-model="form.modules"
-                  required
-                  rows="6"
-                  placeholder="Separate codes with commas or new lines"
-                  class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-                /><span class="mt-1 block text-xs text-muted-foreground"
+                  :options="moduleOptions"
+                  placeholder="Search and tick modules"
+                />
+                <span class="mt-1 block text-xs text-muted-foreground"
                   >{{
                     form.rule === 'all'
                       ? 'Every listed course is required.'
                       : 'Students choose from this list.'
                   }}
                   New additions must be active catalogue modules.</span
-                ></label
-              >
+                >
+              </div>
               <label v-if="form.rule === 'chooseN'" class="block text-sm"
                 >Number of courses<input
                   v-model="form.n"
@@ -374,21 +399,23 @@ onBeforeUnmount(() => {
                     : 'Use the official credit target; course count and credit units are separate fields.'
                 }}</span></label
               >
-              <label v-if="form.rule === 'anyFromCategory'" class="block text-sm"
-                >Catalogue categories<input
+              <div v-if="form.rule === 'anyFromCategory'" class="text-sm">
+                <span class="mb-1 block">Catalogue categories</span>
+                <ChipSelect
                   v-model="form.categories"
-                  required
-                  placeholder="e.g. IS, IS_TRACK or ANY"
-                  class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-              /></label>
-              <label v-if="['basket', 'flag'].includes(form.rule)" class="block text-sm"
-                >Requirement tag<input
+                  :options="categoryOptions"
+                  placeholder="Search and tick categories"
+                />
+              </div>
+              <div v-if="['basket', 'flag'].includes(form.rule)" class="text-sm">
+                <span class="mb-1 block">Requirement tag</span>
+                <SelectMenu
                   v-model="form.tag"
-                  required
-                  maxlength="100"
-                  placeholder="e.g. CORE:MANAGING"
-                  class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-              /></label>
+                  :options="tagOptions"
+                  searchable
+                  placeholder="Search requirement tags"
+                />
+              </div>
               <label v-if="form.rule === 'flag'" class="flex items-center gap-2 text-sm"
                 ><input v-model="form.autoFulfilled" type="checkbox" />Automatically fulfilled</label
               >
@@ -437,6 +464,7 @@ onBeforeUnmount(() => {
               Confirm the fields above. This updates the shared curriculum and records your change in staff
               history. Existing plans may receive different requirement-check results after reloading.
             </p>
+            <p v-if="error" role="alert" class="mt-2 text-destructive">{{ error }}</p>
             <div class="mt-4 flex gap-3">
               <button
                 type="button"
@@ -455,10 +483,11 @@ onBeforeUnmount(() => {
               </button>
             </div>
           </div>
+          <p v-if="dirty && missingPick" class="text-sm text-destructive">{{ missingPick }}</p>
           <button
-            v-else-if="!readOnly"
+            v-if="!review && !readOnly"
             class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
-            :disabled="busy || !dirty"
+            :disabled="busy || !dirty || !!missingPick"
           >
             Review changes
           </button>

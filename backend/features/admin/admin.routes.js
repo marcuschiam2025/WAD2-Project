@@ -5,6 +5,7 @@ import { httpError } from '../../middleware/errorHandler.js';
 import AuditEntry from './models/AuditEntry.js';
 
 import {
+  getAdminModuleOptions,
   listAdminModules,
   getAdminModule,
   createAdminModule,
@@ -15,6 +16,7 @@ import {
 } from './modules.controller.js';
 
 import {
+  getAdminSectionOptions,
   listAdminSections,
   createAdminSection,
   updateAdminSection,
@@ -34,6 +36,7 @@ import { getAdminRound, saveAdminRound } from './rounds.controller.js';
 const router = Router();
 router.use(requireAdmin);
 router.get('/', (req, res) => res.json({ role: req.user.role, name: req.user.name || req.user.email }));
+router.get('/module-options', getAdminModuleOptions);
 router.get('/modules', listAdminModules);
 router.get('/modules/:code', getAdminModule);
 router.post('/modules', createAdminModule);
@@ -41,6 +44,7 @@ router.put('/modules/:code', updateAdminModule);
 router.post('/modules/:code/archive', archiveAdminModule);
 router.post('/modules/:code/restore', restoreAdminModule);
 router.delete('/modules/:code', deleteAdminModule);
+router.get('/section-options', getAdminSectionOptions);
 router.get('/sections', listAdminSections);
 router.post('/sections', createAdminSection);
 router.put('/sections/:term/:code/:section', updateAdminSection);

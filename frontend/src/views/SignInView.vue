@@ -32,9 +32,9 @@ async function continueWithGoogle() {
           Save your quiz results and degree plans securely. You will enter your completed modules during
           setup.
         </p>
-        <div class="flex items-center gap-2 rounded-md bg-primary-tint px-3 py-2.5">
+        <div class="flex items-center justify-center gap-2 rounded-md bg-primary-tint px-3 py-2.5">
           <img :src="iconInfo" alt="" class="icon-accent size-4" />
-          <p class="text-[13px] font-medium">Students: use your @smu.edu.sg Google account</p>
+          <p class="text-center text-[13px] font-medium">Students: use your @smu.edu.sg Google account</p>
         </div>
         <button
           type="button"
