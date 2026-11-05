@@ -1,5 +1,6 @@
 // Live requirement rows. Counts are requirements, while credit progress stays in CU.
 const passes = ['all', 'chooseN', 'basket', 'anyFromCategory']
+const manualCompletion = { 'CORE:INTERNSHIP': 'internship', 'CORE:COMMUNITY_SERVICE': 'community', 'CORE:GLOBAL_EXPOSURE': 'exposure' }
 // Exchange chips look like "CS412 → IS460"; the mapped SMU code is on the right.
 export const effectiveCode = entry => entry.split('→').pop().trim()
 const matches = (r, m) => ['all', 'chooseN'].includes(r.rule) ? r.modules?.includes(m.code)
@@ -56,7 +57,8 @@ export function buildCurriculumChecklist(plan, catalogue, bundle, { exempted = [
   function describe(r, taken, extra = false) {
     const done = taken.filter(p => p.status === 'cleared')
     const current = taken.filter(p => p.status !== 'planned')
-    const marked = (r.tag === 'CORE:INTERNSHIP' && markedDone.includes('internship')) || (r.tag === 'CORE:GLOBAL_EXPOSURE' && markedDone.includes('exposure'))
+    const manualDoneId = manualCompletion[r.tag] ?? null
+    const marked = manualDoneId !== null && markedDone.includes(manualDoneId)
     const exchangeIndex = r.tag === 'CORE:GLOBAL_EXPOSURE' ? plan.semesters.findIndex(s => s.exchange) : -1
     const freeCredit = r.rule === 'anyFromCategory' && r.categories?.includes('ANY') ? Math.max(0, Number(freeExempt) || 0) : 0
     const satisfies = rows => met(r, rows) || (freeCredit > 0 && sum(rows) + freeCredit >= r.cuRequired)
@@ -66,7 +68,7 @@ export function buildCurriculumChecklist(plan, catalogue, bundle, { exempted = [
     if (!marked && exchangeIndex >= 0) status = exchangeIndex < now ? 'cleared' : exchangeIndex === now ? 'inProgress' : 'planned'
     const semId = status === 'cleared' ? null : taken.at(-1)?.semId ?? null
     const progress = r.rule === 'flag' ? (status === 'todo' ? 'Not yet fulfilled' : 'Fulfilled or included in your plan') : `${sum(taken) + freeCredit} / ${r.cuRequired} CU included${r.rule === 'chooseN' ? ` · ${taken.length} / ${r.n} courses` : ''}`
-    return { manualDoneId: r.tag === 'CORE:INTERNSHIP' ? 'internship' : r.tag === 'CORE:GLOBAL_EXPOSURE' ? 'exposure' : null, id: r._id, label: r.label, rule: 'curriculum', requirement: r, status, urgency: null, semId,
+    return { manualDoneId, id: r._id, label: r.label, rule: 'curriculum', requirement: r, status, urgency: null, semId,
       // What the requirement holds, for course-by-course totals (see curriculumLayout.js)
       taken: taken.map(p => ({ code: p.mod.code, cu: p.mod.cu ?? 1, status: p.status, exempt: !!p.exempt, semId: p.semId })), marked, freeCredit, extra,
       detail: `${marked ? 'Marked as done' : progress}${taken.length ? ` · ${taken.map(p => p.mod.code).join(', ')}` : ''}${extra ? ' · Additional track; courses may also count elsewhere' : ''}`,

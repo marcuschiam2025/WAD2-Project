@@ -28,6 +28,7 @@ const degree = computed(() => {
   return {
     sem: p.currentSem ?? `Y${p.year}S1`,
     tracks: p.tracks?.length ? p.tracks.map((c) => trackName(c === 'SMT' ? 'SMCT' : c)).join(' + ') : 'Undecided',
+    loa: p.loaSemesters ?? [],
     taken: SEM_IDS.filter((id) => p.takenBySem?.[id]?.length).map((id) => ({ id, codes: p.takenBySem[id] })),
     exempted: p.exempted ?? [],
     freeExempt: p.freeExemptions ?? 0,
@@ -69,6 +70,8 @@ const degree = computed(() => {
           <dd class="font-mono font-bold">{{ degree.sem }}</dd>
           <dt class="text-muted-foreground">Tracks</dt>
           <dd class="font-medium">{{ degree.tracks }}</dd>
+          <dt class="text-muted-foreground">Past LOA terms</dt>
+          <dd>{{ degree.loa.length ? degree.loa.join(', ') : 'None' }}</dd>
           <dt class="text-muted-foreground">Modules taken</dt>
           <dd class="flex flex-col gap-1.5">
             <p v-for="t in degree.taken" :key="t.id" class="flex flex-wrap items-baseline gap-x-2 gap-y-1">

@@ -1,3 +1,5 @@
+import { MAX_LOA_TERMS, INTERNSHIP_CODE } from '../../planning/models/Plan.js'
+
 const MARKED_DONE_OPTIONS = ['internship', 'community', 'exposure']
 
 // ---------------------------------------------------------------------------
@@ -122,6 +124,22 @@ export function profileUpdate(body, current = {}) {
     for (const semester of Object.keys(body.takenBySem)) {
       semesterNumber(semester) // throws if the label is invalid
       result.takenBySem[semester] = cleanCodes(body.takenBySem[semester])
+    }
+  }
+
+  if (body.loaSemesters !== undefined) {
+    if (!Array.isArray(body.loaSemesters) || body.loaSemesters.length > MAX_LOA_TERMS || new Set(body.loaSemesters).size !== body.loaSemesters.length) {
+      throw new Error(`Choose up to ${MAX_LOA_TERMS} different historical LOA semesters`)
+    }
+    body.loaSemesters.forEach(semesterNumber)
+    result.loaSemesters = [...body.loaSemesters]
+  }
+  if (body.loaSemesters !== undefined || body.currentSem !== undefined || body.takenBySem !== undefined) {
+    const semester = result.currentSem ?? current.currentSem
+    const taken = result.takenBySem ?? current.takenBySem ?? {}
+    for (const id of result.loaSemesters ?? current.loaSemesters ?? []) {
+      if (!semester || semesterNumber(id) >= semesterNumber(semester)) throw new Error('LOA semesters must be before your current semester')
+      if ((taken[id] ?? []).some(code => code !== INTERNSHIP_CODE)) throw new Error(`${id} is an LOA semester: only ${INTERNSHIP_CODE} can be placed in it`)
     }
   }
 
