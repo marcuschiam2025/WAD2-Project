@@ -36,7 +36,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     if (!t || t.exchange || t.loa) return []
     return [...new Set(t.modules.map(effectiveCode))]
   })
-  // A member's own saved room section feeds bidding, never their What-If plans or other members' carts.
+  // A section the party admin locked feeds every member's bidding, never their What-If plans.
   const roomPicks = computed(() => rooms.pickedForBidding.filter(d => d.term === round.value.term))
   const roomConflicts = computed(() => [...new Set(roomPicks.value.map(d => d.module))].filter(code => new Set(roomPicks.value.filter(d => d.module === code).map(d => d.sectionId)).size > 1))
   const fromRooms = computed(() => roomPicks.value.filter(d => !roomConflicts.value.includes(d.module) && sections.some(s => s.id === d.sectionId && s.module === d.module && !s.archived && liveSections.has(s.id))))
@@ -68,7 +68,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     ),
   )
 
-  // A personal room pick stays in sync with that room. Change the pick there to update it.
+  // A locked room section stays in sync with that room. Only the party admin can change it, by unlocking the room.
   // module code -> { roomId, roomName, module, sectionId, roomIds } for the first matching room
   const locked = computed(() => {
     const out = {}
@@ -283,7 +283,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       saveError.value = 'Connect to the server and select a catalogue term before saving your bids.'
       return false
     }
-    if (roomConflicts.value.length) { saveError.value = `You picked different sections for ${roomConflicts.value.join(', ')} in different rooms. Change your pick in those rooms before saving.`; return false }
+    if (roomConflicts.value.length) { saveError.value = `Your rooms locked different sections for ${roomConflicts.value.join(', ')}. Ask a party admin to unlock one, or leave one of those rooms, before saving.`; return false }
     if (unavailableSelections.value.length) { saveError.value = 'A saved section is unavailable. Choose a replacement or remove its module before saving.'; return false }
     if (archivedSelections.value.length) { saveError.value = 'A selected section has been archived. Choose an active alternative or remove the module before saving.'; return false }
     if (clashes.value.size) { saveError.value = 'Resolve class or final-exam clashes before saving.'; return false }

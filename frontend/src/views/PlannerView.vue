@@ -54,9 +54,9 @@ const overline = computed(() => {
   return intakeYear ? `BSc ${major} · Class of ${Number(intakeYear) + 4}` : `BSc ${major}`
 })
 
-// Modules whose section was accepted in a collab room are locked and get their own colour. This only reads the student's
-// accepted section; it never edits the plan (rooms.decided stays empty on purpose).
-// -> { roomId, roomName, module, sectionId, party: [you, ...the members who picked the same section] }
+// Modules whose section a party admin locked in a collab room are locked here too and get their own colour. This only
+// reads the locked section; it never edits the plan (rooms.decided stays empty on purpose).
+// -> { roomId, roomName, module, sectionId, party: [you, ...the other members of that room] }
 function roomDecision(code) {
   const module = effectiveCode(code)
   const picks = rooms.pickedForBidding.filter((d) => d.module === module && (!bidding.round.term || d.term === bidding.round.term))
@@ -71,7 +71,7 @@ function roomDecision(code) {
 }
 // Plans come from the authenticated backend through the planner store.
 const plan = computed(() => planner.activePlan)
-// Modules accepted in a room that are not placed in any semester of this plan yet. They appear, locked, in the next
+// Modules locked in a room that are not placed in any semester of this plan yet. They appear, locked, in the next
 // semester (the one being bid for) without being added to the plan; the room, not the plan, decides them.
 const nextSemId = computed(() => {
   const sems = plan.value.semesters
@@ -365,7 +365,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
               v-for="m in basket"
               :key="m.code"
               :draggable="!roomDecision(m.code)"
-              :title="roomDecision(m.code) ? `Accepted in ${roomDecision(m.code).roomName}. Undo it in the room to move it.` : undefined"
+              :title="roomDecision(m.code) ? `Locked in ${roomDecision(m.code).roomName}. Only its party admin can unlock it.` : undefined"
               class="group flex items-center gap-2 rounded-md border bg-background px-2.5 py-2 transition-[opacity,border-color]"
               :class="[roomDecision(m.code) ? 'border-2 border-success bg-success-tint' : 'cursor-grab border-border hover:border-primary/50 active:cursor-grabbing', dragging === m.code && 'border-primary opacity-50', picked === m.code && 'border-primary ring-2 ring-primary/30']"
               :role="roomDecision(m.code) ? undefined : 'button'"
@@ -508,7 +508,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                   v-for="code in col.sem.modules"
                   :key="code"
                   :draggable="status(col.sem) !== 'done' && !roomDecision(code)"
-                  :title="roomDecision(code) ? `Accepted in ${roomDecision(code).roomName}. Undo it in the room to remove it.` : undefined"
+                  :title="roomDecision(code) ? `Locked in ${roomDecision(code).roomName}. Only its party admin can unlock it.` : undefined"
                   class="group relative flex flex-col rounded-sm px-2 py-1.5 leading-normal transition-opacity"
                   :class="[
                     roomDecision(code)
@@ -583,7 +583,7 @@ const onTrack = computed(() => !planner.hasAnyWarning)
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] bg-muted" /> Done</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] bg-secondary" /> Planned</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-destructive bg-destructive-tint" /> Prereq not met</span>
-            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-success bg-success-tint" /> Accepted in a collab room</span>
+            <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-2 border-success bg-success-tint" /> Locked in a collab room</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border border-dashed border-primary" /> Drop target</span>
             <span class="flex items-center gap-1.5"><span class="h-3 w-4 rounded-[3px] border-[1.5px] border-primary" /> Current semester</span>
           </div>

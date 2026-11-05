@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useRoomsStore } from '@core/stores/rooms'
 import { sectionCode } from '@core/utils/clash'
 import { moduleName } from '@core/data/catalogue'
@@ -9,9 +9,25 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import UserAvatar from '@/components/ui/UserAvatar.vue'
 const router = useRouter()
+const route = useRoute()
 const rooms = useRoomsStore()
 const joining = ref(false), joinInput = ref(''), joinError = ref('')
-onMounted(() => rooms.load())
+onMounted(async () => {
+  // Arrived from an invite link: the dialog opens with the code filled in, and they choose to join
+  const invited = String(route.query.join ?? '').trim().toUpperCase()
+  if (invited) {
+    joinInput.value = invited
+    joining.value = true
+    router.replace({ path: '/rooms' })
+  }
+  await rooms.load()
+  // Already in that room (for example, your own link): go straight there
+  const mine = invited && rooms.rooms.find((room) => room.inviteCode?.toUpperCase() === invited)
+  if (mine) {
+    joining.value = false
+    router.replace(`/rooms/${mine.id}`)
+  }
+})
 async function join() {
   if (!/^[A-Z0-9]{4,8}$/.test(joinInput.value.trim().toUpperCase()) || rooms.busy) return
   joinError.value = ''
@@ -38,10 +54,10 @@ async function join() {
           <p v-if="room.description" class="text-sm text-muted-foreground">{{ room.description }}</p>
           <div class="flex items-center gap-2"><UserAvatar v-for="id in room.members.slice(0,4)" :key="id" :initials="rooms.person(id).initials" :you="id === 'me'" /><span class="text-xs text-muted-foreground">{{ room.members.length }} / {{ room.maxMembers }} members</span></div>
           <div v-if="room.summary" class="flex flex-col gap-2">
-            <div class="flex items-center justify-between gap-2 text-xs"><span class="font-medium">{{ room.summary.status === 'confirmed' ? 'Section confirmed' : room.summary.status === 'ready' ? 'Ready for decision' : 'Voting' }}</span><span>{{ room.summary.votedCount }} / {{ room.summary.memberCount }} voted</span></div>
+            <div class="flex items-center justify-between gap-2 text-xs"><span class="font-medium">{{ room.summary.status === 'locked' ? 'Section locked' : room.summary.status === 'ready' ? 'Ready to lock' : 'Voting' }}</span><span>{{ room.summary.votedCount }} / {{ room.summary.memberCount }} voted</span></div>
             <progress class="h-1.5 w-full accent-primary" :value="room.summary.votedCount" :max="room.summary.memberCount || 1" :aria-label="`${room.summary.votedCount} members voted`" />
-            <p v-if="room.summary.finalisedSection" class="text-xs text-primary">Chosen section: {{ sectionCode(room.summary.finalisedSection, room.module) }}</p>
           </div>
+          <p v-if="room.lockedSection" class="text-xs font-medium text-primary">Locked section: {{ sectionCode(room.lockedSection, room.module) }}</p>
           <p class="text-xs text-muted-foreground">Invite code <span class="font-mono font-semibold">{{ room.inviteCode }}</span></p>
         </RouterLink>
       </section>

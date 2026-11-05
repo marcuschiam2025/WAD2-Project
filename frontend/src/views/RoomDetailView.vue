@@ -1,10 +1,11 @@
 <script setup>
 // One collab room: a sidebar (room, decision, members, invite code, leave) beside the weekly section calendar.
 // Everything is live: votes, decisions and members come from the backend through the rooms store.
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoomsStore } from '@core/stores/rooms'
 import { moduleName } from '@core/data/catalogue'
+import { inviteLink } from '@core/utils/roomInvite'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BackButton from '@/components/layout/BackButton.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -21,7 +22,26 @@ const router = useRouter()
 const room = computed(() => rooms.getRoom(route.params.id))
 // Unsaved picks on the calendar: the decision panel won't confirm a result until they are submitted
 const dirty = ref(false)
-const copied = ref(false), copyFailed = ref(false), error = ref(''), leaving = ref(false), confirmLeave = ref(false)
+// Which invite was just copied, 'code' or 'link'
+const copied = ref(''), copyFailed = ref(''), error = ref(''), leaving = ref(false), confirmLeave = ref(false)
+const link = computed(() => (room.value ? inviteLink(room.value.inviteCode) : ''))
+
+// Alone in the room there is nothing to vote on yet, so the page is just the invite. It checks for new members here
+// because the voting panel, which normally refreshes the room, isn't on the page. A locked room keeps its normal page,
+// so the party admin can still reach the unlock button.
+const alone = computed(() => room.value?.members.length === 1 && !room.value.locked)
+let aloneTimer
+function checkForFriends(on) {
+  clearInterval(aloneTimer)
+  if (!on) return
+  rooms.loadVotes(room.value.id, { quiet: true })
+  aloneTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && room.value && !rooms.busy) rooms.loadVotes(room.value.id, { quiet: true })
+  }, 5000)
+}
+watch(alone, checkForFriends)
+onMounted(() => checkForFriends(alone.value))
+onBeforeUnmount(() => clearInterval(aloneTimer))
 
 // The async clipboard API is refused in some contexts (embedded previews, no permission), so fall back to a
 // temporary text box and the older copy command before giving up.
@@ -43,8 +63,8 @@ function copyWithFallback(text) {
   return ok
 }
 
-async function copy() {
-  const text = room.value.inviteCode
+async function copy(which) {
+  const text = which === 'link' ? link.value : room.value.inviteCode
   let ok = false
   try {
     await navigator.clipboard.writeText(text)
@@ -52,9 +72,9 @@ async function copy() {
   } catch {
     ok = copyWithFallback(text)
   }
-  copied.value = ok
-  copyFailed.value = !ok
-  setTimeout(() => (copied.value = copyFailed.value = false), 2000)
+  copied.value = ok ? which : ''
+  copyFailed.value = ok ? '' : which
+  setTimeout(() => (copied.value = copyFailed.value = ''), 2000)
 }
 
 async function leave() {
@@ -84,6 +104,30 @@ async function leave() {
         <BaseButton variant="outline" @click="rooms.load">Refresh rooms</BaseButton>
       </section>
 
+      <!-- Just you so far: all this page needs is the way to invite people -->
+      <section v-else-if="alone" v-enter class="card mx-auto flex w-full max-w-[520px] flex-col gap-6 p-6 sm:p-8"> <!-- motion: fade + slide up on mount -->
+        <div class="flex flex-col gap-1.5 text-center leading-normal">
+          <h2 class="text-h3">Invite your friends</h2>
+          <p class="text-[14px] text-muted-foreground">Voting on {{ room.module }} opens as soon as someone joins.</p>
+        </div>
+        <div class="flex flex-col gap-2">
+          <p class="text-overline text-muted-foreground">Invite code</p>
+          <div class="flex items-center gap-2">
+            <span class="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-3 text-center font-mono text-[28px] font-bold tracking-[0.2em] select-all">{{ room.inviteCode }}</span>
+            <BaseButton variant="outline" @click="copy('code')">{{ copied === 'code' ? 'Copied' : copyFailed === 'code' ? 'Copy failed' : 'Copy' }}</BaseButton>
+          </div>
+        </div>
+        <div class="flex flex-col gap-2">
+          <p class="text-overline text-muted-foreground">Invite link</p>
+          <div class="flex items-center gap-2">
+            <span class="min-w-0 flex-1 truncate rounded-md border border-border bg-background px-3 py-[9px] text-[14px] select-all" :title="link">{{ link }}</span>
+            <BaseButton variant="outline" @click="copy('link')">{{ copied === 'link' ? 'Copied' : copyFailed === 'link' ? 'Copy failed' : 'Copy' }}</BaseButton>
+          </div>
+        </div>
+        <p v-if="rooms.error" role="alert" class="text-[12px] text-destructive">{{ rooms.error }}</p>
+        <BaseButton variant="ghost" class="self-center" @click="confirmLeave = true">Leave room</BaseButton>
+      </section>
+
       <template v-else>
         <div v-enter class="card flex flex-col items-stretch overflow-hidden lg:flex-row"> <!-- motion: fade + slide up on mount -->
           <!-- Room sidebar -->
@@ -105,10 +149,11 @@ async function leave() {
               <p class="text-overline text-muted-foreground">Room code</p>
               <div class="flex items-center gap-2">
                 <span class="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-[6px] text-center font-mono text-[18px] font-bold tracking-[0.2em] select-all">{{ room.inviteCode }}</span>
-                <BaseButton variant="outline" size="sm" @click="copy">{{ copied ? 'Copied' : copyFailed ? 'Copy failed' : 'Copy' }}</BaseButton>
+                <BaseButton variant="outline" size="sm" @click="copy('code')">{{ copied === 'code' ? 'Copied' : copyFailed === 'code' ? 'Copy failed' : 'Copy' }}</BaseButton>
               </div>
+              <BaseButton v-if="!room.locked" variant="outline" size="sm" @click="copy('link')">{{ copied === 'link' ? 'Copied' : copyFailed === 'link' ? 'Copy failed' : 'Copy invite link' }}</BaseButton>
               <p class="text-[12px] leading-normal text-muted-foreground">
-                Share this code so friends can join, until the room hits {{ room.maxMembers }} members.
+                {{ room.locked ? 'This room is locked, so nobody can join until the party admin unlocks it.' : `Share this code so friends can join, until the room hits ${room.maxMembers} members.` }}
               </p>
             </div>
 
@@ -136,7 +181,9 @@ async function leave() {
             ? 'You are the last member. Leaving deletes this room and its votes.'
             : room.ownerId === 'me'
               ? 'You are the party admin. Make another member party admin (in Members) before leaving.'
-              : 'Your votes are removed and the room decision reopens. You can rejoin with the room code.'
+              : room.locked
+                ? 'Your votes are removed. This room is locked, so you can only rejoin after the party admin unlocks it.'
+                : 'Your votes are removed. You can rejoin with the room code.'
         }}
       </p>
       <p v-if="error" role="alert" class="text-[13px] text-destructive">{{ error }}</p>

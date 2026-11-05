@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 import { createPinia, setActivePinia } from 'pinia'
 
-test('only my saved memberSections pick enters matching-term bidding, preserving votes and degree plans', async () => {
+test('a section the party admin locked enters matching-term bidding for every member, preserving votes and degree plans', async () => {
   globalThis.localStorage = { getItem: key => key === 'bidmaxxer:dropped:a' ? JSON.stringify({ p1: ['IS216'] }) : null, setItem() {}, removeItem() {} }
   const server = await createServer({ configFile: false, server: { middlewareMode: true, hmr: false, ws: false }, optimizeDeps: { noDiscovery: true, include: [] }, appType: 'custom' })
   try {
@@ -20,12 +20,14 @@ test('only my saved memberSections pick enters matching-term bidding, preserving
     const originalPlans = JSON.stringify(planner.plans), term = '2026-27_T2'
     const g1 = { id: `${term}:IS216:G1`, module: 'IS216', section: 'G1', sessions: [] }
     const g2 = { ...g1, id: `${term}:IS216:G2`, section: 'G2' }
-    const room = { _id: 'r', module: 'IS216', name: 'Friends', termKey: term, owner: 'b', members: [{ _id: 'a', name: 'A' }, { _id: 'b', name: 'B' }], votes: [{ user: 'a', sectionIds: [g1.id] }], memberSections: [{ user: { _id: 'b' }, sectionId: g1.id, status: 'bidding' }, { user: { _id: 'a' }, sectionId: g2.id, status: 'considering' }] }
-    const otherOnly = { ...room, _id: 'other', module: 'IS112', memberSections: [{ user: 'b', sectionId: `${term}:IS112:G1` }] }
-    let listed = [room, otherOnly]
+    // I am a member here; b is the party admin and locked G2
+    const room = { _id: 'r', module: 'IS216', name: 'Friends', termKey: term, owner: 'b', members: [{ _id: 'a', name: 'A' }, { _id: 'b', name: 'B' }], votes: [{ user: 'a', sectionIds: [g1.id, g2.id] }, { user: 'b', sectionIds: [g2.id] }], locked: true, lockedSection: g2.id, memberSections: [] }
+    // An old personal pick in a room nobody locked no longer reaches bidding
+    const unlocked = { ...room, _id: 'other', module: 'IS112', locked: false, lockedSection: null, memberSections: [{ user: 'a', sectionId: `${term}:IS112:G1` }] }
+    let listed = [room, unlocked]
     api.rooms = async () => listed
     api.room = async () => room
-    api.roomSections = async () => [g1, g2].map(section => ({ section, voters: [], goingFor: [] }))
+    api.roomSections = async () => [g1, g2].map(section => ({ section, voters: [] }))
     api.round = async () => ({ term })
     api.sections = async codes => codes.includes('IS216') ? [g1, g2] : []
     api.bidHistory = async () => []; api.weightage = async () => []; api.cart = async () => ({ items: [] })
@@ -33,33 +35,42 @@ test('only my saved memberSections pick enters matching-term bidding, preserving
     api.saveCart = async payload => { saved = payload }
     const rooms = useRoomsStore(); await rooms.load()
     const bidding = useBiddingStore(); await bidding.load()
-    assert.equal(bidding.booked.IS216, g2.id, 'reload reads my personal saved pick, even if previously dropped')
-    assert.equal(bidding.booked.IS112, undefined, 'other members cannot select modules for me')
+    assert.equal(bidding.booked.IS216, g2.id, 'the locked section reaches a member who is not the party admin, even if previously dropped')
+    assert.equal(bidding.booked.IS112, undefined, 'a room that is not locked adds nothing')
     assert.equal(bidding.isLocked('IS216'), true)
     bidding.dropModule('IS216')
-    assert.equal(bidding.booked.IS216, g2.id)
+    assert.equal(bidding.booked.IS216, g2.id, 'a member cannot drop it')
+    bidding.swapSection('IS216', g1.id)
+    assert.equal(bidding.booked.IS216, g2.id, 'or swap it')
     assert.deepEqual([...rooms.decided], [], 'the degree-plan automation remains inactive')
     assert.equal(await bidding.save(), true)
     assert.deepEqual(saved.items, [{ module: 'IS216', sectionId: g2.id, amount: 10 }])
+
+    // The party admin unlocks, and it leaves bidding on the next refresh
     await rooms.loadVotes('r')
-    api.setMySection = async (id, sectionId) => { assert.equal(id, 'r'); room.memberSections[1].sectionId = sectionId }
-    assert.equal(await rooms.confirmSection('r', g1.id), true, 'use the group my-section endpoint')
+    api.unlockRoom = async (id) => { assert.equal(id, 'r'); room.locked = false; room.lockedSection = null }
+    assert.equal(await rooms.unlockRoom('r'), true)
+    assert.equal(bidding.booked.IS216, undefined, 'unlocking removes the room-only module')
+    assert.deepEqual(room.votes.map(v => v.user), ['a', 'b'], 'unlocking keeps the votes')
+
+    // Locked again on another section
+    room.votes = [{ user: 'a', sectionIds: [g1.id] }, { user: 'b', sectionIds: [g1.id] }]
+    await rooms.loadVotes('r')
+    api.lockRoom = async (id, sectionId) => { assert.equal(id, 'r'); room.locked = true; room.lockedSection = sectionId }
+    assert.equal(await rooms.lockRoom('r', g1.id), true)
     assert.equal(bidding.booked.IS216, g1.id)
-    assert.deepEqual(room.votes, [{ user: 'a', sectionIds: [g1.id] }], 'sharing a section does not edit votes')
-    api.clearMySection = async () => { room.memberSections = room.memberSections.filter(entry => entry.user._id !== 'a') }
-    assert.equal(await rooms.confirmSection('r', null), true)
-    assert.equal(bidding.booked.IS216, undefined, 'stopping my share removes the automatic-only module')
-    room.memberSections.push({ user: 'a', sectionId: g2.id }); room.termKey = '2025-26_T2'
+
+    room.termKey = '2025-26_T2'
     await rooms.load()
     assert.equal(bidding.booked.IS216, undefined, 'old room terms cannot leak into bidding')
     room.termKey = term
-    listed = [room, otherOnly, { ...room, _id: 'conflicting', memberSections: [{ user: 'a', sectionId: g1.id }] }]
+    listed = [room, unlocked, { ...room, _id: 'conflicting', lockedSection: g2.id }]
     await rooms.load()
-    assert.deepEqual([...bidding.roomConflicts], ['IS216'], 'different personal picks must not silently override each other')
+    assert.deepEqual([...bidding.roomConflicts], ['IS216'], 'two rooms locking different sections must not silently override each other')
     assert.equal(await bidding.save(), false)
     assert.match(bidding.saveError, /different sections.*rooms/i)
     assert.equal(JSON.stringify(planner.plans), originalPlans)
     user.uid = 'new-user'
-    assert.deepEqual(bidding.booked, {}, 'personal section choices clear on account changes')
+    assert.deepEqual(bidding.booked, {}, 'room sections clear on account changes')
   } finally { await server.close() }
 })

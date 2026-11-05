@@ -2,7 +2,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { api } from '../services/api'
 import { useUserStore } from './user'
-import { buildRoomBoard } from '../utils/roomBoard'
+import { buildRoomBoard, lockableSections } from '../utils/roomBoard'
 
 const ME = 'me'
 
@@ -31,19 +31,21 @@ export const useRoomsStore = defineStore('rooms', () => {
     myVotes.value = {}
   }, { flush: 'sync' })
 
-  // Where a room stands. Once everyone has voted, the section(s) with the most votes can be accepted.
-  // Several sections on the same top count is a tie: the student accepts exactly one of them.
+  // Where a room stands. Once everyone has voted, the party admin can lock one of the sections with the most votes.
+  // Several sections on the same top count is a tie: the party admin locks exactly one of them.
   function roomState(room) {
     const board = voteBoards.value[room?.id] ?? room?.summary ?? {}
     return { ...board, voted: board.votedCount ?? 0, total: board.memberCount ?? room?.members.length ?? 0,
-      waiting: board.waitingIds ?? [], leaders: board.leaders ?? [], acceptedId: board.finalisedSection ?? null }
+      waiting: board.waitingIds ?? [], leaders: board.leaders ?? [], lockedId: room?.lockedSection ?? null }
   }
 
-  // Keep degree-plan automation inactive. Only my personal section feeds bidding.
+  // Keep degree-plan automation inactive. Only a section the party admin locked feeds bidding, for every member.
   const decided = computed(() => [])
-  const pickedForBidding = computed(() => rooms.value.flatMap(room => room.mySectionId
-    ? [{ roomId: room.id, roomName: room.name, module: room.module, term: room.term, sectionId: room.mySectionId }]
+  const pickedForBidding = computed(() => rooms.value.flatMap(room => room.lockedSection
+    ? [{ roomId: room.id, roomName: room.name, module: room.module, term: room.term, sectionId: room.lockedSection }]
     : []))
+  // A locked section is everyone's: the bidding and planner cards show the whole party on it
+  const everyoneOn = (members, sectionId) => (sectionId ? Object.fromEntries(members.map(id => [id, sectionId])) : {})
 
   function getRoom(id) {
     return rooms.value.find((r) => r.id === id)
@@ -75,11 +77,18 @@ export const useRoomsStore = defineStore('rooms', () => {
       if (id === ME) myVotes.value[String(party._id)] = ballot.sectionIds
       else for (const sid of ballot.sectionIds) (votes[sid] ??= []).push(id)
     }
+    const lockedSection = party.locked ? party.lockedSection ?? null : null
+    // Vote counts for the room list and dashboard. Opening the room replaces this with the full board.
+    const voted = new Set((party.votes ?? []).filter(ballot => ballot.sectionIds.length).map(ballot => memberId(ballot.user)))
+    const votedCount = members.filter(id => voted.has(id)).length
+    const allVoted = members.length > 0 && votedCount === members.length
+    const summary = party.votes
+      ? { memberCount: members.length, votedCount, allVoted, status: party.locked ? 'locked' : allVoted ? 'ready' : 'voting' }
+      : party.summary
     return { id: String(party._id), name: party.name, description: party.description, module: party.module,
       inviteCode: party.inviteCode, maxMembers: party.maxMembers, ownerId: memberId(party.owner),
-      admins: [], members, votes, term: party.termKey, summary: party.summary, updatedAt: party.updatedAt,
-      sharedSections: Object.fromEntries((party.memberSections ?? []).map(entry => [memberId(entry.user), entry.sectionId])),
-      mySectionId: party.memberSections?.find(entry => memberId(entry.user) === ME)?.sectionId ?? null }
+      admins: [], members, votes, term: party.termKey, summary, updatedAt: party.updatedAt,
+      locked: !!party.locked, lockedSection, sharedSections: everyoneOn(members, lockedSection) }
   }
   function upsert(party) {
     const room = normalize(party)
@@ -92,8 +101,14 @@ export const useRoomsStore = defineStore('rooms', () => {
     loading.value = true; error.value = ''
     try {
       const data = await api.rooms()
+      // TODO(backend): GET /parties leaves out locked, lockedSection, owner and votes, so read each room in full.
+      // If one read fails, keep what we knew about its lock so its module doesn't drop out of bidding for a moment.
+      const full = await Promise.all(data.map(party => party.locked !== undefined ? party : api.room(party._id).catch(() => {
+        const known = getRoom(String(party._id))
+        return { ...party, locked: known?.locked, lockedSection: known?.lockedSection }
+      })))
       if (version !== revision || request !== listRequest) return
-      rooms.value = data.map(normalize)
+      rooms.value = full.map(normalize)
       online.value = true
     } catch (failure) { if (version === revision && request === listRequest) error.value = failure.message }
     finally { if (version === revision && request === listRequest) loading.value = false }
@@ -143,8 +158,8 @@ export const useRoomsStore = defineStore('rooms', () => {
       const room = getRoom(roomId)
       if (room) {
         room.summary = board
-        room.mySectionId = board.finalisedSection
-        room.sharedSections = Object.fromEntries(board.rows.flatMap(row => row.goingFor.map(entry => [entry._id === String(user.profile._id) ? ME : entry._id, row.section.id])))
+        room.locked = board.locked
+        room.lockedSection = board.lockedSection
         room.term = board.term
         if (board.ownerId) room.ownerId = board.ownerId === String(user.profile._id) ? ME : board.ownerId
         if (board.members) room.members = board.members.map(member => {
@@ -152,6 +167,7 @@ export const useRoomsStore = defineStore('rooms', () => {
           people.value[id] = { id, name: member.name, short: member.name, initials: member.name.split(/\s+/).slice(0,2).map(word => word[0]).join('').toUpperCase(), you: id === ME }
           return id
         })
+        room.sharedSections = everyoneOn(room.members, board.lockedSection)
       }
       return board
     } catch (failure) {
@@ -201,16 +217,25 @@ export const useRoomsStore = defineStore('rooms', () => {
       return false
     } finally { if (version === revision) { busy.value = false; voteSaving.value[roomId] = false } }
   }
-  // My section for the room (each member picks their own); null stops sharing it
-  const confirmSection = (roomId, sectionId) =>
-    roomAction(roomId, () => (sectionId ? api.setMySection(roomId, sectionId) : api.clearMySection(roomId)))
+  // Party admin only: locks one section for the whole room. Someone may have changed their vote since this page last
+  // refreshed, so the rule is checked against the latest votes first. A 409 reloads the board for the admin to see.
+  const lockRoom = (roomId, sectionId) => roomAction(roomId, async () => {
+    const [party, summary] = await Promise.all([api.room(roomId), api.roomSections(roomId)])
+    const latest = buildRoomBoard(party, summary, String(user.profile._id ?? ''))
+    if (!lockableSections(latest).includes(sectionId)) {
+      throw Object.assign(new Error('The votes have changed, so this section can no longer be locked. Check the results and try again.'), { status: 409 })
+    }
+    await api.lockRoom(roomId, sectionId)
+  })
+  // Party admin only: votes reopen and the section comes out of everyone's bidding
+  const unlockRoom = (roomId) => roomAction(roomId, () => api.unlockRoom(roomId))
   // Owner only: removes the member and stops them rejoining with the code
   const removeMember = (roomId, memberId) => roomAction(roomId, () => api.banRoomMember(roomId, memberId))
 
   return {
     rooms, loading, busy, online, error, load, joinRoom,
     voteBoards, voteLoading, voteSaving, voteErrors, loadVotes, saveRoomVotes,
-    myVotes, confirmSection, removeMember,
+    myVotes, lockRoom, unlockRoom, removeMember,
     decided, pickedForBidding,
     roomState,
     getRoom,

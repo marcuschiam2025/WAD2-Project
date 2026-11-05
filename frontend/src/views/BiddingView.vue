@@ -33,7 +33,7 @@ watch(() => bidding.planId, id => {
 })
 const dragging = ref(null)
 
-// Refresh personal room picks made in another tab without changing ballots or membership.
+// Pick up a section the party admin locks or unlocks, without changing ballots or membership.
 let roomTimer
 onMounted(() => {
   rooms.load()
@@ -292,11 +292,11 @@ const scrollToPanel = () => sidebarRef.value?.$el.scrollIntoView({ behavior: 'sm
           </div>
           <p v-if="lockedFocus" class="text-[13px] leading-normal">
             <span class="font-mono font-bold">{{ lockedFocus.module }} {{ sectionCode(lockedFocus.sectionId, lockedFocus.module) }}</span> is locked because
-            you shared it in {{ lockedFocus.roomName }}<template v-if="friendsOf(lockedFocus.module).length">, alongside {{ friendsOf(lockedFocus.module).map((f) => f.name).join(', ') }}</template>. Change your section in the room to update it.
+            the party admin locked it in {{ lockedFocus.roomName }}<template v-if="friendsOf(lockedFocus.module).length">, alongside {{ friendsOf(lockedFocus.module).map((f) => f.name).join(', ') }}</template>. Only they can unlock it.
             <RouterLink :to="`/rooms/${lockedFocus.roomId}`" class="font-medium text-primary hover:underline">Open room</RouterLink>
           </p>
           <p v-if="bidding.fromRooms.length" class="text-[13px] text-muted-foreground">
-            Your shared room picks:
+            Locked by your rooms:
             <template v-for="(d, i) in bidding.fromRooms" :key="d.roomId"
               ><RouterLink :to="`/rooms/${d.roomId}`" class="font-medium text-primary hover:underline">{{ d.module }} {{ sectionCode(d.sectionId, d.module) }} ({{ d.roomName }})</RouterLink
               ><span v-if="i < bidding.fromRooms.length - 1">, </span></template

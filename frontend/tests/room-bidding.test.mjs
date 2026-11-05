@@ -24,7 +24,7 @@ test('explicit room handoff selects one cart and a room module survives reload o
     const cartGate = new Promise(resolve => { releaseCart = resolve })
     api.cart = async id => { if (id === 'p1') await cartGate; return { items: id === 'p1' ? items : [] } }
     // The room's section is looked up in the bidding term (no handoff endpoint)
-    useRoomsStore().rooms = [{ id: 'r', module: 'IS216', term: '2026-27_T1', mySectionId: section.id, members: ['me'], admins: [], votes: {}, suggestedBids: {} }]
+    useRoomsStore().rooms = [{ id: 'r', module: 'IS216', term: '2026-27_T1', lockedSection: section.id, members: ['me'], admins: [], votes: {}, suggestedBids: {} }]
     const bidding = useBiddingStore()
     assert.equal(typeof bidding.addRoomSection, 'function', 'explicit room-to-bidding action is required')
     const loading = bidding.load()
@@ -52,7 +52,7 @@ test('explicit room handoff selects one cart and a room module survives reload o
     const restored = useBiddingStore()
     await restored.load()
     assert.equal(restored.booked.IS216, undefined, 'a saved module outside the What-If plan is dropped once no room backs it')
-    useRoomsStore().rooms = [{ id: 'r', module: 'IS216', term: '2026-27_T1', mySectionId: section.id, members: ['me'], admins: [], votes: {}, suggestedBids: {} }]
+    useRoomsStore().rooms = [{ id: 'r', module: 'IS216', term: '2026-27_T1', lockedSection: section.id, members: ['me'], admins: [], votes: {}, suggestedBids: {} }]
     assert.equal(restored.booked.IS216, section.id, 'still in the room: the module is back')
     useRoomsStore().rooms = []
     assert.equal(restored.booked.IS216, undefined, 'after leaving the room it goes again')

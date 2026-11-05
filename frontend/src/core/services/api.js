@@ -114,10 +114,10 @@ export const api = {
   leaveRoom: (id) => request('DELETE', `/parties/${id}/members/me`),
   // The sections I'd be happy with (replaces my old vote) -> every member's votes
   vote: (id, sectionIds) => request('PUT', `/parties/${id}/votes`, { sectionIds }),
-  // The one section I'm going for; status: considering | bidding | enrolled
-  setMySection: (id, sectionId, status = 'considering') => request('PUT', `/parties/${id}/my-section`, { sectionId, status }),
-  clearMySection: (id) => request('DELETE', `/parties/${id}/my-section`),
-  // Every section of the room's module: [{ section, voteCount, voters, goingFor }]
+  // Party admin only: locks one section for the whole room, or unlocks it again
+  lockRoom: (id, sectionId) => request('POST', `/parties/${id}/lock`, { sectionId }),
+  unlockRoom: (id) => request('DELETE', `/parties/${id}/lock`),
+  // Every section of the room's module: [{ section, voteCount, voters }]
   roomSections: (id) => request('GET', `/parties/${id}/sections`),
   // Owner only: remove a member and stop them rejoining (unban lets them back in)
   banRoomMember: (id, userId) => request('POST', `/parties/${id}/ban`, { userId }),

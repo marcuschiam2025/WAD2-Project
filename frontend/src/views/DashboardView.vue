@@ -99,7 +99,7 @@ const sections = computed(() => [
     label: 'Collab rooms',
     value: String(rooms.rooms.length),
     unit: rooms.rooms.length === 1 ? 'room' : 'rooms',
-    sub: !rooms.rooms.length ? 'Vote on sections with friends' : roomsNeedingYou.value ? `${roomsNeedingYou.value} waiting for your pick` : 'You are all caught up',
+    sub: !rooms.rooms.length ? 'Vote on sections with friends' : roomsNeedingYou.value ? `${roomsNeedingYou.value} waiting for your vote` : 'You are all caught up',
     subDanger: roomsNeedingYou.value > 0,
     accent: 'primary',
   },
@@ -195,13 +195,13 @@ const spentPct = computed(() => `${Math.min(1, bidding.allocated / Math.max(user
 const roomRow = (room) => {
   const st = rooms.roomState(room)
   const mine = (rooms.myVotes[room.id] ?? []).length > 0
-  const note = st.acceptedId
-    ? `You accepted ${sectionCode(st.acceptedId, room.module)}`
+  const note = st.lockedId
+    ? `${sectionCode(st.lockedId, room.module)} is locked for the room`
     : st.allVoted
-      ? 'Everyone has voted · ready to accept'
-      : `${st.voted} of ${st.total} voted${mine ? '' : ' · you have not picked yet'}`
-  // waiting on you: you have not picked a section and nothing has been accepted yet
-  return { room, note, needsYou: !st.acceptedId && !mine, voted: st.voted, total: st.total, accepted: !!st.acceptedId }
+      ? (room.ownerId === 'me' ? 'Everyone has voted · ready for you to lock' : 'Everyone has voted · waiting for the party admin')
+      : `${st.voted} of ${st.total} voted${mine ? '' : ' · you have not voted yet'}`
+  // waiting on you: you have not voted and the room is not locked
+  return { room, note, needsYou: !st.lockedId && !mine, voted: st.voted, total: st.total, locked: !!st.lockedId, ready: !!st.allVoted }
 }
 const roomRows = computed(() => rooms.rooms.slice(0, 3).map(roomRow))
 const roomCards = computed(() => rooms.rooms.map(roomRow))
@@ -443,7 +443,7 @@ const biddingWindows = computed(() => {
               <div class="flex flex-col gap-1">
                 <p class="text-overline text-muted-foreground">Vote on sections together</p>
                 <h2 class="text-h3">Collab rooms</h2>
-                <p class="text-[14px]" :class="roomsNeedingYou ? 'font-semibold text-destructive' : 'text-muted-foreground'">{{ !roomCards.length ? 'You are not in any rooms yet.' : roomsNeedingYou ? `${roomsNeedingYou} room${roomsNeedingYou === 1 ? ' is' : 's are'} waiting for your pick` : 'You have picked in every room.' }}</p>
+                <p class="text-[14px]" :class="roomsNeedingYou ? 'font-semibold text-destructive' : 'text-muted-foreground'">{{ !roomCards.length ? 'You are not in any rooms yet.' : roomsNeedingYou ? `${roomsNeedingYou} room${roomsNeedingYou === 1 ? ' is' : 's are'} waiting for your vote` : 'You have voted in every room.' }}</p>
               </div>
               <BaseButton to="/rooms">Open Collab Rooms</BaseButton>
             </header>
@@ -452,7 +452,7 @@ const biddingWindows = computed(() => {
                 <RouterLink :to="`/rooms/${r.room.id}`" class="flex h-full flex-col gap-2 rounded-xl border border-border bg-background p-4 transition-colors hover:border-primary/50">
                   <div class="flex items-start justify-between gap-2">
                     <span class="font-mono text-[15px] font-bold">{{ r.room.module }}</span>
-                    <StatusPill :tone="r.accepted ? 'success' : r.needsYou ? 'warning' : 'info'">{{ r.accepted ? 'Accepted' : r.needsYou ? 'Your pick' : 'Voting' }}</StatusPill>
+                    <StatusPill :tone="r.locked ? 'success' : r.needsYou ? 'warning' : 'info'">{{ r.locked ? 'Locked' : r.needsYou ? 'Your vote' : r.ready ? 'Ready to lock' : 'Voting' }}</StatusPill>
                   </div>
                   <span class="line-clamp-2 text-[14px] leading-snug font-semibold">{{ r.room.name }}</span>
                   <span class="text-[13px] text-muted-foreground">{{ r.note }}</span>

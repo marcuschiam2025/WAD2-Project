@@ -16,12 +16,16 @@ const picks = ref([]), feedback = ref('')
 // Saved picks that haven't been changed since: the calendar is locked until they are unselected
 const submitted = computed(() => !dirty.value && (board.value?.mySectionIds?.length ?? 0) > 0)
 const saving = computed(() => !!rooms.voteSaving[props.roomId])
-// Once a section is picked in Room results, the votes behind it stay put
-const sectionPicked = computed(() => !!board.value?.finalisedSection)
+// While the party admin has the room locked, votes are closed for everyone
+const locked = computed(() => !!board.value?.locked)
 watch(() => props.roomId, id => { picks.value = []; dirty.value = false; feedback.value = ''; rooms.loadVotes(id) }, { immediate: true })
-watch(board, value => { if (value && !dirty.value) picks.value = [...value.mySectionIds] })
+// A lock can arrive mid-edit from the party admin: unsaved picks can't be submitted any more, so they are dropped
+watch(board, value => {
+  if (value?.locked) dirty.value = false
+  if (value && !dirty.value) picks.value = [...value.mySectionIds]
+})
 function toggle(id) {
-  if (submitted.value) return
+  if (submitted.value || locked.value) return
   picks.value = picks.value.includes(id) ? picks.value.filter(pick => pick !== id) : [...picks.value, id]
   const saved = board.value?.mySectionIds ?? []
   dirty.value = picks.value.length !== saved.length || picks.value.some(id => !saved.includes(id))
@@ -38,7 +42,7 @@ async function save(ids = picks.value) {
   }
 }
 // Clearing a vote is saving an empty set of picks
-const unselect = () => { if (!sectionPicked.value) save([]) }
+const unselect = () => { if (!locked.value) save([]) }
 let timer
 onMounted(() => { timer = setInterval(() => {
   if (document.visibilityState === 'visible' && !rooms.busy && !rooms.voteSaving[props.roomId] && !rooms.voteLoading[props.roomId]) rooms.loadVotes(props.roomId, { quiet: true })
@@ -53,12 +57,12 @@ onBeforeUnmount(() => clearInterval(timer))
         <h2 id="room-voting-heading" class="text-h4">Modules for bid · {{ module }}</h2>
         <p class="text-[13px] text-muted-foreground">
           <template v-if="board">{{ termLabel(board.term) }} · </template>
-          {{ submitted ? (sectionPicked ? "You've submitted these picks and picked a section, so your votes are locked." : "You've submitted these picks. Unselect them if you want to change your votes.") : "Pick every section you'd take. You can choose more than one." }}
+          {{ locked ? 'The party admin has locked this room, so votes are closed until they unlock it.' : submitted ? "You've submitted these picks. Unselect them if you want to change your votes." : "Pick every section you'd take. You can choose more than one." }}
         </p>
       </div>
-      <div v-if="board?.rows.length" class="flex shrink-0 items-center gap-2">
+      <div v-if="board?.rows.length && !locked" class="flex shrink-0 items-center gap-2">
         <span v-if="dirty" class="text-[12px] text-muted-foreground">Unsaved changes</span>
-        <BaseButton v-if="submitted" variant="outline" :disabled="saving || sectionPicked" :title="sectionPicked ? 'Your votes are locked because you have picked a section' : undefined" @click="unselect">{{ saving ? 'Saving…' : 'Unselect my picks' }}</BaseButton>
+        <BaseButton v-if="submitted" variant="outline" :disabled="saving" @click="unselect">{{ saving ? 'Saving…' : 'Unselect my picks' }}</BaseButton>
         <BaseButton v-else :disabled="!dirty || saving" @click="save()">{{ saving ? 'Saving…' : 'Submit my picks' }}</BaseButton>
       </div>
     </div>
@@ -71,7 +75,7 @@ onBeforeUnmount(() => clearInterval(timer))
         No sections are available for {{ module }} {{ moduleName(module) }} in {{ termLabel(board.term) }}. Voting opens when its section data is added.
       </p>
       <template v-else>
-        <RoomSectionCalendar :rows="board.rows" :selected="picks" :disabled="saving || submitted" @toggle="toggle" />
+        <RoomSectionCalendar :rows="board.rows" :selected="picks" :disabled="saving || submitted || locked" @toggle="toggle" />
         <div class="flex flex-wrap items-center gap-5 text-[12px] text-muted-foreground">
           <span class="flex items-center gap-1.5"><span class="h-3 w-[18px] rounded-sm bg-primary" /> Selected section</span>
           <span class="flex items-center gap-1.5"><span class="h-3 w-[18px] rounded-sm border border-dashed border-border" /> Available section</span>
@@ -81,7 +85,7 @@ onBeforeUnmount(() => clearInterval(timer))
 
         <details class="rounded-lg border border-border p-4">
           <summary class="cursor-pointer text-[14px] font-medium">Section details &amp; exams</summary>
-          <fieldset :disabled="saving || submitted" class="mt-4 flex flex-col gap-3">
+          <fieldset :disabled="saving || submitted || locked" class="mt-4 flex flex-col gap-3">
             <legend class="sr-only">Available sections</legend>
             <label v-for="row in board.rows" :key="row.section.id" class="flex cursor-pointer gap-3 rounded-md border p-4" :class="picks.includes(row.section.id) ? 'border-primary bg-primary-tint' : 'border-border'">
               <input type="checkbox" :checked="picks.includes(row.section.id)" class="mt-1 accent-primary" @change="toggle(row.section.id)" />

@@ -3,9 +3,12 @@
 
 export const idOf = (value) => String(value?._id ?? value)
 
+// What the party admin may lock: nothing until everyone has voted, then only the section(s) with the most votes
+export const lockableSections = (board) => (board && !board.locked && board.allVoted ? board.leaders : [])
+
 /**
- * @param {object} party    the party (members, owner, votes, memberSections, termKey), members populated
- * @param {Array}  summary  [{ section, voteCount, voters, goingFor }] for the party's module and term
+ * @param {object} party    the party (members, owner, votes, locked, lockedSection, termKey), members populated
+ * @param {Array}  summary  [{ section, voteCount, voters }] for the party's module and term
  * @param {string} myId     the signed-in student's user id
  */
 export function buildRoomBoard(party, summary, myId) {
@@ -28,8 +31,8 @@ export function buildRoomBoard(party, summary, myId) {
   const leaders = top ? [...counts].filter(([, count]) => count === top).map(([id]) => id).sort() : []
   const allVoted = memberIds.length > 0 && waitingIds.length === 0
 
-  // Each member picks their own section; mine is shown as the room result
-  const mine = (party.memberSections ?? []).find((entry) => idOf(entry.user) === myId)
+  // The party admin locks one section for the whole room
+  const locked = !!party.locked
 
   return {
     term: party.termKey,
@@ -42,15 +45,15 @@ export function buildRoomBoard(party, summary, myId) {
     top,
     leaders,
     tie: leaders.length > 1,
-    finalisedSection: mine?.sectionId ?? null,
-    myStatus: mine?.status ?? null,
+    locked,
+    lockedSection: locked ? party.lockedSection ?? null : null,
+    status: locked ? 'locked' : allVoted ? 'ready' : 'voting',
     mySectionIds: myBallot.filter((id) => validIds.has(id)),
     missingSectionIds: myBallot.filter((id) => !validIds.has(id)),
     rows: summary.map((row) => ({
       section: row.section,
       count: counts.get(row.section.id) ?? 0,
       voters: (row.voters ?? []).filter(Boolean).map((voter) => ({ _id: idOf(voter), name: voter.name || 'Member' })),
-      goingFor: (row.goingFor ?? []).map((entry) => ({ _id: idOf(entry.user), name: entry.user?.name || 'Member', status: entry.status })),
     })),
   }
 }

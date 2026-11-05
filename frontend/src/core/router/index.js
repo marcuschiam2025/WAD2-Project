@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { routeAccess } from './access'
+import { rememberJoin, takeJoin } from '../utils/roomInvite'
 
 // meta.layout: 'app' shows the signed-in nav bar; 'bare' shows nothing.
 // meta.auth: route needs a signed-in student.
@@ -107,7 +108,16 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const user = useUserStore()
   await user.initialize()
-  return routeAccess(to, user)
+  const access = routeAccess(to, user)
+  if (access) {
+    // Sent away from a join link (to sign in or onboard): keep the code for when they get back
+    if (to.path === '/rooms' && to.query.join) rememberJoin(to.query.join)
+    return access
+  }
+  if (to.meta.auth && to.name !== 'onboarding' && !to.query.join) {
+    const join = takeJoin()
+    if (join) return { path: '/rooms', query: { join } }
+  }
 })
 
 export default router
