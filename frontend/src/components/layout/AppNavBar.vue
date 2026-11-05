@@ -1,5 +1,12 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch,nextTick } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+  nextTick,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@core/stores/user";
 import { useThemeStore } from "@core/stores/theme";
@@ -52,7 +59,7 @@ const notifications = ref([]);
 const showRead = ref(false);
 const nextNotifications = ref(null);
 const notificationsLoading = ref(false);
-const notificationsError = ref('');
+const notificationsError = ref("");
 const readingNotifications = ref(new Set());
 let notificationRequest = 0;
 
@@ -60,27 +67,27 @@ const filteredNotifications = computed(() => {
   // 1. Filter out read items if 'showRead' is false
   const list = showRead.value
     ? [...notifications.value]
-    : notifications.value.filter(n => !n.read)
+    : notifications.value.filter((n) => !n.read);
 
   // 2. Sort: Unread (false) comes before Read (true)
-  return list.sort((a, b) => Number(a.read) - Number(b.read))
-})
+  return list.sort((a, b) => Number(a.read) - Number(b.read));
+});
 
 const isEditing = ref(false);
 const creditInput = ref(null);
 
 const startEdit = async () => {
   isEditing.value = true;
-  await nextTick(); 
+  await nextTick();
   creditInput.value.focus();
 };
 
 // const saveEdit = async () => {
 //   if (!isEditing.value) return;
 //   isEditing.value = false;
-  
+
 //   const newBalance = Number(parseFloat(user.balance).toFixed(2));
-  
+
 //   try {
 //     // This calls the existing save() method in your user.js store
 //     await user.save({ balance: newBalance });
@@ -92,24 +99,24 @@ const startEdit = async () => {
 const saveEdit = async () => {
   if (!isEditing.value) return;
   isEditing.value = false;
-  
+
   // 1. Safely parse the text input into a float
   let parsedValue = parseFloat(user.balance);
-  
+
   // 2. If they left it blank or typed gibberish, default to 0
   if (isNaN(parsedValue) || parsedValue < 0) {
     parsedValue = 0;
   }
-  
+
   // 3. Format strictly to 2 decimal places
   const newBalance = Number(parsedValue.toFixed(2));
-  
+
   // 4. Optimistically update the UI to show the clean number
   user.balance = newBalance;
-  
+
   try {
     // 5. Send the valid number to the backend
-    await user.save({ balance: newBalance }); 
+    await user.save({ balance: newBalance });
   } catch (error) {
     console.error("Failed to save balance:", error);
   }
@@ -124,24 +131,35 @@ async function loadNotifications(more = false) {
   if (more && !nextNotifications.value) return;
   const request = ++notificationRequest;
   notificationsLoading.value = true;
-  notificationsError.value = '';
+  notificationsError.value = "";
   try {
-    const res = await api.notifications(more ? nextNotifications.value : undefined);
+    const res = await api.notifications(
+      more ? nextNotifications.value : undefined,
+    );
     if (request !== notificationRequest) return;
     const list = Array.isArray(res)
       ? res
       : res?.notifications || res?.data || [];
 
     notifications.value = more
-      ? [...new Map([...notifications.value, ...list].map(n => [n._id || n.id, n])).values()]
+      ? [
+          ...new Map(
+            [...notifications.value, ...list].map((n) => [n._id || n.id, n]),
+          ).values(),
+        ]
       : list;
     nextNotifications.value = res?.next ?? null;
-    unreadCount.value = Number.isInteger(res?.unreadCount) ? res.unreadCount : notifications.value.filter(n => !n.read).length;
+    unreadCount.value = Number.isInteger(res?.unreadCount)
+      ? res.unreadCount
+      : notifications.value.filter((n) => !n.read).length;
   } catch (error) {
     if (request !== notificationRequest) return;
-    notificationsError.value = 'Could not load notifications. Please try again.';
+    notificationsError.value =
+      "Could not load notifications. Please try again.";
     console.error("Failed to load notifications:", error);
-  } finally { if (request === notificationRequest) notificationsLoading.value = false; }
+  } finally {
+    if (request === notificationRequest) notificationsLoading.value = false;
+  }
 }
 
 watch(notifOpen, (open) => {
@@ -149,31 +167,36 @@ watch(notifOpen, (open) => {
 });
 
 async function handleNotifClick(n) {
-  const id = n._id || n.id
-  if (readingNotifications.value.has(id)) return
-  notificationsError.value = ''
+  const id = n._id || n.id;
+  if (readingNotifications.value.has(id)) return;
+  notificationsError.value = "";
   if (!n.read) {
-    readingNotifications.value.add(id)
+    readingNotifications.value.add(id);
     try {
-      await api.markNotificationRead(id)
-      const current = notifications.value.find(item => (item._id || item.id) === id)
+      await api.markNotificationRead(id);
+      const current = notifications.value.find(
+        (item) => (item._id || item.id) === id,
+      );
       if (current && !current.read) {
-        current.read = true
-        unreadCount.value = Math.max(0, unreadCount.value - 1)
+        current.read = true;
+        unreadCount.value = Math.max(0, unreadCount.value - 1);
       }
-      n.read = true
+      n.read = true;
       // A refresh racing this update must not restore the old unread state or count.
-      if (notificationsLoading.value || !current) await loadNotifications()
+      if (notificationsLoading.value || !current) await loadNotifications();
     } catch (error) {
-      notificationsError.value = 'Could not mark this notification as read. Please try again.'
-      console.error("Failed to mark notification as read:", error)
-      return
-    } finally { readingNotifications.value.delete(id) }
+      notificationsError.value =
+        "Could not mark this notification as read. Please try again.";
+      console.error("Failed to mark notification as read:", error);
+      return;
+    } finally {
+      readingNotifications.value.delete(id);
+    }
   }
 
-  notifOpen.value = false
+  notifOpen.value = false;
   if (n.link) {
-    router.push(n.link)
+    router.push(n.link);
   }
 }
 
@@ -260,24 +283,27 @@ async function logOut() {
             >balance</span
           >
         </div> -->
-        
-        <div class="flex shrink-0 items-center gap-2 lg:gap-4">
-    <!-- The student's whole balance -->
-    <div
-      title="Your e$ balance"
-      class="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 leading-normal whitespace-nowrap cursor-pointer hover:bg-secondary/80 transition-colors"
-      @click="startEdit"
-    >
-      <!-- Display Mode -->
-      <span 
-        v-if="!isEditing" 
-        class="font-mono text-[12.5px] font-bold"
-      >
-        e$ {{ user.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-      </span>
 
-      <!-- Edit Mode -->
-      <!-- <input 
+        <div class="flex shrink-0 items-center gap-2 lg:gap-4">
+          <!-- The student's whole balance -->
+          <div
+            title="Your e$ balance"
+            class="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 leading-normal whitespace-nowrap cursor-pointer hover:bg-secondary/80 transition-colors"
+            @click="startEdit"
+          >
+            <!-- Display Mode -->
+            <span v-if="!isEditing" class="font-mono text-[12.5px] font-bold">
+              e$
+              {{
+                user.balance.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              }}
+            </span>
+
+            <!-- Edit Mode -->
+            <!-- <input 
         v-else 
         ref="creditInput" 
         v-model.number="user.balance" 
@@ -287,24 +313,28 @@ async function logOut() {
         step="0.01"
         class="font-mono text-[12.5px] font-bold bg-transparent outline-none border-b border-foreground/30 w-16 text-foreground"
       /> -->
-      <input 
-  v-else 
-  ref="creditInput" 
-  v-model="user.balance" 
-  @blur="saveEdit" 
-  @keyup.enter="saveEdit" 
-  type="text"
-  class="font-mono text-[12.5px] font-bold bg-transparent outline-none border-b border-foreground/30 w-16 text-foreground"
-/>
-      <span class="hidden text-[12px] text-muted-foreground xl:inline">
-        balance
-      </span>
-    </div>
-  </div>
+            <input
+              v-else
+              ref="creditInput"
+              v-model="user.balance"
+              @blur="saveEdit"
+              @keyup.enter="saveEdit"
+              type="text"
+              class="font-mono text-[12.5px] font-bold bg-transparent outline-none border-b border-foreground/30 w-16 text-foreground"
+            />
+            <span class="hidden text-[12px] text-muted-foreground xl:inline">
+              balance
+            </span>
+          </div>
+        </div>
         <div ref="notifRef" class="relative">
           <button
             type="button"
-            :aria-label="unreadCount ? `Notifications (${unreadCount} unread)` : 'Notifications'"
+            :aria-label="
+              unreadCount
+                ? `Notifications (${unreadCount} unread)`
+                : 'Notifications'
+            "
             :aria-expanded="notifOpen"
             class="relative block size-8 rounded-full hover:bg-muted"
             @click="
@@ -334,7 +364,10 @@ async function logOut() {
               <div
                 class="flex items-center justify-between border-b border-border pb-2"
               >
-                <p class="text-overline text-muted-foreground">Notifications <span v-if="unreadCount">({{ unreadCount }} unread)</span></p>
+                <p class="text-overline text-muted-foreground">
+                  Notifications
+                  <span v-if="unreadCount">({{ unreadCount }} unread)</span>
+                </p>
 
                 <!-- Only one 'See read' button here -->
                 <button
@@ -365,31 +398,76 @@ async function logOut() {
                   @click="handleNotifClick(n)"
                 >
                   <span class="leading-snug">{{ n.message || n.text }}</span>
-                  <span v-if="readingNotifications.has(n._id || n.id)" class="mt-1 text-[11px] text-muted-foreground">Marking as read…</span>
+                  <span
+                    v-if="readingNotifications.has(n._id || n.id)"
+                    class="mt-1 text-[11px] text-muted-foreground"
+                    >Marking as read…</span
+                  >
                   <span
                     v-if="n.createdAt"
                     class="mt-1 text-[11px] text-muted-foreground font-normal"
                   >
-                    {{ new Date(n.createdAt).toLocaleDateString() }}
+                    {{
+                      new Date(n.createdAt).toLocaleString(undefined, {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })
+                    }}
                   </span>
                 </li>
               </ul>
 
               <!-- Empty States -->
-              <p v-else-if="notificationsLoading" role="status" class="text-[13px] text-muted-foreground">Loading notifications…</p>
               <p
-                v-else-if="unreadCount === 0 && !showRead && !notificationsError"
+                v-else-if="notificationsLoading"
+                role="status"
+                class="text-[13px] text-muted-foreground"
+              >
+                Loading notifications…
+              </p>
+              <p
+                v-else-if="
+                  unreadCount === 0 && !showRead && !notificationsError
+                "
                 class="text-[13px] text-muted-foreground"
               >
                 You're all caught up.
               </p>
 
-              <p v-else-if="nextNotifications && unreadCount > 0 && !showRead" class="text-[13px] text-muted-foreground">Older unread notifications are available. Load more to view them.</p>
+              <p
+                v-else-if="nextNotifications && unreadCount > 0 && !showRead"
+                class="text-[13px] text-muted-foreground"
+              >
+                Older unread notifications are available. Load more to view
+                them.
+              </p>
               <p v-else class="text-[13px] text-muted-foreground">
                 No notifications available.
               </p>
-              <p v-if="notificationsError" role="alert" class="text-[13px] text-destructive">{{ notificationsError }} <button type="button" class="underline" :disabled="notificationsLoading" @click="loadNotifications()">Reload</button></p>
-              <button v-if="nextNotifications" type="button" class="self-center text-[12px] font-medium text-primary hover:underline disabled:opacity-50" :disabled="notificationsLoading" @click="loadNotifications(true)">{{ notificationsLoading ? 'Loading…' : 'Load more' }}</button>
+              <p
+                v-if="notificationsError"
+                role="alert"
+                class="text-[13px] text-destructive"
+              >
+                {{ notificationsError }}
+                <button
+                  type="button"
+                  class="underline"
+                  :disabled="notificationsLoading"
+                  @click="loadNotifications()"
+                >
+                  Reload
+                </button>
+              </p>
+              <button
+                v-if="nextNotifications"
+                type="button"
+                class="self-center text-[12px] font-medium text-primary hover:underline disabled:opacity-50"
+                :disabled="notificationsLoading"
+                @click="loadNotifications(true)"
+              >
+                {{ notificationsLoading ? "Loading…" : "Load more" }}
+              </button>
             </div>
           </Transition>
 
