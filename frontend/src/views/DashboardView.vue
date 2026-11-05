@@ -10,6 +10,7 @@ import { useQuizStore, quizTrackNames, isOlderResult } from "@core/stores/quiz";
 import { moduleName } from "@core/data/catalogue";
 import { fmtE } from "@core/utils/money";
 import { windowsFor, roundStatus } from "@core/utils/biddingWindows";
+import { BIDDING_WINDOWS } from "@core/data/biddingWindows";
 import { plannedMeetings, singaporeDay } from "@core/utils/dashboardSchedule";
 import { bidHistory, rateBid, estimateHistory } from "@core/data/bidding";
 
@@ -270,8 +271,31 @@ const degreeParts = computed(() =>
 // --- Schedule -----------------------------------------------------------------------------
 // TODO(backend): replace with GET /api/users/me/feed — assignment deadlines and quizzes.
 // The bidding cart is a planning source, not evidence of confirmed enrolment.
-const deadlines = computed(() =>
-  round.value.closesAt > now.value
+// Every bidding window of the term that opens or closes from now on, as schedule entries (the next-7-days tab keeps the
+// ones within a week). A term with no listed windows falls back to the open round's closing time.
+const SG_DAY = 86_400_000;
+const offsetOf = (date) =>
+  Math.round((singaporeDay(date) - singaporeDay(today.value)) / SG_DAY);
+const deadlines = computed(() => {
+  const listed = BIDDING_WINDOWS.filter((w) => w.term === bidding.round.term);
+  if (listed.length)
+    return listed.flatMap((w) => {
+      const name = `Round ${w.round} · Window ${w.window}`;
+      return [
+        ["opens", w.opensAt],
+        ["closes", w.closesAt],
+      ]
+        .filter(([, at]) => Date.parse(at) > now.value)
+        .map(([verb, at]) => ({
+          id: `bid-${w.round}-${w.window}-${verb}`,
+          kind: "Bid",
+          title: `${name} ${verb}`,
+          meta: verb === "closes" ? "Submit your bid cart before then" : "Bidding window",
+          offset: offsetOf(new Date(at)),
+          time: hhmm(new Date(at)),
+        }));
+    });
+  return round.value.closesAt > now.value
     ? [
         {
           id: "bid",
@@ -282,8 +306,8 @@ const deadlines = computed(() =>
           time: hhmm(round.value.closesAt),
         },
       ]
-    : [],
-);
+    : [];
+});
 
 const classes = computed(() =>
   plannedMeetings(bidding.bookedSections, today.value).map((m) => ({
