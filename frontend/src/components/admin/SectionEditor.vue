@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { api } from '@core/services/api';
 import { useUserStore } from '@core/stores/user';
+import SelectMenu from '@/components/ui/SelectMenu.vue';
 const emit = defineEmits(['saved']);
 const user = useUserStore();
 const moduleCode = ref(''),
@@ -16,6 +17,33 @@ const form = ref(null),
   busy = ref(false),
   error = ref(''),
   message = ref('');
+const modules = ref([]),
+  suggestions = ref({ instructors: [], venues: [] });
+const moduleOptions = computed(() =>
+  modules.value.map((m) => ({
+    value: m._id,
+    label: `${m._id} ${m.title}${m.archived ? ' (archived)' : ''}`,
+  })),
+);
+// The terms with sections, then the next ones, so the first section of a new term can be added
+function followingTerms(latest, count = 3) {
+  const found = /^(20\d{2})-\d{2}_T([1-3])$/.exec(latest ?? '');
+  if (!found) return [];
+  let year = Number(found[1]),
+    number = Number(found[2]);
+  return Array.from({ length: count }, () => {
+    number = number === 3 ? 1 : number + 1;
+    if (number === 1) year += 1;
+    return `${year}-${String((year + 1) % 100).padStart(2, '0')}_T${number}`;
+  });
+}
+const termOptions = computed(() => {
+  const existing = [...terms.value].sort();
+  return [
+    ...existing.map((value) => ({ value, label: value })),
+    ...followingTerms(existing.at(-1)).map((value) => ({ value, label: `${value} (no sections yet)` })),
+  ];
+});
 const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 let generation = 0;
 const copy = (value) => JSON.parse(JSON.stringify(value));
@@ -189,13 +217,19 @@ onMounted(async () => {
   const uid = user.uid,
     version = generation;
   try {
-    const info = await api.round();
+    const [info, options, hints] = await Promise.all([
+      api.round(),
+      api.adminModuleOptions(),
+      api.adminSectionOptions(),
+    ]);
     if (uid === user.uid && version === generation) {
       terms.value = info.availableTerms ?? [];
       term.value = info.term ?? '';
+      modules.value = options.modules;
+      suggestions.value = hints;
     }
-  } catch {
-    /* Term can be entered manually. */
+  } catch (failure) {
+    if (uid === user.uid && version === generation) error.value = failure.message;
   }
 });
 onBeforeUnmount(() => {
@@ -222,26 +256,23 @@ onBeforeUnmount(() => {
     </p>
     <p v-if="message" role="status" class="mt-4 rounded-md bg-muted p-3 text-sm">{{ message }}</p>
     <form class="mt-5 flex flex-wrap items-end gap-3" @submit.prevent="load">
-      <label class="text-sm"
-        >Module code<input
+      <div class="w-72 text-sm">
+        <span class="mb-1 block">Module</span>
+        <SelectMenu
           v-model="moduleCode"
-          required
-          placeholder="IS216"
-          maxlength="40"
-          class="mt-1 block w-40 rounded-md border border-border bg-background p-2"
-      /></label>
-      <label class="text-sm"
-        >Academic term<input
-          v-model="term"
-          required
-          list="admin-section-terms"
-          placeholder="2026-27_T2"
-          class="mt-1 block w-44 rounded-md border border-border bg-background p-2" /><datalist
-          id="admin-section-terms"
-        >
-          <option v-for="t in terms" :key="t" :value="t" /></datalist
-      ></label>
-      <button class="rounded-md border border-border px-4 py-2 text-sm" :disabled="busy">
+          :options="moduleOptions"
+          searchable
+          placeholder="Search modules"
+        />
+      </div>
+      <div class="w-64 text-sm">
+        <span class="mb-1 block">Academic term</span>
+        <SelectMenu v-model="term" :options="termOptions" searchable placeholder="Search terms" />
+      </div>
+      <button
+        class="rounded-md border border-border px-4 py-2 text-sm disabled:opacity-50"
+        :disabled="busy || !moduleCode || !term"
+      >
         Load sections
       </button>
       <button
@@ -281,6 +312,12 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <form v-if="form" class="space-y-4" @submit.prevent="review = true">
+        <datalist id="admin-instructors">
+          <option v-for="name in suggestions.instructors" :key="name" :value="name" />
+        </datalist>
+        <datalist id="admin-venues">
+          <option v-for="venue in suggestions.venues" :key="venue" :value="venue" />
+        </datalist>
         <h3 class="font-semibold">
           {{ creating ? 'Create section' : `Edit ${form.sectionCode}` }} · {{ form.moduleCode }} ·
           {{ form.termKey }}
@@ -316,7 +353,9 @@ onBeforeUnmount(() => {
           <label class="block text-sm"
             >Instructor<input
               v-model="form.instructor"
+              list="admin-instructors"
               maxlength="200"
+              placeholder="Pick from the list or type a new name"
               class="mt-1 block w-full rounded-md border border-border bg-background p-2"
           /></label>
           <div class="flex items-center justify-between gap-3">
@@ -360,7 +399,9 @@ onBeforeUnmount(() => {
             <label class="mt-3 block text-sm"
               >Venue<input
                 v-model="slot.venue"
+                list="admin-venues"
                 maxlength="200"
+                placeholder="Pick from the list or type a new venue"
                 class="mt-1 block w-full rounded-md border border-border bg-background p-2"
             /></label>
             <button
@@ -400,13 +441,16 @@ onBeforeUnmount(() => {
             <label class="mt-3 block text-sm"
               >Exam venue<input
                 v-model="form.finalExam.venue"
+                list="admin-venues"
                 maxlength="200"
+                placeholder="Pick from the list or type a new venue"
                 class="mt-1 block w-full rounded-md border border-border bg-background p-2"
             /></label>
           </div>
         </fieldset>
         <div v-if="review" class="rounded-md border border-primary bg-muted p-4 text-sm">
           <h4 class="font-semibold">Review {{ form.sectionCode }}</h4>
+          <p v-if="error" role="alert" class="mt-2 text-destructive">{{ error }}</p>
           <p class="mt-2">
             {{ form.classSlots.length }} weekly meeting(s) ·
             {{ form.hasExam ? 'Final exam included' : 'No final exam' }}. Check all details above before

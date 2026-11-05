@@ -41,6 +41,16 @@ const editor = createSectionEditor({
       { session, returnDocument: 'after', includeResultMetadata: false },
     ),
 });
+// Suggestions for the section form. Staff can still type a new instructor or venue.
+export async function getAdminSectionOptions(_req, res) {
+  const [instructors, venues, examVenues] = await Promise.all([
+    Section.distinct('instructors'),
+    Section.distinct('meetings.venue'),
+    Section.distinct('finalExam.venue'),
+  ]);
+  const sorted = (...lists) => [...new Set(lists.flat().filter(Boolean))].sort();
+  res.json({ instructors: sorted(instructors), venues: sorted(venues, examVenues) });
+}
 export async function listAdminSections(req, res) {
   const code = moduleCode(req.query.module);
   let termKey;

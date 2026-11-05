@@ -15,6 +15,11 @@ const form = ref(null),
   source = ref('');
 let generation = 0;
 const dirty = computed(() => form.value && JSON.stringify(form.value) !== original.value);
+// BOSS's rounds (BiddingWindow.js). A saved name outside this list stays selectable until it is changed.
+const ROUNDS = ['1', '1A', '1B', '2', '2A'];
+const roundOptions = computed(() =>
+  form.value?.round && !ROUNDS.includes(form.value.round) ? [...ROUNDS, form.value.round] : ROUNDS,
+);
 function fill(row) {
   form.value = {
     term: row.term ?? '',
@@ -140,13 +145,15 @@ onBeforeUnmount(() => {
           Add class sections for a term before configuring its round.
         </p>
         <label class="block text-sm"
-          >Round name<input
+          >Round name<select
             v-model="form.round"
             required
-            maxlength="30"
-            placeholder="For example, 1A"
             class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-        /></label>
+          >
+            <option value="" disabled>Select a round</option>
+            <option v-for="round in roundOptions" :key="round" :value="round">{{ round }}</option>
+          </select></label
+        >
         <label class="block text-sm"
           >Closing time · Singapore (UTC+08:00)<input
             v-model="form.closesAt"

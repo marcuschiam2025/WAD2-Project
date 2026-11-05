@@ -16,6 +16,7 @@ const props = defineProps({
   multiple: Boolean,
   searchable: Boolean,
   placeholder: { type: String, default: 'Select…' },
+  hideSummary: Boolean, // the parent shows what is selected, so the field keeps its placeholder
 });
 
 const open = ref(false);
@@ -25,6 +26,7 @@ const root = ref(null);
 const isSelected = (v) => (props.multiple ? model.value.includes(v) : model.value === v);
 
 const summary = computed(() => {
+  if (props.hideSummary) return '';
   const picked = props.options.filter((o) => isSelected(o.value));
   return picked.length ? picked.map((o) => o.label).join(', ') : '';
 });
@@ -52,7 +54,10 @@ function pick(o) {
 }
 
 function onDocClick(e) {
-  if (root.value && !root.value.contains(e.target)) open.value = false;
+  if (!root.value || root.value.contains(e.target)) return;
+  open.value = false;
+  // With the selection shown elsewhere, leftover search text would read as the chosen value
+  if (props.hideSummary) query.value = '';
 }
 onMounted(() => document.addEventListener('click', onDocClick));
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
@@ -74,6 +79,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
         :class="summary && !open ? 'placeholder:text-foreground' : 'placeholder:text-muted-foreground'"
         @focus="open = true"
         @keydown.esc="open = false"
+        @keydown.enter.prevent="visible[0] && pick(visible[0])"
       />
       <span
         v-else

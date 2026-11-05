@@ -2,6 +2,8 @@
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { api } from '@core/services/api';
 import { useUserStore } from '@core/stores/user';
+import ChipSelect from './ChipSelect.vue';
+import SelectMenu from '@/components/ui/SelectMenu.vue';
 
 const emit = defineEmits(['saved']);
 const user = useUserStore();
@@ -25,26 +27,16 @@ const empty = () => ({
   schoolId: '',
   department: '',
   description: '',
-  categories: '',
-  fulfils: '',
-  prerequisites: '',
-  corequisites: '',
-  mutuallyExclusive: '',
+  categories: [],
+  fulfils: [],
+  prerequisites: [[]],
+  corequisites: [[]],
+  mutuallyExclusive: [],
   requisiteNotes: '',
-  termsOffered: '',
+  termsOffered: [],
   trackCount: '',
   revision: 0,
 });
-const split = (value) =>
-  value
-    .split(',')
-    .map((v) => v.trim())
-    .filter(Boolean);
-const groups = (value) =>
-  value
-    .split('\n')
-    .filter((line) => line.trim())
-    .map(split);
 const lines = (value) =>
   value
     .split('\n')
@@ -58,28 +50,77 @@ function payload() {
     schoolId: f.schoolId || null,
     department: f.department,
     description: f.description,
-    categories: split(f.categories),
-    fulfils: split(f.fulfils),
-    prerequisites: groups(f.prerequisites),
-    corequisites: groups(f.corequisites),
-    mutuallyExclusive: split(f.mutuallyExclusive),
+    categories: f.categories,
+    fulfils: f.fulfils,
+    prerequisites: f.prerequisites.filter((group) => group.length),
+    corequisites: f.corequisites.filter((group) => group.length),
+    mutuallyExclusive: f.mutuallyExclusive,
     requisiteNotes: lines(f.requisiteNotes),
-    termsOffered: split(f.termsOffered),
+    termsOffered: f.termsOffered,
     prerequisiteRules: f.trackCount === '' ? [] : [{ countFrom: 'TRACK', n: Number(f.trackCount) }],
   };
 }
 function fill(row) {
   const f = { ...empty(), ...row, code: row._id, revision: row.revision ?? 0 };
+  f.schoolId = row.schoolId ?? '';
+  f.department = row.department ?? '';
   for (const key of ['categories', 'fulfils', 'mutuallyExclusive', 'termsOffered'])
-    f[key] = (row[key] ?? []).join(', ');
+    f[key] = [...(row[key] ?? [])];
+  // Always at least one box to pick in
   for (const key of ['prerequisites', 'corequisites'])
-    f[key] = (row[key] ?? []).map((group) => group.join(', ')).join('\n');
+    f[key] = row[key]?.length ? row[key].map((group) => [...group]) : [[]];
   f.requisiteNotes = (row.requisiteNotes ?? []).join('\n');
   f.trackCount = row.prerequisiteRules?.length
     ? Math.max(...row.prerequisiteRules.map((rule) => rule.n))
     : '';
   return f;
 }
+// What the dropdowns choose from. A saved value that is no longer listed stays selectable, so opening a module
+// doesn't lose it (seeded requisites can name retired courses).
+const options = ref({ modules: [], schools: [], departments: [], categories: [], fulfils: [] });
+async function loadOptions() {
+  try {
+    options.value = await api.adminModuleOptions();
+  } catch (failure) {
+    error.value = failure.message;
+  }
+}
+const moduleOptions = computed(() =>
+  options.value.modules
+    .filter((m) => m._id !== form.value?.code)
+    .map((m) => ({
+      value: m._id,
+      label: `${m._id} ${m.title}${m.archived ? ' (archived)' : ''}`,
+    })),
+);
+const withSaved = (list, saved) =>
+  saved && !list.some((o) => o.value === saved) ? [...list, { value: saved, label: saved }] : list;
+const schoolOptions = computed(() =>
+  withSaved(
+    [
+      { value: '', label: 'None' },
+      ...options.value.schools.map((s) => ({ value: s._id, label: `${s._id} · ${s.name}` })),
+    ],
+    form.value?.schoolId,
+  ),
+);
+const departmentOptions = computed(() =>
+  withSaved(
+    [{ value: '', label: 'None' }, ...options.value.departments.map((d) => ({ value: d, label: d }))],
+    form.value?.department,
+  ),
+);
+const TERMS = ['T1', 'T2', 'T3'];
+const asOptions = (values) => values.map((value) => ({ value, label: value }));
+const REQUISITES = [
+  { key: 'prerequisites', label: 'Prerequisites', hint: 'Must be completed in an earlier term.' },
+  { key: 'corequisites', label: 'Corequisites', hint: 'May be completed already or taken in the same term.' },
+];
+// A course can only be in one of these lists, so picking it in one hides it from the others
+const takenByOther = (key) =>
+  ['prerequisites', 'corequisites', 'mutuallyExclusive']
+    .filter((other) => other !== key)
+    .flatMap((other) => (form.value?.[other] ?? []).flat());
 const dirty = computed(() => form.value && JSON.stringify(form.value) !== JSON.stringify(original.value));
 function discardAllowed() {
   return !dirty.value || window.confirm('Discard your unsaved module changes?');
@@ -143,6 +184,7 @@ async function save() {
     review.value = false;
     operation.value = '';
     saved.value = 'Module saved. Students receive the updated details when they reload the catalogue.';
+    loadOptions();
     const index = items.value.findIndex((item) => item._id === row._id);
     if (index >= 0) items.value[index] = row;
     else items.value = [row, ...items.value];
@@ -187,6 +229,7 @@ async function applyLifecycle() {
           ? `${code} archived. Existing student records are retained. Students see this change after reloading.`
           : `${code} restored to the active catalogue.`;
     }
+    loadOptions();
     emit('saved');
   });
 }
@@ -212,6 +255,7 @@ watch(
 );
 onMounted(() => {
   search();
+  loadOptions();
   window.addEventListener('beforeunload', beforeUnload);
 });
 onBeforeUnmount(() => {
@@ -334,49 +378,71 @@ onBeforeUnmount(() => {
             />
           </label>
           <div class="grid gap-4 sm:grid-cols-2">
-            <label class="block text-sm"
-              >School ID<input
+            <div class="text-sm">
+              <span class="mb-1 block">School</span>
+              <SelectMenu
                 v-model="form.schoolId"
-                placeholder="e.g. SCIS"
-                class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-            /></label>
-            <label class="block text-sm"
-              >Department<input
+                :options="schoolOptions"
+                searchable
+                placeholder="Search schools"
+              />
+            </div>
+            <div class="text-sm">
+              <span class="mb-1 block">Department</span>
+              <SelectMenu
                 v-model="form.department"
-                placeholder="e.g. SIS"
-                class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-            /></label>
+                :options="departmentOptions"
+                searchable
+                placeholder="Search departments"
+              />
+            </div>
           </div>
           <details class="rounded-md border border-border p-3" open>
             <summary class="cursor-pointer text-sm font-medium">Prerequisites and restrictions</summary>
             <p class="my-3 text-xs text-muted-foreground">
-              Each line is required. Within a line, any one of the comma-separated module codes is enough. For
-              example, IS111, CS101 on the first line and IS112 on the second means (IS111 OR CS101) AND
-              IS112.
+              Every box is required. Within a box, any one of the selected modules is enough. For example,
+              IS111 and CS101 in the first box and IS112 in the second means (IS111 OR CS101) AND IS112.
             </p>
             <div class="grid gap-4 sm:grid-cols-2">
-              <label class="block text-sm"
-                >Prerequisites<textarea
-                  v-model="form.prerequisites"
-                  rows="3"
-                  class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-                /></label
-              ><label class="block text-sm"
-                >Corequisites<textarea
-                  v-model="form.corequisites"
-                  rows="3"
-                  class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-                /><span class="text-xs text-muted-foreground"
-                  >May be completed already or taken in the same term.</span
-                ></label
-              >
+              <div v-for="req in REQUISITES" :key="req.key" class="flex flex-col gap-2 text-sm">
+                <span>{{ req.label }}</span>
+                <div v-for="(group, i) in form[req.key]" :key="i" class="flex flex-col gap-1">
+                  <p v-if="i > 0" class="text-xs font-semibold text-muted-foreground">AND</p>
+                  <ChipSelect
+                    v-model="form[req.key][i]"
+                    :options="moduleOptions"
+                    :exclude="takenByOther(req.key)"
+                    :placeholder="`Search modules for ${req.label.toLowerCase()}`"
+                    joiner="or"
+                  />
+                  <button
+                    v-if="form[req.key].length > 1"
+                    type="button"
+                    class="self-start text-xs underline"
+                    @click="form[req.key].splice(i, 1)"
+                  >
+                    Remove this box
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="self-start rounded-md border border-border px-2.5 py-1 text-xs"
+                  @click="form[req.key].push([])"
+                >
+                  Add another required box
+                </button>
+                <span class="text-xs text-muted-foreground">{{ req.hint }}</span>
+              </div>
             </div>
-            <label class="mt-4 block text-sm"
-              >Mutually exclusive modules<input
+            <div class="mt-4 text-sm">
+              <span class="mb-1 block">Mutually exclusive modules</span>
+              <ChipSelect
                 v-model="form.mutuallyExclusive"
-                placeholder="Comma-separated codes"
-                class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-            /></label>
+                :options="moduleOptions"
+                :exclude="takenByOther('mutuallyExclusive')"
+                placeholder="Search and tick modules"
+              />
+            </div>
             <label class="mt-4 block text-sm"
               >Minimum completed track courses<input
                 v-model="form.trackCount"
@@ -402,24 +468,36 @@ onBeforeUnmount(() => {
               Use existing catalogue tags. These affect graduation checks; adding a tag does not add a module
               to a track curriculum.
             </p>
-            <label
-              v-for="[key, label, hint] in [
-                ['categories', 'Categories', 'e.g. IS, IS_TRACK'],
-                ['fulfils', 'Requirement tags', 'e.g. CORE:MANAGING'],
-                ['termsOffered', 'Terms offered', 'T1, T2 or T3; blank if unknown'],
-              ]"
-              :key="key"
-              class="mt-3 block text-sm"
-              >{{ label
-              }}<input
-                v-model="form[key]"
-                :placeholder="hint"
-                class="mt-1 block w-full rounded-md border border-border bg-background p-2"
-            /></label>
+            <div class="mt-3 text-sm">
+              <span class="mb-1 block">Categories</span>
+              <ChipSelect
+                v-model="form.categories"
+                :options="asOptions(options.categories)"
+                placeholder="Search and tick categories"
+              />
+            </div>
+            <div class="mt-3 text-sm">
+              <span class="mb-1 block">Requirement tags</span>
+              <ChipSelect
+                v-model="form.fulfils"
+                :options="asOptions(options.fulfils)"
+                placeholder="Search and tick requirement tags"
+              />
+            </div>
+            <div class="mt-3 text-sm">
+              <span class="mb-1 block">Terms offered</span>
+              <ChipSelect
+                v-model="form.termsOffered"
+                :options="asOptions(TERMS)"
+                placeholder="Tick terms; leave empty if unknown"
+              />
+            </div>
           </details>
         </fieldset>
         <div v-if="review" class="rounded-md border border-primary bg-muted p-4 text-sm">
           <h4 class="font-semibold">Review {{ form.code }}</h4>
+          <!-- The save button sits below a long form, out of sight of the error at the top of the section -->
+          <p v-if="error" role="alert" class="mt-2 text-destructive">{{ error }}</p>
           <p class="mt-2">{{ form.title }} · {{ form.cu }} CU</p>
           <p class="mt-2">
             This saves all the fields above to the shared catalogue and records your change in staff history.

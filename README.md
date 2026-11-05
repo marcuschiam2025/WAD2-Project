@@ -155,7 +155,8 @@ The application serves as a unified platform where students can:
 cd frontend
 pnpm build
 
-# 2. Run End-to-End Playwright Tests (from project root)
+# 2. Run End-to-End Playwright Tests (from project root). Playwright is configured; tests/example.spec.js is still Playwright's
+#    sample spec, so replace it with specs for the app's main user journeys
 cd ..
 pnpm install                      # installs @playwright/test from the root package.json
 pnpm exec playwright install      # first run only: downloads the browser binaries
@@ -317,7 +318,6 @@ frontend/
 ├── package.json                  # Frontend scripts & dependencies
 │
 ├── public/                       # Static browser assets (favicon.svg)
-├── details/                      # Reference documents & curriculum progression spreadsheets
 │
 └── src/                          # Vue 3 application source code
     ├── main.js                   # Application bootstrap (mounts Pinia, Vue Router)
@@ -358,6 +358,7 @@ frontend/
     │   ├── DegreeChecklistRow.vue# Individual requirement bucket progress row
     │   ├── DegreeForm.vue        # Degree details form used in onboarding & profile
     │   ├── ExamSchedule.vue      # Final exam schedule table with clash warning badges
+    │   ├── JumpingTeam.vue       # Decorative group of five friends, each jumping on hover (Collab Rooms)
     │   ├── ModuleSearchBox.vue   # Searchable module autocomplete input
     │   ├── QuizAssistant.vue     # Read-only AI explanation drawer / docked panel on quiz results
     │   ├── SemesterChip.vue      # Semester indicator chip with status badge
@@ -386,7 +387,8 @@ frontend/
     │   │   ├── PlanLimitModal.vue# Maximum 3 plans limit warning dialog
     │   │   ├── PlanSettingsModal.vue # Configure track selection (Track 1 / Track 2) for a plan
     │   │   ├── PrereqWarningModal.vue # Prerequisite & corequisite violation explanation modal
-    │   │   └── SemesterFullModal.vue # Semester course unit overload warning modal
+    │   │   ├── SemesterFullModal.vue # Semester course unit overload warning modal
+    │   │   └── TermNotOfferedModal.vue # A one-term module dropped in the other term; offers the next semester that has it
     │   │
     │   ├── rooms/                # Collaborative plan room components
     │   │   ├── RoomBidHistory.vue   # Historical bid outcomes for the room's module
@@ -438,10 +440,12 @@ frontend/
             ├── curriculumLayout.js    # Degree checklist layout categorizer
             ├── dashboardSchedule.js   # Dashboard timetable event organizer
             ├── degreeChecklist.js     # Credit count & exemption evaluator
+            ├── balance.js        # Parses and validates the e$ balance a student types
             ├── ics.js            # iCalendar (.ics) format file generator
             ├── money.js          # Currency & e$ bid formatting helpers
             ├── roomBoard.js      # Collaborative room consensus algorithms
             ├── roomCalendar.js   # Room member timetable overlay builder
+            ├── roomEligibility.js # Which sections a room member can still vote for
             ├── roomInvite.js     # Shareable /rooms?join=CODE invite links
             └── roundTime.js      # Bidding round deadline & countdown formatter
 ```
@@ -455,7 +459,7 @@ WAD2-Project/
 ├── playwright/
 │   └── .auth/user.json           # Cached authentication state for automated runs (git-ignored, created locally)
 └── tests/
-    └── example.spec.js           # Playwright smoke test verifying page rendering & routes
+    └── example.spec.js           # Playwright's sample spec: a placeholder to replace with the app's end-to-end specs
 ```
 </details>
 
@@ -504,6 +508,7 @@ All endpoints except `/health` and the public catalogue routes require a valid F
 | --- | --- | --- | --- |
 | `GET` | `/bidding/sections` | Student | Get available class sections for a module (`?module=IS216&term=...`). |
 | `GET` | `/bidding/round` | Student | Retrieve active BOSS bidding round configuration & window deadlines. |
+| `GET` | `/bidding/windows` | Student | List every bidding window of the term (round, window number, opening and closing times). |
 | `GET` | `/bidding/history/:module` | Student | Past 3 terms of historical bid results (`?round=1A`). |
 | `GET` | `/bidding/reference/:module` | Student | Reference bid estimate based on past median ± 1 SD (Safe, Competitive, At-Risk). |
 | `GET` | `/bidding/reference-bid` | Student | Reference bid for a specific section (`?sectionId=...`). |
@@ -523,6 +528,7 @@ All endpoints except `/health` and the public catalogue routes require a valid F
 | `GET` | `/parties/:id` | Member | Get room details, module info, member list & consensus status. |
 | `DELETE` | `/parties/:id` | Owner | Delete plan room (owner only). |
 | `DELETE` | `/parties/:id/members/me` | Member | Leave a plan room. |
+| `PUT` | `/parties/:id/owner` | Owner | Hand the party-admin role to another member (`{ userId }`). |
 | `POST` | `/parties/:id/ban` | Owner | Remove/ban a member from the room (owner only). |
 | `DELETE` | `/parties/:id/ban/:userId` | Owner | Lift a ban so the user can rejoin with the invite code (no frontend UI yet). |
 | `PUT` | `/parties/:id/votes` | Member | Submit section preference votes for the room's module. |

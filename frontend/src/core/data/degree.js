@@ -1,5 +1,6 @@
 // When the course progression recommends each course, for BSc (IS) students admitted AY2024 and later.
-// Source: details/General Course Progression.xlsx (sheet SCIS_2024_IS).
+// Source: SMU's "General Course Progression" spreadsheet (sheet SCIS_2024_IS), copied in by hand. The file itself is no longer
+// in the repo; it is still in the git history (frontend/details/General Course Progression.xlsx) if the numbers need checking.
 // The backend's curriculum decides what is required. It stores no semester recommendations, so they come from here
 // (see utils/curriculumLayout.js).
 // TODO(backend): move the recommended semesters into the curriculum.
