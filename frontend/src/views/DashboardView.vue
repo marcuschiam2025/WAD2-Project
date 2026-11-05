@@ -28,6 +28,9 @@ import person4 from "../assets/sitting/4.png";
 import person5 from "../assets/sitting/5.png";
 const people = [person1, person2, person3, person4, person5];
 const person = people[Math.floor(Math.random() * people.length)]
+// One pointing-up picture for the bottom strip, picked at random on each load.
+const pointers = Object.values(import.meta.glob("@/assets/pointingUp/*.png", { eager: true, import: "default" }));
+const pointer = pointers[Math.floor(Math.random() * pointers.length)];
 
 const user = useUserStore();
 const bidding = useBiddingStore();
@@ -1202,8 +1205,13 @@ const biddingWindows = computed(() => {
           </p>
         </div>
 
-        <div class="flex flex-col gap-2.5 p-5">
+        <div class="relative flex flex-col gap-2.5 overflow-hidden p-5">
           <h2 class="text-overline text-muted-foreground">Planner alerts</h2>
+          <!-- Decorative, md and up only: fills the empty space at the bottom of this column (absolute, so nothing
+               moves). Half the column tall, cropped from the top of the picture's blank margin down to its waist. -->
+          <div aria-hidden="true" class="pointer-events-none absolute bottom-0 right-4 top-1/2 hidden aspect-[525/570] max-w-full md:block">
+            <img :src="pointer" alt="" class="h-full w-full object-cover object-bottom" />
+          </div>
           <RouterLink
             v-if="alerts.length"
             to="/planner"
