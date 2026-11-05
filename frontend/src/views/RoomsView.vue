@@ -61,13 +61,14 @@ async function join() {
           <p v-if="room.lockedSection" class="text-xs font-medium text-primary">Locked section: {{ sectionCode(room.lockedSection, room.module) }}</p>
           <p class="text-xs text-muted-foreground">Invite code <span class="font-mono font-semibold">{{ room.inviteCode }}</span></p>
         </RouterLink>
+        <!-- Sits in the grid, so it shares a row with the picture instead of going underneath it. -->
+        <p v-if="!rooms.loading && !rooms.error && !rooms.rooms.length" class="card self-start p-6 text-sm text-muted-foreground xl:col-span-2">You're not in any rooms yet. Create one or join with a room code.</p>
         <!-- Not a room: a permanent decoration that always comes after the rooms and sits in the third column on wide
              screens, so rooms fill the grid before it and are never pushed onto it. md and up only. -->
         <div aria-hidden="true" class="relative hidden min-h-[13rem] md:block xl:col-start-3">
           <div class="absolute inset-0 flex justify-center"><JumpingTeam class="h-full max-w-full" /></div>
         </div>
       </section>
-      <p v-if="!rooms.loading && !rooms.error && !rooms.rooms.length" class="card p-6 text-sm text-muted-foreground">You're not in any rooms yet. Create one or join with a room code.</p>
     </main>
     <BaseModal v-if="joining" width="w-[440px]" @close="!rooms.busy && (joining = false)">
       <h2 class="text-lg font-semibold">Join a room</h2>
