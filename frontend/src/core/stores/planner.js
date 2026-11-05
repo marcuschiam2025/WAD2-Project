@@ -89,6 +89,7 @@ export const usePlannerStore = defineStore('planner', () => {
           if (snapshot === savedBasket) break
           const data = await api.updateMe({ basket: JSON.parse(snapshot) })
           if (version !== session) return
+          if (!Array.isArray(data?.basket)) throw new Error('The server did not save your basket.')
           savedBasket = snapshot
           user.profile.basket = [...data.basket]
         }
@@ -501,6 +502,56 @@ export const usePlannerStore = defineStore('planner', () => {
     activePlan.value.semesters.pop()
   }
 
+  // --- LOA terms ---------------------------------------------------------------------------
+  // Semester ids follow their position (Y1S1, Y1S2, Y2S1, ...). When an LOA term moves or is deleted, the terms after it
+  // are renumbered and keep their own modules. Only future terms change, so done and current terms keep their ids.
+  const isFuture = (plan, i) => i > semIndex(plan, plan.currentSem) && i < plan.semesters.length
+
+  function renumber(plan) {
+    const [y0, s0] = plan.semesters[0].id.match(/\d/g).map(Number)
+    const start = (y0 - 1) * 2 + (s0 - 1)
+    const renamed = new Map()
+    plan.semesters.forEach((s, i) => {
+      const n = start + i
+      const id = `Y${Math.floor(n / 2) + 1}S${(n % 2) + 1}`
+      if (s.id === id) return
+      renamed.set(s.id, id)
+      Object.assign(s, sem(id, s.modules, { exchange: s.exchange, loa: s.loa }))
+    })
+    // Modules a collab room placed remember their semester id; keep them pointing at the same term
+    placedByRoom.forEach((semId, key) => {
+      if (key.startsWith(`${plan.id}|`) && renamed.has(semId)) placedByRoom.set(key, renamed.get(semId))
+    })
+  }
+
+  // Can this LOA term take the place of the term targetId (that term and the ones after shift along)?
+  function canMoveLoa(semId, targetId) {
+    const plan = activePlan.value
+    const from = semIndex(plan, semId)
+    const to = semIndex(plan, targetId)
+    return from !== to && plan.semesters[from]?.loa && isFuture(plan, from) && isFuture(plan, to)
+  }
+
+  function moveLoa(semId, targetId) {
+    if (!canMoveLoa(semId, targetId)) return false
+    const plan = activePlan.value
+    const to = semIndex(plan, targetId) // the LOA lands exactly where the target term was
+    const [loa] = plan.semesters.splice(semIndex(plan, semId), 1)
+    plan.semesters.splice(to, 0, loa)
+    renumber(plan)
+    return true
+  }
+
+  // Deletes a future LOA term. Anything placed in it (an internship) returns to the basket.
+  function removeLoa(semId) {
+    const plan = activePlan.value
+    const i = semIndex(plan, semId)
+    if (!plan.semesters[i]?.loa || !isFuture(plan, i) || plan.semesters.length <= 1) return
+    const [loa] = plan.semesters.splice(i, 1)
+    loa.modules.map(effectiveCode).forEach(addToBasket)
+    renumber(plan)
+  }
+
   function toggleExchange(semId) {
     const s = activePlan.value.semesters.find((x) => x.id === semId)
     s.exchange = !s.exchange
@@ -653,6 +704,9 @@ export const usePlannerStore = defineStore('planner', () => {
     addSemester,
     removableSemester,
     removeSemester,
+    canMoveLoa,
+    moveLoa,
+    removeLoa,
     toggleExchange,
     addPlan,
     deletePlan,

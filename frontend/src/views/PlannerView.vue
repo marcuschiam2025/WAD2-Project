@@ -174,10 +174,46 @@ function onDragStart(e, code) {
 
 function onDragEnd() {
   dragging.value = null
+  draggingLoa.value = null
   dragOver.value = null
 }
 
+// --- LOA terms: drag the LOA header onto another future term to move it there (the terms renumber),
+// or use the arrows on touch screens. ✕ deletes it.
+const draggingLoa = ref(null) // id of the LOA term being dragged
+const isMovableLoa = (sem) => sem.loa && status(sem) === 'future'
+function onLoaDragStart(e, sem) {
+  e.stopPropagation()
+  draggingLoa.value = sem.id
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', sem.id)
+}
+function onDragEnter(sem) {
+  if (draggingLoa.value) dragOver.value = planner.canMoveLoa(draggingLoa.value, sem.id) ? sem.id : null
+  else if (canDrop(sem)) dragOver.value = sem.id
+}
+function moveLoa(semId, targetId) {
+  warning.value = null
+  picked.value = null
+  planner.moveLoa(semId, targetId)
+}
+// The term next to an LOA in a direction (-1 earlier, +1 later), if the LOA can move there
+function loaNeighbour(sem, dir) {
+  const target = plan.value.semesters[planner.semIndex(plan.value, sem.id) + dir]
+  return target && planner.canMoveLoa(sem.id, target.id) ? target.id : null
+}
+function removeLoa(sem) {
+  warning.value = null
+  planner.removeLoa(sem.id)
+}
+
 function dropOnSemester(sem) {
+  if (draggingLoa.value) {
+    const loaId = draggingLoa.value
+    onDragEnd()
+    moveLoa(loaId, sem.id)
+    return
+  }
   const code = dragging.value
   onDragEnd()
   if (!code || !canDrop(sem)) return
@@ -483,12 +519,38 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                   'border border-dashed border-border bg-muted': col.sem.loa,
                   'cursor-pointer ring-2 ring-primary/30': picked && canDrop(col.sem),
                 }"
-                @dragenter="canDrop(col.sem) && (dragOver = col.sem.id)"
+                @dragenter="onDragEnter(col.sem)"
                 @dragover.prevent
                 @drop.prevent="dropOnSemester(col.sem)"
                 @click.stop="placePicked(col.sem)"
               >
-                <div class="flex items-center justify-between px-0.5 font-mono text-[11px]">
+                <!-- A future LOA term: drag its header to move it, ✕ to delete it -->
+                <div
+                  v-if="isMovableLoa(col.sem)"
+                  draggable="true"
+                  :title="`Drag to move this LOA term`"
+                  class="flex cursor-grab items-center justify-between gap-1 px-0.5 font-mono text-[11px] active:cursor-grabbing"
+                  :class="draggingLoa === col.sem.id && 'opacity-50'"
+                  @dragstart="onLoaDragStart($event, col.sem)"
+                  @dragend="onDragEnd"
+                >
+                  <span class="flex items-center gap-1 text-muted-foreground">
+                    <img :src="iconGrip" alt="" class="size-3" />
+                    {{ col.sem.label }}
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="font-sans text-muted-foreground">LOA</span>
+                    <button
+                      type="button"
+                      draggable="false"
+                      :aria-label="`Delete LOA term ${col.sem.label}`"
+                      title="Delete this LOA term"
+                      class="rounded-sm px-1 font-sans text-[12px] leading-5 text-muted-foreground hover:bg-card hover:text-destructive max-lg:min-h-11 max-lg:min-w-11"
+                      @click.stop="removeLoa(col.sem)"
+                    >✕</button>
+                  </span>
+                </div>
+                <div v-else class="flex items-center justify-between px-0.5 font-mono text-[11px]">
                   <button
                     v-if="status(col.sem) === 'done'"
                     type="button"
@@ -503,6 +565,19 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                 </div>
 
                 <p v-if="col.sem.loa" class="px-0.5 text-[11.5px] text-muted-foreground">Leave of absence. No modules this term.</p>
+                <!-- Move one term at a time without dragging (touch screens, keyboard) -->
+                <div v-if="isMovableLoa(col.sem)" class="flex gap-1 px-0.5">
+                  <button
+                    v-for="[dir, arrow, word] in [[-1, '←', 'earlier'], [1, '→', 'later']]"
+                    :key="dir"
+                    type="button"
+                    :aria-label="`Move LOA term ${col.sem.label} one term ${word}`"
+                    :title="`Move one term ${word}`"
+                    :disabled="!loaNeighbour(col.sem, dir)"
+                    class="rounded-sm border border-border bg-card px-2 py-0.5 text-[12px] text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40 max-lg:min-h-11 max-lg:min-w-11"
+                    @click.stop="moveLoa(col.sem.id, loaNeighbour(col.sem, dir))"
+                  >{{ arrow }}</button>
+                </div>
 
                 <div
                   v-for="code in col.sem.modules"
@@ -567,6 +642,10 @@ const onTrack = computed(() => !planner.hasAnyWarning)
                   </div>
                 </template>
 
+                <div
+                  v-if="draggingLoa && dragOver === col.sem.id"
+                  class="pointer-events-none absolute inset-x-2 bottom-2 z-10 flex justify-center rounded-sm border-[1.5px] border-dashed border-primary bg-card px-2 py-2.5 text-[11.5px] font-medium text-primary shadow-sm"
+                >Move LOA to {{ col.sem.label }}</div>
                 <!-- Floats over the column's bottom edge: taking up space would stretch every column while hovering -->
                 <div
                   v-if="dragging && dragOver === col.sem.id && !col.sem.modules.includes(dragging)"

@@ -19,6 +19,9 @@ const userSchema = new mongoose.Schema(
     tracks: [String], // track codes, e.g. ['BA', 'SMT']. empty = undecided
     completedModules: [String], // module codes
     markedDone: [String], //['internship', 'community', 'exposure']
+    // The What-If planner's module basket: modules saved but not yet placed in a plan (PATCH /users/me).
+    // Not the bid cart, which lives in the bidCarts collection per plan and term.
+    basket: { type: [String], default: [] },
     // 'admin' is assigned by the controlled bootstrap script; checked by requireAdmin in middleware/auth.js.
     // Not in EDITABLE (users.controller.js), so students cannot change it themselves.
     role: { type: String, enum: ['student', 'admin'], default: 'student' },
@@ -27,7 +30,6 @@ const userSchema = new mongoose.Schema(
     //=============================
     //to remove:
     
-    //basket: [String], 
     // consents: {
     //   gmail: { type: Boolean, default: false },
     //   outlook: { type: Boolean, default: false },
