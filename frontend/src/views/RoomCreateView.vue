@@ -6,7 +6,11 @@ import { api } from '@core/services/api'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 const rooms = useRoomsStore(), router = useRouter()
-const name = ref(''), module = ref(null)
+// Party size, chosen with a - 2 + stepper. The backend allows 2 to 8 (MAX_PARTY_SIZE in
+// backend/features/parties/models/Party.js).
+const MIN_SIZE = 2, MAX_SIZE = 8
+const name = ref(''), module = ref(null), maxMembers = ref(MIN_SIZE)
+const step = (by) => { maxMembers.value = Math.min(MAX_SIZE, Math.max(MIN_SIZE, maxMembers.value + by)) }
 const query = ref(''), matches = ref([]), searching = ref(false), searchError = ref(''), error = ref('')
 let ticket = 0, timer
 watch(query, value => {
@@ -29,7 +33,7 @@ async function create() {
   if (rooms.busy || !module.value) return
   error.value = ''
   try {
-    const id = await rooms.createRoom({name:name.value.trim(),module:module.value._id ?? module.value.code})
+    const id = await rooms.createRoom({name:name.value.trim(),module:module.value._id ?? module.value.code,maxMembers:maxMembers.value})
     router.push(`/rooms/${id}`)
   } catch (failure) { error.value = failure.message }
 }
@@ -50,6 +54,15 @@ async function create() {
               <ul v-if="matches.length" class="max-h-64 overflow-y-auto rounded-md border border-border"><li v-for="item in matches" :key="item._id || item.code"><button type="button" class="w-full p-3 text-left hover:bg-muted" @click="pick(item)">{{ item._id || item.code }} · {{ item.title || item.name }}</button></li></ul>
               <p v-else-if="query.trim() && !searching && !searchError" class="text-muted-foreground">No matching modules.</p>
             </template>
+          </div>
+          <div class="flex flex-col gap-2 text-sm" role="group" aria-labelledby="room-size-label">
+            <span id="room-size-label">Number of members</span>
+            <div class="flex items-center gap-3">
+              <button type="button" class="flex size-10 items-center justify-center rounded-md border border-border text-lg hover:bg-muted disabled:opacity-40" aria-label="Fewer members" :disabled="maxMembers <= MIN_SIZE" @click="step(-1)">−</button>
+              <output class="w-10 text-center font-mono text-lg font-semibold" aria-live="polite">{{ maxMembers }}</output>
+              <button type="button" class="flex size-10 items-center justify-center rounded-md border border-border text-lg hover:bg-muted disabled:opacity-40" aria-label="More members" :disabled="maxMembers >= MAX_SIZE" @click="step(1)">+</button>
+            </div>
+            <span class="text-xs text-muted-foreground">Including you, from {{ MIN_SIZE }} to {{ MAX_SIZE }}. Nobody can join once the room is full.</span>
           </div>
           <p class="text-sm text-muted-foreground">After creating the room, share its invite code with your friends so they can join.</p>
         </fieldset>

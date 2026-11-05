@@ -125,11 +125,11 @@ export const useRoomsStore = defineStore('rooms', () => {
     finally { if (version === revision) busy.value = false }
   }
   // A room is for one module in one term: the term BOSS is currently bidding for
-  async function createRoom({ name, module }) {
+  async function createRoom({ name, module, maxMembers }) {
     return mutate(async () => {
       const { term } = await api.round()
       if (!term) throw new Error('No bidding term is set yet, so a room cannot be created.')
-      return (await api.createRoom({ name, module, termKey: term })).party
+      return (await api.createRoom({ name, module, termKey: term, ...(maxMembers ? { maxMembers } : {}) })).party
     })
   }
   async function joinRoom(code) {

@@ -23,7 +23,7 @@ test('rooms create, join and reload from the backend, retain state on failure an
   assert.equal(rooms.person('mongo-b').name,'Student B')
   // A room is created for the term BOSS is bidding for
   api.round=async()=>({term:'2026-27_T2'})
-  api.createRoom=async payload=>{assert.equal(payload.name,'New room');assert.equal(payload.memberEmails,undefined);assert.deepEqual(Object.keys(payload).sort(),['module','name','termKey']);assert.equal(payload.termKey,'2026-27_T2');return {party:{...party,_id:'party-new',name:payload.name,termKey:payload.termKey},blocked:[]}}
+  api.createRoom=async payload=>{assert.equal(payload.name,'New room');assert.equal(payload.memberEmails,undefined);assert.deepEqual(Object.keys(payload).sort(),['maxMembers','module','name','termKey']);assert.equal(payload.maxMembers,4);assert.equal(payload.termKey,'2026-27_T2');return {party:{...party,_id:'party-new',name:payload.name,termKey:payload.termKey},blocked:[]}}
   assert.equal(await rooms.createRoom({name:'New room',module:'IS216',maxMembers:4}),'party-new')
   assert.equal(rooms.getRoom('party-new').term,'2026-27_T2')
   assert.equal(rooms.rooms.length,2)
