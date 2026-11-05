@@ -1,5 +1,5 @@
 // Requirement + prerequisite checker for a What-If plan, driven by the requirements collection.
-// Pure function (no database calls): see requirementChecker.test.js.
+// Pure function (no database calls).
 import { unmetGroups } from './requisites.js';
 
 // Exchange mappings are stored as "CS412 → IS460"; the SMU code is on the right.

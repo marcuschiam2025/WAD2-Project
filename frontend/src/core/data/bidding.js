@@ -61,8 +61,8 @@ export function estimateHistory(history, round, term) {
 }
 
 // Safe / Competitive / At risk: the mean of the past medians ± 1 SD. With 1 term there is no spread to measure, so
-// that term's own min and median are the band instead. Same rule as backend/features/bidding/utils/referenceBid.js
-// (tests/bid-rating.test.mjs checks they agree); select comparable history first.
+// that term's own min and median are the band instead. Same rule as backend/features/bidding/utils/referenceBid.js;
+// select comparable history first.
 export function rateBid(amount, history) {
   if (
     !Number.isFinite(amount) ||
