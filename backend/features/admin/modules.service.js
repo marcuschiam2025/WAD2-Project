@@ -104,6 +104,24 @@ export function createModuleEditor({ change, read, knownCodes, schoolExists, ins
           if (!creating && !before) throw httpError(404, 'Module not found');
           if (!creating && (before.revision ?? 0) !== input.revision)
             throw httpError(409, 'Module changed. Reload before saving.');
+          // A course can only be in one of these lists. Only a new overlap is refused, so a saved record stays editable.
+          const lists = (row) => ({
+            prerequisite: new Set((row?.prerequisites ?? []).flat()),
+            corequisite: new Set((row?.corequisites ?? []).flat()),
+            'mutually exclusive module': new Set(row?.mutuallyExclusive ?? []),
+          });
+          const now = lists(data);
+          const was = lists(before);
+          for (const [first, second] of [
+            ['prerequisite', 'corequisite'],
+            ['prerequisite', 'mutually exclusive module'],
+            ['corequisite', 'mutually exclusive module'],
+          ]) {
+            const overlap = [...now[first]].filter(
+              (ref) => now[second].has(ref) && !(was[first].has(ref) && was[second].has(ref)),
+            );
+            if (overlap.length) fail(`${overlap.join(', ')} cannot be both a ${first} and a ${second}`);
+          }
           const refs = [
             ...new Set([
               ...data.prerequisites.flat(),

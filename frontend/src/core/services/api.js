@@ -67,6 +67,7 @@ function query(params) {
 export const api = {
   adminRound: () => request('GET', '/admin/bidding-round'),
   saveAdminRound: (data) => request('PUT', '/admin/bidding-round', data),
+  adminModuleOptions: () => request('GET', '/admin/module-options'),
   adminModules: (params = {}) => request('GET', `/admin/modules${query(params)}`),
   adminModule: (code) => request('GET', `/admin/modules/${encodeURIComponent(code)}`),
   createAdminModule: (data) => request('POST', '/admin/modules', data),
@@ -77,6 +78,7 @@ export const api = {
     request('POST', `/admin/modules/${encodeURIComponent(code)}/restore`, { revision }),
   deleteAdminModule: (code, revision) =>
     request('DELETE', `/admin/modules/${encodeURIComponent(code)}`, { revision }),
+  adminSectionOptions: () => request('GET', '/admin/section-options'),
   adminSections: (module, term) => request('GET', `/admin/sections${query({ module, term })}`),
   createAdminSection: (data) => request('POST', '/admin/sections', data),
   updateAdminSection: (data) =>

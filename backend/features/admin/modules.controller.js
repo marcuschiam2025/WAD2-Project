@@ -27,6 +27,34 @@ const editor = createModuleEditor({
       { new: true, runValidators: true, session },
     ).lean(),
 });
+// Everything the module form's dropdowns choose from
+export async function getAdminModuleOptions(_req, res) {
+  const { db } = mongoose.connection;
+  const requirements = db.collection('requirements');
+  const [modules, schools, departments, categories, fulfils, requiredCategories, requiredTags] =
+    await Promise.all([
+      Module.find().select('_id title archived').sort({ _id: 1 }).lean(),
+      db
+        .collection('schools')
+        .find({}, { projection: { name: 1 } })
+        .sort({ _id: 1 })
+        .toArray(),
+      Module.distinct('department'),
+      Module.distinct('categories'),
+      Module.distinct('fulfils'),
+      requirements.distinct('categories'),
+      requirements.distinct('tag'),
+    ]);
+  // Values a requirement looks for count too, even if no module has them yet. ANY means "any course", not a real category.
+  const sorted = (...lists) => [...new Set(lists.flat().filter(Boolean))].sort();
+  res.json({
+    modules,
+    schools,
+    departments: sorted(departments),
+    categories: sorted(categories, requiredCategories).filter((category) => category !== 'ANY'),
+    fulfils: sorted(fulfils, requiredTags),
+  });
+}
 export async function listAdminModules(req, res) {
   const q = req.query.q ?? '';
   if (typeof q !== 'string' || q.length > 100) throw httpError(400, 'Invalid search');
