@@ -1,7 +1,7 @@
 # WAD2-Project — BidMaxxer
 
 Collaborative track explorer, What-If degree planner and BOSS bidding simulator for SMU students.
-Developed for **SMU IS216 — Web Application Development II (AY2025/2026 T1, Section G2, Team bidmaxxer)**.
+Developed for **SMU IS216 — Web Application Development II (AY2026/2027 T1, Section G2, Team bidmaxxer)**.
 
 BidMaxxer is a web application designed to assist SMU students with academic planning and course bidding.
 It provides tools for exploring potential specializations, planning degree pathways, and coordinating course selections with peers, particularly during the BOSS bidding periods.
@@ -54,8 +54,8 @@ The application serves as a unified platform where students can:
 ## Installation & Setup Guide
 
 ### Prerequisites
-- **Node.js**: `v20.x` or `v24.x` LTS recommended (`node -v`).
-- **pnpm**: `v10.x` or `v12.x` installed globally:
+- **Node.js**: `v24.x` (both `backend/` and `frontend/` declare `"engines": { "node": "24.x" }`; check with `node -v`).
+- **pnpm**: `v12.x` (the root `package.json` pins `pnpm@12.16.1`) installed globally:
   ```bash
   npm install -g pnpm
   ```
@@ -89,12 +89,22 @@ The application serves as a unified platform where students can:
    FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project-id.iam.gserviceaccount.com
    FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 
-   # Firebase Web API Key (Firebase Console → Project settings → General → Web API Key)
+   # Firebase Web API Key, used only by the dev login test page at /test
+   # (Firebase Console → Project settings → General → Web API Key)
    FIREBASE_WEB_API_KEY=AIzaSy...
+
+   # Optional official bidding schedule. Leave blank to preview the latest catalogue term.
+   # Term format: 2026-27_T1. The closing time must include a timezone.
+   BIDDING_TERM=
+   BIDDING_ROUND=
+   BIDDING_ROUND_CLOSES_AT=
 
    # Google Gemini API Key (Google AI Studio → Create API Key)
    GEMINI_API_KEY=AIzaSy...
+   # Optional: override the default Gemini model (gemini-3.8-flash)
+   # GEMINI_MODEL=
    ```
+   `CLIENT_ORIGIN` accepts a comma-separated list of allowed frontend origins.
 
 3. **Seed the database**:
    Populate MongoDB with the course catalogue, degree requirements, tracks, class sections, and historical bid outcomes:
@@ -134,6 +144,8 @@ The application serves as a unified platform where students can:
    VITE_FIREBASE_API_KEY=AIzaSy...
    VITE_FIREBASE_PROJECT_ID=your-project-id
    VITE_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
+   # Optional; development uses the Vite /api proxy
+   # VITE_API_URL=http://localhost:4000/api
    ```
    > [!IMPORTANT]
    > In the **Firebase Console → Authentication → Settings → Authorized Domains**, ensure `localhost` is listed.
@@ -149,17 +161,19 @@ The application serves as a unified platform where students can:
 ### Step 3: Running Tests & Verification
 
 ```bash
-# 1. Run Backend Unit & Integration Tests
+# 1. Run Backend Unit & Integration Tests (24 *.test.js files, co-located with the code they test)
 cd backend
 pnpm test
 
-# 2. Run Frontend Store, Component & Utility Tests (66 test suites)
+# 2. Run Frontend Store, Component & Utility Tests (52 test files in frontend/tests)
 cd ../frontend
 pnpm test
 pnpm build
 
 # 3. Run End-to-End Playwright Tests (from project root)
 cd ..
+pnpm install                      # installs @playwright/test from the root package.json
+pnpm exec playwright install      # first run only: downloads the browser binaries
 pnpm exec playwright test
 ```
 
@@ -221,15 +235,16 @@ backend/
 ├── app.js                        # Express app: CORS, JSON parsing, logging, router mounting & error handling
 ├── vercel.js                     # Serverless adapter for Vercel production hosting
 ├── package.json                  # Backend dependencies, engine constraints & npm scripts
+├── patches/                      # pnpm dependency patch (jwks-rsa@4.1.0)
 │
 ├── config/                       # Infrastructure configuration
-│   ├── db.js                     # Mongoose connection manager with reconnect & replica set support
+│   ├── db.js                     # Mongoose connection helper (reads MONGODB_URI)
 │   └── firebase.js               # Firebase Admin SDK initialization & token verifier
 │
 ├── middleware/                   # Shared Express middleware
-│   ├── auth.js                   # Firebase token verification (requireAuth) & student role check
+│   ├── auth.js                   # Wires requireAuth to Firebase Admin + User model; re-exports requireAdmin
 │   ├── admin.js                  # Admin guard (requireAdmin) verifying staff privileges
-│   ├── authentication.js         # Low-level JWT bearer token extraction
+│   ├── authentication.js         # requireAuth factory: Bearer token check, @smu.edu.sg / provisioned staff gate, user upsert
 │   └── errorHandler.js           # Centralized HTTP error handler & uniform JSON error formatting
 │
 ├── routes/
@@ -257,7 +272,9 @@ backend/
 │   ├── import-exams.js           # Ingests official exam schedules from Excel/CSV tables
 │   ├── grant-admin.js            # CLI utility to safely grant admin privileges to a user UID
 │   ├── repair-plan-index.js      # Database migration for legacy plan compound index schemas
-│   └── migrations/               # Schema migration helpers
+│   ├── add-is-ay2023.cjs         # Adds the IS AY2023 curriculum to an existing database (dry run by default)
+│   ├── migrations/               # Schema migration helpers
+│   └── utils/                    # CSV / HTML table parsers & exam import helpers
 │
 ├── test-page/                    # Development auth diagnostic interface
 │   ├── index.html                # Static diagnostic client UI
@@ -288,7 +305,8 @@ backend/
     │   ├── quiz.v2.controller.js # v2 quiz question listing & submission evaluation
     │   ├── quiz.v2.recommendations.js # Generates recommended starter module baskets
     │   ├── quiz.v2.explanation.js # LLM explanation generator powered by Gemini
-    │   ├── content/              # Rubrics & 20-question inventory (questions.v2-draft.json)
+    │   ├── quiz.v2.storage.js    # Transactional submission persistence & history pruning
+    │   ├── content/              # Rubric (rubric.v2.js), 20-question inventory (questions.v2-draft.json) & module list
     │   ├── models/               # QuizAttempt, QuizSubmission, QuizQuestion, QuizHistoryLock
     │   └── utils/                # Scoring math, track weightings, scenario analysis & explanations
     │
@@ -296,15 +314,15 @@ backend/
     │   ├── bidding.routes.js     # Routes for /api/bidding
     │   ├── bidding.controller.js # Section search, cart persistence, round info & validation
     │   ├── section.repository.js # Section query & filtering abstraction
-    │   ├── models/               # BidCart, Section, BidHistory, BiddingWindow, BiddingSettings
-    │   └── utils/                # Clash detection (time & exam), reference bid calculation, cart validation
+    │   ├── models/               # BidCart, Section, BidHistory, SectionBidResult, BiddingWindow, BiddingSettings
+    │   └── utils/                # Clash detection, reference bid, past-result matching, cart validation, weightage
     │
     ├── parties/                  # Collaborative plan rooms (social bidding & planning)
     │   ├── parties.routes.js     # Routes for /api/parties
-    │   ├── parties.controller.js # Room creation, invite codes, voting, section picks & short-polling
-    │   ├── parties.middleware.js # Room member/owner authorization guards
+    │   ├── parties.controller.js # Room creation, invite codes, voting, section picks, locking & short-polling
+    │   ├── parties.middleware.js # Room member/owner/unlocked authorization guards
     │   ├── models/Party.js       # Mongoose schema for collaborative rooms, members & ballots
-    │   └── utils/                # Ballots aggregation, member eligibility & bidding cart handoff
+    │   └── utils/                # Vote decision summary, member eligibility & bidding cart handoff
     │
     ├── calendar/                 # Academic timetable calendar export
     │   ├── calendar.routes.js    # Routes for /api/calendar
@@ -317,13 +335,15 @@ backend/
     │
     └── admin/                    # Staff admin portal & catalogue maintenance
         ├── admin.routes.js       # Routes for /api/admin
-        ├── curricula.controller.js # Track & degree requirement rule editor
-        ├── modules.controller.js # Module CRUD, archive, restore & safe deletion
-        ├── sections.controller.js# Section CRUD, schedule builder & archive/restore
-        ├── rounds.controller.js  # Bidding round window & round date controls
+        ├── *.controller.js       # HTTP handlers: curricula, modules, sections, rounds
+        ├── *.service.js          # Validation & persistence for curricula, modules, sections, rounds
+        ├── module-lifecycle.js   # Module archive / restore / safe-delete rules
+        ├── changes.js            # auditedChange: runs a write and its audit entry in one transaction
         ├── audit.service.js      # Transaction-bound audit logger for data mutations
+        ├── bootstrap.js          # grantAdmin logic used by scripts/grant-admin.js
         └── models/AuditEntry.js  # Audit log Mongoose schema
 ```
+Backend tests (`*.test.js`) live next to the files they cover and are picked up by `node --test`.
 </details>
 
 <details open>
@@ -336,7 +356,7 @@ frontend/
 ├── jsconfig.json                 # IDE path mapping aliases
 ├── package.json                  # Frontend scripts & dependencies
 │
-├── public/                       # Static browser assets (favicons, manifest)
+├── public/                       # Static browser assets (favicon.svg)
 ├── details/                      # Reference documents & curriculum progression spreadsheets
 │
 ├── src/                          # Vue 3 application source code
@@ -348,8 +368,10 @@ frontend/
 │   ├── trackLabels.js            # Track code to human-readable label resolver
 │   │
 │   ├── assets/                   # Exported Figma vector icons & illustrations
+│   │   ├── bidmaxxer_logo.png    # Brand logo
 │   │   ├── figma/                # Navigation, action & state icons
-│   │   └── v2/                   # Updated design system icons
+│   │   ├── v2/                   # Updated design system icons
+│   │   └── exploring/ jumping/ pointingUp/ sitting/ swinging/ thinking/  # Mascot pose illustrations
 │   │
 │   ├── views/                    # Top-level screen views (mapped to Vue Router routes)
 │   │   ├── LandingView.vue       # Public hero landing page
@@ -370,12 +392,14 @@ frontend/
 │   │   └── AdminView.vue         # Staff portal: module, section, round & curriculum management
 │   │
 │   ├── components/               # Reusable Vue components
+│   │   ├── AssistantFace.vue     # AI assistant mascot face whose eyes follow the cursor
 │   │   ├── BidSidebar.vue        # Bidding cart panel with e$ allocation & budget progress
 │   │   ├── DegreeChecklist.vue   # Live graduation requirement progress breakdown
 │   │   ├── DegreeChecklistRow.vue# Individual requirement bucket progress row
 │   │   ├── DegreeForm.vue        # Degree details form used in onboarding & profile
 │   │   ├── ExamSchedule.vue      # Final exam schedule table with clash warning badges
 │   │   ├── ModuleSearchBox.vue   # Searchable module autocomplete input
+│   │   ├── QuizAssistant.vue     # Read-only AI explanation drawer / docked panel on quiz results
 │   │   ├── SemesterChip.vue      # Semester indicator chip with status badge
 │   │   ├── TimetableGrid.vue     # 5-day / 6-day weekly class timetable visual grid
 │   │   ├── TimetableModuleCard.vue # Interactive section card inside timetable slots
@@ -396,6 +420,7 @@ frontend/
 │   │   │
 │   │   ├── modals/               # Modal dialogs & notification drawers
 │   │   │   ├── AlertModal.vue    # Generic alert confirmation dialog
+│   │   │   ├── BidLimitModal.vue # Too many modules in the bid cart; choose one to remove
 │   │   │   ├── DeletePlanModal.vue # Confirm deletion of What-If degree plan
 │   │   │   ├── NoticeRow.vue     # Prerequisite warning item row
 │   │   │   ├── PlanLimitModal.vue# Maximum 3 plans limit warning dialog
@@ -423,6 +448,7 @@ frontend/
 │   └── core/                     # Shared core business logic (aliased as @core/*)
 │       ├── data/                 # Client fallback data & default constants
 │       │   ├── bidding.js        # Bidding round sample models & fallbacks
+│       │   ├── biddingWindows.js # Every BOSS bidding window of the term (shown in Singapore time)
 │       │   ├── catalogue.js      # Curated module & track seed fallbacks
 │       │   └── degree.js         # Default SMU degree requirement buckets
 │       │
@@ -442,9 +468,11 @@ frontend/
 │       │   ├── rooms.js          # Plan rooms state, polling sync & member ballots
 │       │   ├── todos.js          # User personal to-do tasks state
 │       │   ├── catalogue.js      # Cached modules, tracks & requirements catalogue
-│       │   └── calendarExport.js # Google Calendar export flow state
+│       │   ├── calendarExport.js # Google Calendar export flow state
+│       │   └── theme.js          # Light / dark theme preference
 │       │
 │       └── utils/                # Client computation utilities
+│           ├── biddingWindows.js # Bidding window open / closed / upcoming status
 │           ├── clash.js          # Timetable slot & exam overlap calculation
 │           ├── curriculumChecklist.js # Graduation requirement audit calculations
 │           ├── curriculumLayout.js    # Degree checklist layout categorizer
@@ -454,9 +482,10 @@ frontend/
 │           ├── money.js          # Currency & e$ bid formatting helpers
 │           ├── roomBoard.js      # Collaborative room consensus algorithms
 │           ├── roomCalendar.js   # Room member timetable overlay builder
+│           ├── roomInvite.js     # Shareable /rooms?join=CODE invite links
 │           └── roundTime.js      # Bidding round deadline & countdown formatter
 │
-└── tests/                        # Frontend unit & integration test suites (66 tests)
+└── tests/                        # Frontend unit & integration test suites (52 test files)
     ├── academic-warnings.test.mjs
     ├── admin-access.test.mjs
     ├── api-unreachable.test.mjs
@@ -464,30 +493,45 @@ frontend/
     ├── auth.test.mjs
     ├── basket.test.mjs
     ├── bid-estimates.test.mjs
+    ├── bid-input.test.mjs
     ├── bid-total-display.test.mjs
+    ├── bidding-budget.test.mjs
+    ├── bidding-cart-loading.test.mjs
+    ├── bidding-limit.test.mjs
     ├── bidding-live.test.mjs
+    ├── bidding-round-status.test.mjs
+    ├── bidding-windows.test.mjs
     ├── calendar-export-session.test.mjs
     ├── calendar-token.test.mjs
     ├── calendar.test.mjs
     ├── credit-balance.test.mjs
     ├── curriculum-checklist.test.mjs
+    ├── curriculum-coverage.test.mjs
     ├── curriculum-layout.test.mjs
     ├── curriculum-scope.test.mjs
+    ├── curriculum-tracks.test.mjs
     ├── dashboard-schedule.test.mjs
     ├── exam-uncertainty.test.mjs
     ├── intake-curriculum.test.mjs
+    ├── navbar-notifications.test.mjs
+    ├── notification-read.test.mjs
     ├── plan-curriculum-recovery.test.mjs
     ├── plan-management.test.mjs
     ├── plan-profile-merge.test.mjs
     ├── plan-settings-track.test.mjs
     ├── planner-handoff.test.mjs
+    ├── planner-loa.test.mjs
+    ├── profile-loa.test.mjs
     ├── quiz-history-score.test.mjs
+    ├── quiz-load-retry.test.mjs
     ├── quiz-required-answers.test.mjs
     ├── quiz-session.test.mjs
     ├── room-auto-bidding.test.mjs
     ├── room-bidding.test.mjs
     ├── room-calendar.test.mjs
+    ├── room-invite.test.mjs
     ├── room-management.test.mjs
+    ├── room-owner-leave.test.mjs
     ├── room-votes.test.mjs
     ├── rooms-live.test.mjs
     ├── round-time.test.mjs
@@ -503,7 +547,7 @@ frontend/
 ```
 WAD2-Project/
 ├── playwright/
-│   └── .auth/user.json           # Cached authentication state for automated runs
+│   └── .auth/user.json           # Cached authentication state for automated runs (git-ignored, created locally)
 └── tests/
     └── example.spec.js           # Playwright smoke test verifying page rendering & routes
 ```
@@ -513,7 +557,7 @@ WAD2-Project/
 
 ## API Endpoints Reference (all mounted under `/api`)
 
-All endpoints except the public catalogue routes require a valid Firebase ID token in the `Authorization: Bearer <token>` header.
+All endpoints except `/health` and the public catalogue routes require a valid Firebase ID token in the `Authorization: Bearer <token>` header.
 
 ### 1. Health & Public Catalogue
 | Method | Path | Access | Description |
@@ -525,6 +569,7 @@ All endpoints except the public catalogue routes require a valid Firebase ID tok
 | `GET` | `/modules/:code` | Public | Get module details, prerequisites & corequisites. |
 | `GET` | `/majors` | Public | List SMU majors. |
 | `GET` | `/majors/:id` | Public | Get major curriculum structure. |
+| `GET` | `/majors/:id/requirements` | Public | Get the major's core & major rules, plus each track with its own rules. |
 
 ### 2. User Profile & Onboarding
 | Method | Path | Access | Description |
@@ -583,11 +628,15 @@ All endpoints except the public catalogue routes require a valid Firebase ID tok
 | `GET` | `/parties/:id/updates` | Member | Short-polling endpoint (`?since=...`); returns `204 No Content` if unchanged. |
 | `DELETE` | `/parties/:id/members/me` | Member | Leave a plan room. |
 | `POST` | `/parties/:id/ban` | Owner | Remove/ban a member from the room (owner only). |
+| `DELETE` | `/parties/:id/ban/:userId` | Owner | Lift a ban so the user can rejoin with the invite code (no frontend UI yet). |
 | `PUT` | `/parties/:id/votes` | Member | Submit section preference votes for the room's module. |
 | `DELETE` | `/parties/:id/votes` | Member | Clear section votes. |
 | `PUT` | `/parties/:id/my-section` | Member | Confirm personal section commitment for co-bidding coordination. |
 | `DELETE` | `/parties/:id/my-section` | Member | Clear personal section commitment. |
 | `GET` | `/parties/:id/sections` | Member | Get summary of all member section votes and confirmed selections. |
+| `GET` | `/parties/:id/decision` | Member | Where the vote stands: voting, ready or locked. |
+| `POST` | `/parties/:id/lock` | Owner | Lock the room on a section `{ sectionId }` once everyone has voted. |
+| `DELETE` | `/parties/:id/lock` | Owner | Unlock the room so votes and sections can change again. |
 
 ### 7. Timetable Calendar Export
 | Method | Path | Access | Description |
@@ -597,7 +646,7 @@ All endpoints except the public catalogue routes require a valid Firebase ID tok
 ### 8. Notifications
 | Method | Path | Access | Description |
 | --- | --- | --- | --- |
-| `GET` | `/notifications` | Student | List user notifications (invites, room updates, bidding alerts). |
+| `GET` | `/notifications` | Student | List user notifications, 20 per page (`?before=<id>` cursor). |
 | `GET` | `/notifications/unread-count` | Student | Get total count of unread notifications. |
 | `PATCH` | `/notifications/read-all` | Student | Mark all notifications as read. |
 | `PATCH` | `/notifications/:id/read` | Student | Mark a specific notification as read. |
@@ -626,6 +675,7 @@ All endpoints except the public catalogue routes require a valid Firebase ID tok
 | `GET` | `/admin/bidding-round` | Admin | Get current active bidding round and deadlines. |
 | `PUT` | `/admin/bidding-round` | Admin | Update bidding round window dates and active status. |
 
+
 ---
 
 ## Operational Procedures & Administration
@@ -636,10 +686,11 @@ Admin privileges are granted strictly via the secure CLI tool:
 cd backend
 pnpm grant-admin --uid <FIREBASE_USER_UID> --operator "Staff Name"
 ```
-The script validates the Firebase identity, sets `role: 'admin'` in MongoDB, and records an entry in the transaction audit log.
+The target must be an enabled, verified Google account already registered in Firebase Authentication.
+The script sets `role: 'admin'` on the user in MongoDB and records an entry in the transaction audit log.
 
 ### Legacy Plan Index Repair
-If an older Atlas database contains the legacy unique index `degreePlans.userId_1_slot_1`:
+If an older Atlas database still has the legacy unique index `userId_1_slot_1` on the `degreePlans` collection:
 ```bash
 cd backend
 # Dry run inspection
@@ -652,8 +703,10 @@ node --env-file=.env scripts/repair-plan-index.js --apply
 Import semester final exam schedules into section records:
 ```bash
 cd backend
-pnpm import-exams <exam-schedule.xls> --dry-run
-pnpm import-exams <exam-schedule.xls> --remote
+pnpm import-exams <exam-schedule.xls> --dry-run   # preview only, writes nothing
+pnpm import-exams <exam-schedule.xls>             # local MongoDB
+pnpm import-exams <exam-schedule.xls> --remote    # required when MONGODB_URI is not a local database
 ```
-Explicit exam end times are marked `finalExam.endVerified: true`.
-Missing end times are flagged as unconfirmed and default to a 2-hour window during clash detection.
+Several files can be passed at once. Staff-entered exams are never overwritten.
+Exams with an explicit end time are stored with `finalExam.endVerified: true`.
+Exams without a confirmed end time are treated as unconfirmed: clash detection then only flags them against exams on the same date with the same start time.
