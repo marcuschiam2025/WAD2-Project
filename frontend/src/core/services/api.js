@@ -121,6 +121,8 @@ export const api = {
   roomSections: (id) => request('GET', `/parties/${id}/sections`),
   // Owner only: remove a member and stop them rejoining (unban lets them back in)
   banRoomMember: (id, userId) => request('POST', `/parties/${id}/ban`, { userId }),
+  // Party admin only: hands the role to another member
+  transferRoomAdmin: (id, userId) => request('PUT', `/parties/${id}/owner`, { userId }),
 
  notifications: () => request('GET', '/notifications'),
   unreadNotificationCount: () => request('GET', '/notifications/unread-count'),

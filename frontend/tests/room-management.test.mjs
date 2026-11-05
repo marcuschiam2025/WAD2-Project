@@ -111,6 +111,26 @@ test('locking applies to the whole room, rechecks the latest votes, and unlockin
     assert.equal(await rooms.unlockRoom('r'), false)
     assert.match(rooms.voteErrors.r, /party owner/)
 
+    // Handing over the party admin role
+    let owner = 'a'
+    const roomBefore = api.room
+    api.room = async () => ({ ...(await roomBefore()), owner })
+    api.transferRoomAdmin = async () => { throw Object.assign(Error('Not found'), { status: 404 }) }
+    assert.equal(await rooms.transferAdmin('r', 'b'), false)
+    assert.match(rooms.voteErrors.r, /isn't available yet/, 'a clear message until the backend has the endpoint')
+    assert.equal(rooms.getRoom('r').ownerId, 'me', 'and nothing changed')
+    assert.notEqual(rooms.getRoom('r'), undefined, 'the 404 does not read as being removed from the room')
+    api.transferRoomAdmin = async (id, target) => { assert.equal(id, 'r'); assert.equal(target, 'b'); owner = 'b' }
+    assert.equal(await rooms.transferAdmin('r', 'b'), true)
+    assert.equal(rooms.getRoom('r').ownerId, 'b')
+    assert.equal(rooms.voteBoards.r.ownerId, 'b', 'I am a regular member now')
+    api.transferRoomAdmin = async () => { throw Object.assign(Error('Only the party owner can do this'), { status: 403 }) }
+    assert.equal(await rooms.transferAdmin('r', 'a'), false)
+    assert.match(rooms.voteErrors.r, /party owner/)
+    owner = 'a'
+    await rooms.loadVotes('r')
+    assert.equal(rooms.getRoom('r').ownerId, 'me')
+
     // POST /parties/:id/ban removes the member
     api.banRoomMember = async (id, target) => { assert.equal(target, 'b'); members = members.filter(m => m._id !== 'b') }
     assert.equal(await rooms.removeMember('r', 'b'), true)

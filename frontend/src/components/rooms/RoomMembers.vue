@@ -1,6 +1,6 @@
 <script setup>
-// Room sidebar: members with their role and vote status. The party admin (room owner) can remove a member
-// from the ··· menu (after confirming); that also stops them rejoining with the room code.
+// Room sidebar: members with their role and vote status. From the ··· menu (after confirming) the party admin (room
+// owner) can hand the role to a member, or remove a member, which also stops them rejoining with the room code.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoomsStore, roleOf } from '@core/stores/rooms'
 import { useUserStore } from '@core/stores/user'
@@ -27,14 +27,20 @@ const closeMenu = () => (menuFor.value = null)
 onMounted(() => document.addEventListener('click', closeMenu))
 onBeforeUnmount(() => document.removeEventListener('click', closeMenu))
 function ask(type, id) {
+  rooms.voteErrors[props.roomId] = ''
+  feedback.value = ''
   action.value = { type, id }
   menuFor.value = null
 }
 
 async function execute() {
-  const pending = action.value
-  const ok = await rooms.removeMember(props.roomId, pending.id)
-  if (ok) { feedback.value = 'Member removed. They can no longer rejoin with the room code.'; action.value = null }
+  const { type, id } = action.value
+  const name = rooms.person(id).name
+  const ok = type === 'transfer' ? await rooms.transferAdmin(props.roomId, id) : await rooms.removeMember(props.roomId, id)
+  if (ok) {
+    feedback.value = type === 'transfer' ? `${name} is now the party admin.` : 'Member removed. They can no longer rejoin with the room code.'
+    action.value = null
+  }
 }
 </script>
 
@@ -71,6 +77,9 @@ async function execute() {
             class="absolute top-full right-0 z-20 mt-1 flex w-48 flex-col rounded-lg border border-border bg-card p-1.5 shadow-md"
             @click.stop
           >
+            <button type="button" class="rounded-sm px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted" @click="ask('transfer', id)">
+              Make party admin
+            </button>
             <button type="button" class="rounded-sm px-2.5 py-2 text-left text-[13px] text-destructive transition-colors hover:bg-destructive-tint" @click="ask('remove', id)">
               Remove from room
             </button>
@@ -80,20 +89,28 @@ async function execute() {
     </ul>
     <p v-if="feedback" role="status" class="text-[12px] text-success">{{ feedback }}</p>
     <p class="text-[12px] leading-normal text-muted-foreground">
-      {{ owner ? "You're the party admin: you can remove members." : 'Each member picks their own section; the party admin manages members.' }}
+      {{ owner ? "You're the party admin: you lock the section and manage members. Use ··· to hand the role to someone else." : 'The party admin locks the section and manages members.' }}
     </p>
   </div>
 
   <BaseModal v-if="action" width="w-[440px]" @close="!rooms.busy && (action = null)">
-    <h2 class="text-h4">Remove {{ rooms.person(action.id).name }} from {{ room?.name }}?</h2>
-    <p class="text-[14px] leading-[22px] text-muted-foreground">
-      They lose access to this room and their votes and section are removed. They can't rejoin with the room code.
-    </p>
+    <template v-if="action.type === 'transfer'">
+      <h2 class="text-h4">Make {{ rooms.person(action.id).name }} the party admin?</h2>
+      <p class="text-[14px] leading-[22px] text-muted-foreground">
+        They'll lock and unlock the section and manage members. You stay in the room as a regular member, and only they can hand the role back.
+      </p>
+    </template>
+    <template v-else>
+      <h2 class="text-h4">Remove {{ rooms.person(action.id).name }} from {{ room?.name }}?</h2>
+      <p class="text-[14px] leading-[22px] text-muted-foreground">
+        They lose access to this room and their votes are removed. They can't rejoin with the room code.
+      </p>
+    </template>
     <p v-if="rooms.voteErrors[roomId]" role="alert" class="text-[13px] text-destructive">{{ rooms.voteErrors[roomId] }}</p>
     <div class="flex justify-end gap-2">
       <BaseButton variant="ghost" :disabled="rooms.busy" @click="action = null">Cancel</BaseButton>
-      <BaseButton variant="destructive-outline" :disabled="rooms.busy" @click="execute">
-        {{ rooms.busy ? 'Saving…' : 'Remove' }}
+      <BaseButton :variant="action.type === 'transfer' ? 'primary' : 'destructive-outline'" :disabled="rooms.busy" @click="execute">
+        {{ rooms.busy ? 'Saving…' : action.type === 'transfer' ? 'Make party admin' : 'Remove' }}
       </BaseButton>
     </div>
   </BaseModal>
