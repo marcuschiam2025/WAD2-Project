@@ -8,6 +8,7 @@ import { planLabel } from '@/trackLabels'
 import { moduleName } from '@core/data/catalogue'
 import { sectionMeetings, sectionCode } from '@core/utils/clash'
 import { termLabel } from '@core/data/bidding'
+import { roundStatus } from '@core/utils/biddingWindows'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusPill from '@/components/ui/StatusPill.vue'
@@ -35,9 +36,12 @@ const dragging = ref(null)
 
 // Pick up a section the party admin locks or unlocks, without changing ballots or membership.
 let roomTimer
+const now = ref(Date.now())
 onMounted(() => {
+  now.value = Date.now()
   rooms.load()
   roomTimer = setInterval(() => {
+    now.value = Date.now()
     if (document.visibilityState === 'visible' && !rooms.loading && !rooms.busy) rooms.load()
   }, 10000)
 })
@@ -74,11 +78,7 @@ const emptyReason = computed(() => {
 
 // The current BOSS round (GET /api/bidding/round, via the bidding store)
 const round = computed(() => {
-  if (!bidding.roundInfo.closesAt) return { term: bidding.roundInfo.term, closesIn: null }
-  if (bidding.roundInfo.closesAt <= Date.now()) return { term: bidding.roundInfo.term, closesIn: 'Closed' }
-  const mins = Math.max(0, Math.floor((bidding.roundInfo.closesAt - Date.now()) / 60_000))
-  const closesIn = mins >= 1440 ? `${Math.floor(mins / 1440)}d ${Math.floor((mins % 1440) / 60)}h` : `${Math.floor(mins / 60)}h ${mins % 60}m`
-  return { term: bidding.roundInfo.term, closesIn }
+  return { term: bidding.roundInfo.term, ...roundStatus(bidding.roundInfo, now.value) }
 })
 
 // Alternative sections only appear for the module that has been clicked (selected)
@@ -165,7 +165,7 @@ const scrollToPanel = () => sidebarRef.value?.$el.scrollIntoView({ behavior: 'sm
   <div>
     <PageHeader :overline="round.term" title="BOSS Bidding Planner">
       <template #badge>
-        <StatusPill tone="warning">{{ round.closesIn ? (round.closesIn === 'Closed' ? 'Round closed' : `Closes in ${round.closesIn}`) : 'Deadline not configured' }}</StatusPill>
+        <StatusPill tone="warning">{{ round.label }}</StatusPill>
       </template>
       <template #actions>
         <SelectField v-model="bidding.planId" :options="planOptions" width="w-full sm:w-[270px]" />

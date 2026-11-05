@@ -211,11 +211,20 @@ export const useRoomsStore = defineStore('rooms', () => {
       return version === revision
     } catch (failure) {
       if (version === revision) {
-        if (failure.status === 409 || failure.status === 403) await loadVotes(roomId, { quiet: true })
+        if (failure.status === 400 || failure.status === 409 || failure.status === 403) await loadVotes(roomId, { quiet: true })
         voteErrors.value[roomId] = failure.message
       }
       return false
     } finally { if (version === revision) { busy.value = false; voteSaving.value[roomId] = false } }
+  }
+  // TODO(backend): the lock is saved before the notifications are sent, so a failed notification reports an error for a
+  // lock that did happen. Unless the server refused the request (4xx), the room's real state decides whether it worked.
+  async function settleLock(roomId, request, happened) {
+    try { await request() } catch (failure) {
+      if (failure.status >= 400 && failure.status < 500) throw failure
+      const party = await api.room(roomId).catch(() => null)
+      if (!party || !happened(party)) throw failure
+    }
   }
   // Party admin only: locks one section for the whole room. Someone may have changed their vote since this page last
   // refreshed, so the rule is checked against the latest votes first. A 409 reloads the board for the admin to see.
@@ -225,10 +234,10 @@ export const useRoomsStore = defineStore('rooms', () => {
     if (!lockableSections(latest).includes(sectionId)) {
       throw Object.assign(new Error('The votes have changed, so this section can no longer be locked. Check the results and try again.'), { status: 409 })
     }
-    await api.lockRoom(roomId, sectionId)
+    await settleLock(roomId, () => api.lockRoom(roomId, sectionId), (party) => party.locked && party.lockedSection === sectionId)
   })
   // Party admin only: votes reopen and the section comes out of everyone's bidding
-  const unlockRoom = (roomId) => roomAction(roomId, () => api.unlockRoom(roomId))
+  const unlockRoom = (roomId) => roomAction(roomId, () => settleLock(roomId, () => api.unlockRoom(roomId), (party) => !party.locked))
   // Owner only: removes the member and stops them rejoining with the code
   const removeMember = (roomId, memberId) => roomAction(roomId, () => api.banRoomMember(roomId, memberId))
 

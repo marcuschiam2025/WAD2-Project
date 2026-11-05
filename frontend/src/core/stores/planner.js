@@ -9,6 +9,7 @@ import { useRoomsStore } from './rooms'
 import { useUserStore } from './user'
 
 export const MAX_PLANS = 3
+export const MAX_LOA_TERMS = 2
 export const MAX_MODULES_PER_SEM = 6
 
 // A semester has room for a module if it already holds it (a move) or is under the maximum
@@ -483,7 +484,11 @@ export const usePlannerStore = defineStore('planner', () => {
     return last[1] === 1 ? `Y${last[0]}S2` : `Y${last[0] + 1}S1`
   }
 
+  const canAddSemester = computed(() => activePlan.value.semesters.length > 0 && /^Y[1-9]S[12]$/.test(nextSemId(activePlan.value)))
+  const canAddLoa = computed(() => canAddSemester.value && activePlan.value.semesters.filter(s => s.loa).length < MAX_LOA_TERMS)
+
   function addSemester({ loa = false } = {}) {
+    if (!canAddSemester.value || (loa && !canAddLoa.value)) return
     const plan = activePlan.value
     plan.semesters.push(sem(nextSemId(plan), [], { loa }))
   }
@@ -702,6 +707,8 @@ export const usePlannerStore = defineStore('planner', () => {
     removeFromBasket,
     clearBasket,
     addSemester,
+    canAddSemester,
+    canAddLoa,
     removableSemester,
     removeSemester,
     canMoveLoa,

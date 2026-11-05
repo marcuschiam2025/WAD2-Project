@@ -7,6 +7,8 @@ export const NOTIFICATION_TYPES = [
   'party_banned',          // you were removed from a party
   'party_member_removed',  // another member was removed from your party
   'party_section_changed', // a party member changed the section they're going for
+  'party_vote_locked',     // the party owner locked a section for the whole party
+  'party_vote_unlocked',   // the party owner unlocked the party, so votes can change again
 ]
 
 const notificationSchema = new mongoose.Schema(

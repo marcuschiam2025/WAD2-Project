@@ -82,10 +82,11 @@ async function deletePlan() {
       </BaseButton>
       <div class="flex flex-wrap gap-2">
         <BaseButton v-if="planner.removableSemester" variant="outline" size="sm" @click="planner.removeSemester()">Remove {{ planner.removableSemester.label }}</BaseButton>
-        <BaseButton variant="outline" size="sm" @click="planner.addSemester()">Add semester</BaseButton>
+        <BaseButton variant="outline" size="sm" :disabled="!planner.canAddSemester" @click="planner.addSemester()">Add semester</BaseButton>
         <BaseButton size="sm" @click="emit('close')">Done</BaseButton>
       </div>
     </div>
+    <p v-if="!planner.canAddSemester" class="text-sm text-muted-foreground">Semester limit reached (Y9 · S2).</p>
     <p v-if="planner.planActionPending" role="status" class="text-sm text-muted-foreground">Updating plans…</p>
     <p v-if="planner.planActionError || planner.syncError" role="alert" class="text-sm text-destructive">{{ planner.planActionError || planner.syncError }}</p>
   </BaseModal>

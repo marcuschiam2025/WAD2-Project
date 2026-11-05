@@ -9,7 +9,7 @@ import { useRoomsStore } from '@core/stores/rooms'
 import { useQuizStore, quizTrackNames, isOlderResult } from '@core/stores/quiz'
 import { moduleName } from '@core/data/catalogue'
 import { fmtE } from '@core/utils/money'
-import { windowsFor } from '@core/utils/biddingWindows'
+import { windowsFor, roundStatus } from '@core/utils/biddingWindows'
 import { plannedMeetings, singaporeDay } from '@core/utils/dashboardSchedule'
 import { bidHistory, rateBid, estimateHistory } from '@core/data/bidding'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -37,7 +37,8 @@ const dateLabel = computed(() => today.value.toLocaleDateString('en-GB', { timeZ
 const hhmm = (d) => d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Singapore', hour: '2-digit', minute: '2-digit' })
 const dayName = (offset) => new Date(singaporeDay(today.value).getTime() + offset * 86_400_000).toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short' })
 const closesOffset = computed(() => round.value.closesAt ? Math.round((singaporeDay(round.value.closesAt) - singaporeDay(today.value)) / 86_400_000) : null)
-const closesLabel = computed(() => round.value.closesAt ? `${round.value.closesAt.toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore', weekday: 'short' })} ${hhmm(round.value.closesAt)}` : 'Deadline not configured')
+const windowStatus = computed(() => roundStatus(round.value, now.value))
+const windowTimeLabel = computed(() => windowStatus.value.deadline ? `${windowStatus.value.deadline.toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore', weekday: 'short' })} ${hhmm(windowStatus.value.deadline)}` : '')
 
 // Live countdown to the round closing
 let timer
@@ -46,13 +47,7 @@ onMounted(() => {
   quiz.initialize() // the quiz tab shows the latest saved result
 })
 onBeforeUnmount(() => clearInterval(timer))
-const countdown = computed(() => {
-  if (!round.value.closesAt) return 'Not configured'
-  if (round.value.closesAt <= now.value) return 'Closed'
-  const mins = Math.max(0, Math.floor((round.value.closesAt - now.value) / 60_000))
-  if (mins >= 24 * 60) return `${Math.floor(mins / 1440)}d ${Math.floor((mins % 1440) / 60)}h`
-  return `${Math.floor(mins / 60)}h ${mins % 60}m`
-})
+const countdown = computed(() => windowStatus.value.countdown)
 
 // --- Top block: a tab list on the left and the open tab's details on the right ------------------
 const left = computed(() => user.balance - bidding.allocated)
@@ -67,7 +62,7 @@ const quizScore = (r) => (quizLegacy.value ? `${Math.round(r.pct)}%` : quizProvi
 // accent: the colour bar on the left of each tab. Written out in full so Tailwind can see the class names.
 const accentClass = { warning: 'border-l-warning', primary: 'border-l-primary', success: 'border-l-success', destructive: 'border-l-destructive' }
 const sections = computed(() => [
-  { key: 'window', label: `${round.value.name} closes in`, value: countdown.value, sub: closesLabel.value, accent: 'warning' },
+  { key: 'window', label: `${round.value.name} ${windowStatus.value.state === 'upcoming' ? 'opens in' : windowStatus.value.state === 'open' ? 'closes in' : 'status'}`, value: countdown.value, sub: windowTimeLabel.value, accent: 'warning' },
   {
     key: 'wallet',
     label: 'Balance & cart',
@@ -229,7 +224,7 @@ const alerts = computed(() => {
 const biddingWindows = computed(() => {
   const all = windowsFor(bidding.round.term, now.value)
   if (all.length) return all
-  return [{ id: 'current', name: round.value.name, state: round.value.closesAt && round.value.closesAt > now.value ? 'open' : 'closed', when: round.value.closesAt ? `Closes ${closesLabel.value}` : 'No official schedule configured' }]
+  return [{ id: 'current', name: round.value.name, state: windowStatus.value.state, when: windowTimeLabel.value ? `${windowStatus.value.state === 'upcoming' ? 'Opens' : 'Closes'} ${windowTimeLabel.value}` : windowStatus.value.label }]
 })
 
 </script>
@@ -238,7 +233,7 @@ const biddingWindows = computed(() => {
   <div>
     <PageHeader :overline="dateLabel" title="Your week at a glance" :subtitle="`Welcome back, ${user.profile.firstName}. ${round.term}`">
       <template #actions>
-        <StatusPill tone="warning">{{ round.name }} closes {{ closesLabel }}</StatusPill>
+        <StatusPill tone="warning">{{ round.name }} · {{ windowStatus.label }}</StatusPill>
         <BaseButton variant="outline" to="/bidding/finalised">Calendar downloads</BaseButton>
       </template>
     </PageHeader>
@@ -297,9 +292,9 @@ const biddingWindows = computed(() => {
               <p class="text-overline text-muted-foreground">Bidding window · {{ round.term }}</p>
               <h2 class="text-h3">{{ round.name }}</h2>
             </header>
-            <div class="flex flex-col gap-2" role="timer" :aria-label="countdown === 'Closed' ? 'This round has closed' : `${countdown} left to bid`">
+            <div class="flex flex-col gap-2" role="timer" :aria-label="windowStatus.label">
               <span class="font-mono text-[56px] leading-none font-bold tracking-tight sm:text-[80px] lg:text-[96px]" :class="countdown === 'Closed' && 'text-muted-foreground'">{{ countdown }}</span>
-              <span class="text-[15px] text-muted-foreground">{{ countdown === 'Closed' ? 'This round has closed.' : `left to bid · closes ${closesLabel} (Singapore time)` }}</span>
+              <span class="text-[15px] text-muted-foreground">{{ windowStatus.state === 'upcoming' ? `until opening · opens ${windowTimeLabel} (Singapore time)` : windowStatus.state === 'open' ? `left to bid · closes ${windowTimeLabel} (Singapore time)` : windowStatus.label }}</span>
             </div>
             <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex flex-col gap-1 rounded-lg bg-muted p-4">

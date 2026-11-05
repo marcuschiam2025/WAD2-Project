@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM, MAX_PLANS } from '@core/stores/planner'
+import { usePlannerStore, effectiveCode, hasRoom, MAX_MODULES_PER_SEM, MAX_PLANS, MAX_LOA_TERMS } from '@core/stores/planner'
 import { useRoomsStore } from '@core/stores/rooms'
 import { useBiddingStore } from '@core/stores/bidding'
 import { useCatalogueStore } from '@core/stores/catalogue'
@@ -346,7 +346,8 @@ const onTrack = computed(() => !planner.hasAnyWarning)
   <div>
     <PageHeader :overline="overline" title="What-If Planner">
       <template #actions>
-        <BaseButton variant="outline" size="lg" @click="planner.addSemester({ loa: true })">Add LOA term</BaseButton>
+        <BaseButton variant="outline" size="lg" :disabled="!planner.canAddLoa" @click="planner.addSemester({ loa: true })">Add LOA term</BaseButton>
+        <span v-if="!planner.canAddLoa" class="text-xs text-muted-foreground">{{ planner.canAddSemester ? `Maximum of ${MAX_LOA_TERMS} LOA terms per plan.` : 'Semester limit reached (Y9 · S2).' }}</span>
         <BaseButton size="lg" :disabled="!planner.online || planner.planActionPending" @click="addPlan">Add plan</BaseButton>
       </template>
     </PageHeader>

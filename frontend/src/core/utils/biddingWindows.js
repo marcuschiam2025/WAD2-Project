@@ -1,5 +1,16 @@
 import { BIDDING_WINDOWS } from '../data/biddingWindows.js'
 
+// Derive from timestamps so a window fetched before opening can become open without reloading.
+export function roundStatus(round, now) {
+  if (!round.closesAt) return { state: 'unconfigured', countdown: 'Not configured', label: 'Deadline not configured' }
+  if (round.closesAt <= now) return { state: 'closed', countdown: 'Closed', label: 'Round closed' }
+  const upcoming = round.opensAt > now
+  const deadline = upcoming ? round.opensAt : round.closesAt
+  const mins = Math.max(0, Math.floor((deadline - now) / 60_000))
+  const countdown = mins >= 1440 ? `${Math.floor(mins / 1440)}d ${Math.floor((mins % 1440) / 60)}h` : `${Math.floor(mins / 60)}h ${mins % 60}m`
+  return { state: upcoming ? 'upcoming' : 'open', deadline, countdown, label: `${upcoming ? 'Opens' : 'Closes'} in ${countdown}` }
+}
+
 // "Wed 4 Nov, 10:00" in Singapore time
 export function sgtStamp(value) {
   const date = new Date(value)
