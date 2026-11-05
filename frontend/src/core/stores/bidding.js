@@ -2,7 +2,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, watch } from 'vue'
 import { bidHistory, sections, days, weightage, MIN_BID, estimateHistory, termLabel } from '../data/bidding'
 import { api } from '../services/api'
-import { usePlannerStore, effectiveCode } from './planner'
+import { usePlannerStore, effectiveCode, MAX_MODULES_PER_SEM } from './planner'
 import { useRoomsStore } from './rooms'
 import { useUserStore } from './user'
 import { findClashes, findExamClashes, sectionCode, sectionMeetings } from '../utils/clash'
@@ -56,6 +56,10 @@ export const useBiddingStore = defineStore('bidding', () => {
   const typed = ref({})
 
   const inCart = computed(() => planCodes.value.filter((c) => roomCodes.value.includes(c) || !(dropped.value[plan.value.id] ?? []).includes(c)))
+
+  // A semester holds at most MAX_MODULES_PER_SEM modules. Rooms add modules by themselves when a party admin locks a
+  // section, so the cart can pass it without the student adding anything. How many too many it holds:
+  const overLimit = computed(() => Math.max(0, inCart.value.length - MAX_MODULES_PER_SEM))
 
   const decidedSection = (code) => fromRooms.value.find((d) => d.module === code)?.sectionId
 
@@ -292,6 +296,7 @@ export const useBiddingStore = defineStore('bidding', () => {
       return false
     }
     if (roomConflicts.value.length) { saveError.value = `Your rooms locked different sections for ${roomConflicts.value.join(', ')}. Ask a party admin to unlock one, or leave one of those rooms, before saving.`; return false }
+    if (overLimit.value) { saveError.value = `Your bid cart has ${inCart.value.length} modules, and a semester holds at most ${MAX_MODULES_PER_SEM}. Remove ${overLimit.value} to save your bids.`; return false }
     if (unavailableSelections.value.length) { saveError.value = 'A saved section is unavailable. Choose a replacement or remove its module before saving.'; return false }
     if (archivedSelections.value.length) { saveError.value = 'A selected section has been archived. Choose an active alternative or remove the module before saving.'; return false }
     if (clashes.value.size) { saveError.value = 'Resolve class or final-exam clashes before saving.'; return false }
@@ -346,6 +351,8 @@ export const useBiddingStore = defineStore('bidding', () => {
     plan,
     targetSem,
     notOffered,
+    inCart,
+    overLimit,
     fromRooms,
     roomConflicts,
     locked,
