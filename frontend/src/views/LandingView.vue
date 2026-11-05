@@ -20,9 +20,6 @@ const features = [
   { icon: iconStress, title: 'Track finder', body: 'A short quiz that suggests tracks to explore' },
   { icon: iconCobid, title: 'Co-bidding', body: 'Vote on sections with friends in a room' },
 ];
-// The page's own feature cards, since there is no separate how-it-works page
-const showFeatures = () =>
-  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 </script>
 
 <template>
@@ -53,7 +50,6 @@ const showFeatures = () =>
           </p>
           <div class="flex flex-wrap items-center gap-3">
             <BaseButton to="/signin" size="lg">Get started</BaseButton>
-            <BaseButton variant="ghost" size="lg" @click="showFeatures">See what's included</BaseButton>
           </div>
         </div>
 
