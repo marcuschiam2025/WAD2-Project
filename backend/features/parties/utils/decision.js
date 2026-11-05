@@ -67,14 +67,12 @@ export function decisionSummary(party, validSectionIds) {
   // 6. The overall state
   const allVoted = members.length > 0 && waitingIds.length === 0
  
-  // A finalised section only counts while everyone has voted and it's still one of the leaders
-  let finalisedSection = null
-  if (allVoted && leaders.includes(party.finalisedSection)) {
-    finalisedSection = party.finalisedSection
-  }
+  // A saved lock remains in force until explicitly unlocked, even if members or section data change.
+  const locked = !!party.locked
+  const lockedSection = locked ? party.lockedSection ?? null : null
  
   let status = 'voting'                    // still waiting for votes
-  if (finalisedSection) status = 'confirmed' // the owner locked in a leading section
+  if (locked) status = 'locked'
   else if (allVoted && top > 0) status = 'ready' // everyone voted; a decision can be made
  
   return {
@@ -85,7 +83,9 @@ export function decisionSummary(party, validSectionIds) {
     top,
     leaders,
     tie: leaders.length > 1,
-    finalisedSection,
+    locked,
+    lockedSection,
+    finalisedSection: lockedSection, // compatibility with older decision-response consumers
     status,
   }
 }

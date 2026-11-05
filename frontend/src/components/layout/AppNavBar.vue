@@ -50,6 +50,11 @@ const notifOpen = ref(false);
 const notifRef = ref(null);
 const notifications = ref([]);
 const showRead = ref(false);
+const nextNotifications = ref(null);
+const notificationsLoading = ref(false);
+const notificationsError = ref('');
+const readingNotifications = ref(new Set());
+let notificationRequest = 0;
 
 const filteredNotifications = computed(() => {
   // 1. Filter out read items if 'showRead' is false
@@ -110,27 +115,33 @@ const saveEdit = async () => {
   }
 };
 
-const unreadCount = computed(
-  () => notifications.value.filter((n) => !n.read).length,
-);
+const unreadCount = ref(0);
 const hasReadNotifications = computed(() =>
   notifications.value.some((n) => n.read),
 );
 
-async function loadNotifications() {
+async function loadNotifications(more = false) {
+  if (more && !nextNotifications.value) return;
+  const request = ++notificationRequest;
+  notificationsLoading.value = true;
+  notificationsError.value = '';
   try {
-    const res = await api.notifications();
-    //const data = await api.notifications();
-    //console.log("API Response:", data);
-    // Extract array if wrapped in res.notifications or res.data, else fallback to direct array
+    const res = await api.notifications(more ? nextNotifications.value : undefined);
+    if (request !== notificationRequest) return;
     const list = Array.isArray(res)
       ? res
       : res?.notifications || res?.data || [];
 
-    notifications.value = list;
+    notifications.value = more
+      ? [...new Map([...notifications.value, ...list].map(n => [n._id || n.id, n])).values()]
+      : list;
+    nextNotifications.value = res?.next ?? null;
+    unreadCount.value = Number.isInteger(res?.unreadCount) ? res.unreadCount : notifications.value.filter(n => !n.read).length;
   } catch (error) {
+    if (request !== notificationRequest) return;
+    notificationsError.value = 'Could not load notifications. Please try again.';
     console.error("Failed to load notifications:", error);
-  }
+  } finally { if (request === notificationRequest) notificationsLoading.value = false; }
 }
 
 watch(notifOpen, (open) => {
@@ -138,21 +149,29 @@ watch(notifOpen, (open) => {
 });
 
 async function handleNotifClick(n) {
-  // Mark as read locally and sync with backend if unread
-  // 1. Close dropdown
-  notifOpen.value = false
-
-  // 2. Mark notification as read locally and sync with DB if unread
+  const id = n._id || n.id
+  if (readingNotifications.value.has(id)) return
+  notificationsError.value = ''
   if (!n.read) {
-    n.read = true
+    readingNotifications.value.add(id)
     try {
-      await api.markNotificationRead(n._id || n.id)
+      await api.markNotificationRead(id)
+      const current = notifications.value.find(item => (item._id || item.id) === id)
+      if (current && !current.read) {
+        current.read = true
+        unreadCount.value = Math.max(0, unreadCount.value - 1)
+      }
+      n.read = true
+      // A refresh racing this update must not restore the old unread state or count.
+      if (notificationsLoading.value || !current) await loadNotifications()
     } catch (error) {
+      notificationsError.value = 'Could not mark this notification as read. Please try again.'
       console.error("Failed to mark notification as read:", error)
-    }
+      return
+    } finally { readingNotifications.value.delete(id) }
   }
 
-  // 3. Navigate to the squad collab room path
+  notifOpen.value = false
   if (n.link) {
     router.push(n.link)
   }
@@ -285,7 +304,7 @@ async function logOut() {
         <div ref="notifRef" class="relative">
           <button
             type="button"
-            aria-label="Notifications"
+            :aria-label="unreadCount ? `Notifications (${unreadCount} unread)` : 'Notifications'"
             :aria-expanded="notifOpen"
             class="relative block size-8 rounded-full hover:bg-muted"
             @click="
@@ -295,7 +314,7 @@ async function logOut() {
           >
             <img :src="iconBell" alt="" class="size-8" />
             <span
-              v-if="notifications.some((n) => !n.read)"
+              v-if="unreadCount > 0"
               class="absolute top-[5px] right-[5px] size-2 rounded-full border border-card bg-destructive"
             />
           </button>
@@ -315,7 +334,7 @@ async function logOut() {
               <div
                 class="flex items-center justify-between border-b border-border pb-2"
               >
-                <p class="text-overline text-muted-foreground">Notifications</p>
+                <p class="text-overline text-muted-foreground">Notifications <span v-if="unreadCount">({{ unreadCount }} unread)</span></p>
 
                 <!-- Only one 'See read' button here -->
                 <button
@@ -336,6 +355,7 @@ async function logOut() {
                 <li
                   v-for="n in filteredNotifications"
                   :key="n._id || n.id"
+                  :aria-busy="readingNotifications.has(n._id || n.id)"
                   class="flex flex-col rounded-md p-2 text-[13px] transition-colors hover:bg-muted cursor-pointer"
                   :class="
                     !n.read
@@ -345,6 +365,7 @@ async function logOut() {
                   @click="handleNotifClick(n)"
                 >
                   <span class="leading-snug">{{ n.message || n.text }}</span>
+                  <span v-if="readingNotifications.has(n._id || n.id)" class="mt-1 text-[11px] text-muted-foreground">Marking as read…</span>
                   <span
                     v-if="n.createdAt"
                     class="mt-1 text-[11px] text-muted-foreground font-normal"
@@ -355,16 +376,20 @@ async function logOut() {
               </ul>
 
               <!-- Empty States -->
+              <p v-else-if="notificationsLoading" role="status" class="text-[13px] text-muted-foreground">Loading notifications…</p>
               <p
-                v-else-if="unreadCount === 0 && !showRead"
+                v-else-if="unreadCount === 0 && !showRead && !notificationsError"
                 class="text-[13px] text-muted-foreground"
               >
                 You're all caught up.
               </p>
 
+              <p v-else-if="nextNotifications && unreadCount > 0 && !showRead" class="text-[13px] text-muted-foreground">Older unread notifications are available. Load more to view them.</p>
               <p v-else class="text-[13px] text-muted-foreground">
                 No notifications available.
               </p>
+              <p v-if="notificationsError" role="alert" class="text-[13px] text-destructive">{{ notificationsError }} <button type="button" class="underline" :disabled="notificationsLoading" @click="loadNotifications()">Reload</button></p>
+              <button v-if="nextNotifications" type="button" class="self-center text-[12px] font-medium text-primary hover:underline disabled:opacity-50" :disabled="notificationsLoading" @click="loadNotifications(true)">{{ notificationsLoading ? 'Loading…' : 'Load more' }}</button>
             </div>
           </Transition>
 

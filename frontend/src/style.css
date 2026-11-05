@@ -40,7 +40,7 @@
 [data-theme='dark'] {
   --primary: #f4f4f5;
   --primary-hover: #ffffff;
-  --primary-tint: #2c2c30;
+  --primary-tint: #303036;
   --urgent: #fbbf24;
   --urgent-tint: #332a10;
   --success: #34d399;
@@ -49,11 +49,11 @@
   --danger-tint: #341c1c;
   --exempt: #a78bfa;
   --exempt-tint: #26213b;
-  --text: #ececec;
-  --text-muted: #a1a1aa;
-  --border: #303034;
-  --bg: #121212;
-  --surface: #1c1c1e;
+  --text: #e6e6e9;
+  --text-muted: #b9b9c1;
+  --border: #43434a;
+  --bg: #0b0b0c;
+  --surface: #1f1f22;
   --switch-off: #4b4b52;
   --scrim: rgb(0 0 0 / 0.6);
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);

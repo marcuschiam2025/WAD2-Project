@@ -4,15 +4,13 @@
 import { computed, ref, watch } from 'vue'
 import { useRoomsStore } from '@core/stores/rooms'
 import { useUserStore } from '@core/stores/user'
-import { usePlannerStore } from '@core/stores/planner'
-import { useBiddingStore } from '@core/stores/bidding'
 import { termLabel } from '@core/data/bidding'
 import { sectionCode } from '@core/utils/clash'
 import { lockableSections } from '@core/utils/roomBoard'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 const props = defineProps({ roomId: { type: String, required: true }, dirty: Boolean })
-const rooms = useRoomsStore(), user = useUserStore(), planner = usePlannerStore(), bidding = useBiddingStore()
+const rooms = useRoomsStore(), user = useUserStore()
 const board = computed(() => rooms.voteBoards[props.roomId])
 const isAdmin = computed(() => !!board.value && board.value.ownerId === String(user.profile._id))
 const ranking = computed(() => [...(board.value?.rows ?? [])].sort((a,b) => b.count - a.count || a.section.section.localeCompare(b.section.section)))
@@ -30,10 +28,10 @@ const nextStep = computed(() => {
   return board.value.tie ? 'Everyone has voted and there’s a tie at the top. The party admin will lock one of the tied sections.' : 'Everyone has voted. Waiting for the party admin to lock the section.'
 })
 
-const importing = ref(false), targetPlan = ref(''), adding = ref(false), error = ref(''), prepared = ref(null), feedback = ref('')
+const feedback = ref('')
 // The lock or unlock waiting for the party admin to confirm: { type: 'lock', row } or { type: 'unlock' }
 const asking = ref(null)
-watch(() => props.roomId, () => { importing.value = false; prepared.value = null; feedback.value = ''; error.value = ''; asking.value = null })
+watch(() => props.roomId, () => { feedback.value = ''; asking.value = null })
 function ask(next) { rooms.voteErrors[props.roomId] = ''; feedback.value = ''; asking.value = next }
 async function confirmAsk() {
   const pending = asking.value
@@ -41,13 +39,6 @@ async function confirmAsk() {
   if (!ok) return // the dialog stays open and shows why
   feedback.value = pending.type === 'lock' ? `${pending.row.section.section} is locked for everyone.` : 'The room is unlocked. Votes can change again.'
   asking.value = null
-}
-function openImport() { targetPlan.value = planner.activePlanId; error.value = ''; prepared.value = null; importing.value = true }
-async function add() {
-  adding.value = true; error.value = ''
-  try { prepared.value = await bidding.addRoomSection(props.roomId, lockedRow.value.section.id, targetPlan.value) }
-  catch (failure) { error.value = failure.message }
-  finally { adding.value = false }
 }
 </script>
 <template>
@@ -82,7 +73,6 @@ async function add() {
     <template v-if="board.locked">
       <BaseButton to="/bidding">Review bidding</BaseButton>
       <p class="text-xs text-muted-foreground">{{ lockedCode }} appears automatically in everyone’s bidding for {{ termLabel(board.term) }}. Review the amount and save your bids there. Your What-If plans stay unchanged.</p>
-      <BaseButton variant="outline" :disabled="working || !planner.online || !lockedRow" @click="openImport">Choose a bid cart</BaseButton>
       <BaseButton v-if="isAdmin" variant="destructive-outline" :disabled="working" @click="ask({ type: 'unlock' })">Unlock room</BaseButton>
     </template>
     <p v-if="feedback" role="status" class="text-xs text-success">{{ feedback }}</p>
@@ -101,20 +91,5 @@ async function add() {
       <BaseButton variant="ghost" :disabled="working" @click="asking = null">Cancel</BaseButton>
       <BaseButton :variant="asking.type === 'lock' ? 'primary' : 'destructive-outline'" :disabled="working" @click="confirmAsk">{{ working ? 'Saving…' : asking.type === 'lock' ? 'Lock section' : 'Unlock room' }}</BaseButton>
     </div>
-  </BaseModal>
-  <BaseModal v-if="importing" width="w-[480px]" @close="!adding && (importing = false)">
-    <h2 class="text-lg font-semibold">Add the locked section to bidding</h2>
-    <template v-if="!prepared">
-      <p class="text-sm text-muted-foreground">This replaces the section for this module in your chosen bid cart. Other modules stay as they are. Review and save your bids afterwards.</p>
-      <label class="flex flex-col gap-2 text-sm">Your degree plan<select v-model="targetPlan" :disabled="adding" class="rounded-md border border-border bg-card p-3"><option v-for="plan in planner.plans" :key="plan.id" :value="plan.id">{{ plan.name }}</option></select></label>
-      <p v-if="!planner.plans.length" class="text-sm">Create a degree plan before adding a section.</p>
-      <p v-if="error" role="alert" class="text-sm text-destructive">{{ error }}</p>
-      <div class="flex justify-end gap-2"><BaseButton variant="ghost" :disabled="adding" @click="importing = false">Cancel</BaseButton><BaseButton :disabled="adding || !targetPlan" @click="add">{{ adding ? 'Checking…' : 'Add section' }}</BaseButton></div>
-    </template>
-    <template v-else>
-      <p class="text-sm">{{ prepared.section.module }} {{ prepared.section.section }} is selected in your bidding planner. Review the amount and click <strong>Save bids</strong> there to keep it.</p>
-      <ul v-if="prepared.notes.length" class="list-disc pl-5 text-sm text-muted-foreground"><li v-for="note in prepared.notes" :key="note">{{ note }}</li></ul>
-      <BaseButton :to="`/bidding?plan=${targetPlan}`">Review bidding planner</BaseButton>
-    </template>
   </BaseModal>
 </template>

@@ -153,13 +153,16 @@ export function layoutCurriculum(result, plan, bundle, { majorCode = '' } = {}) 
   function settle(row, credit) {
     if (!credit || row.marked) return row
     const r = row.requirement
-    const status = statusFromCredit(credit)
+    // Credit totals are capped at the CU target; explicit course coverage may still be unfinished.
+    const courseRule = r.rule === 'all' || r.rule === 'chooseN'
+    const status = courseRule ? row.status : statusFromCredit(credit)
     const filled = round(credit.required - credit.todo)
-    const codes = credit.held.map((h) => h.code)
+    const courses = courseRule ? row.taken : credit.held
+    const codes = courses.map((h) => h.code)
     return {
       ...row,
       status,
-      semId: status === 'cleared' || status === 'exempted' ? null : (credit.held.at(-1)?.semId ?? null),
+      semId: status === 'cleared' || status === 'exempted' ? null : (courses.at(-1)?.semId ?? null),
       detail: `${filled} / ${credit.required} CU included${r.rule === 'chooseN' ? ` · ${codes.length} / ${r.n} courses` : ''}${codes.length ? ` · ${codes.join(', ')}` : ''}${row.extra ? ' · Additional track' : ''}`,
     }
   }

@@ -240,11 +240,16 @@ export const useRoomsStore = defineStore('rooms', () => {
   const unlockRoom = (roomId) => roomAction(roomId, () => settleLock(roomId, () => api.unlockRoom(roomId), (party) => !party.locked))
   // Owner only: removes the member and stops them rejoining with the code
   const removeMember = (roomId, memberId) => roomAction(roomId, () => api.banRoomMember(roomId, memberId))
+  // Party admin only: hands the role to another member, who can then lock, unlock and manage members.
+  // TODO(backend): needs PUT /api/parties/:id/owner { userId }. Until it exists the server answers 404.
+  const transferAdmin = (roomId, memberId) => roomAction(roomId, () => api.transferRoomAdmin(roomId, memberId).catch((failure) => {
+    throw failure.status === 404 ? new Error('Handing over the party admin role isn\'t available yet.') : failure
+  }))
 
   return {
     rooms, loading, busy, online, error, load, joinRoom,
     voteBoards, voteLoading, voteSaving, voteErrors, loadVotes, saveRoomVotes,
-    myVotes, lockRoom, unlockRoom, removeMember,
+    myVotes, lockRoom, unlockRoom, removeMember, transferAdmin,
     decided, pickedForBidding,
     roomState,
     getRoom,
