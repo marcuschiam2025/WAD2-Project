@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { api, setToken, setTokenProvider } from '../services/api'
 import { authClient } from '../services/firebase'
 
-const blankProfile = () => ({ firstName: '', displayName: '', initials: '', email: '', major: 'Information Systems', tracks: [], year: 1, completed: [], exempted: [], takenBySem: {}, markedDone: [] })
+const blankProfile = () => ({ firstName: '', displayName: '', initials: '', email: '', major: 'Information Systems', tracks: [], year: 1, completed: [], exempted: [], takenBySem: {}, loaSemesters: [], markedDone: [] })
 export const useUserStore = defineStore('user', () => {
   const isSignedIn = ref(false), uid = ref(null), onboarded = ref(false)
   const profile = ref(blankProfile()), balance = ref(210), consents = ref({ gmail: false, outlook: false })

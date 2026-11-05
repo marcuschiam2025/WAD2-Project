@@ -10,6 +10,7 @@ import { useUserStore } from './user'
 
 export const MAX_PLANS = 3
 export const MAX_LOA_TERMS = 2
+export const INTERNSHIP_CODE = 'COR1001'
 export const MAX_MODULES_PER_SEM = 6
 
 // A semester has room for a module if it already holds it (a move) or is under the maximum
@@ -118,11 +119,10 @@ export const usePlannerStore = defineStore('planner', () => {
     const p = user.profile
     const majorId = catalogue.majorIdFor(p.major, p.intakeYear)
     const semesters = []
-    for (let y = 1; y <= 4; y++) {
-      for (let s = 1; s <= 2; s++) {
-        const id = `Y${y}S${s}`
-        semesters.push(sem(id, [...(p.takenBySem?.[id] ?? [])]))
-      }
+    const loa = p.loaSemesters ?? []
+    for (let i = 0; i < 8 + loa.length; i++) {
+      const id = `Y${Math.floor(i / 2) + 1}S${i % 2 + 1}`
+      semesters.push(sem(id, [...(p.takenBySem?.[id] ?? [])], { loa: loa.includes(id) }))
     }
     return {
       majorId,
@@ -201,11 +201,26 @@ export const usePlannerStore = defineStore('planner', () => {
   // in firstPlan instead). Modules entered on the form go into their semesters, and only the ones the student took
   // off the form leave the plan: anything added in the planner stays. Tracks follow only if they changed on the form,
   // so a plan's own What-If tracks survive other profile edits.
+  function profileLoaError(profile) {
+    const loa = profile.loaSemesters ?? []
+    for (const plan of plans.value) {
+      const past = s => s.id < profile.currentSem
+      const count = plan.semesters.filter(s => past(s) ? loa.includes(s.id) : s.loa).length
+      if (count > MAX_LOA_TERMS) return `${plan.name} would exceed ${MAX_LOA_TERMS} LOA terms. Remove a future LOA term in that plan before saving your profile.`
+      const extra = plan.semesters.filter(s => past(s) && loa.includes(s.id) && !s.loa).length
+      const last = plan.semesters.at(-1)?.id
+      if (last && (Number(last[1]) - 1) * 2 + Number(last[3]) + extra > 18) return `${plan.name} cannot extend past Y9S2. Remove an unused future semester before saving your profile.`
+    }
+    return ''
+  }
+
   function applyOnboarding(plan) {
     const p = user.profile
     const before = p.previousDegree ?? {}
     const taken = p.takenBySem ?? {}
     const takenCodes = new Set(Object.values(taken).flat())
+    const loa = p.loaSemesters ?? []
+    const addedLoa = plan.semesters.filter(s => s.id < p.currentSem && loa.includes(s.id) && !s.loa).length
     if (p.currentSem && plan.semesters.some((s) => s.id === p.currentSem)) plan.currentSem = p.currentSem
     const now = semIndex(plan, plan.currentSem)
     const removed = new Set(Object.entries(before.takenBySem ?? {})
@@ -219,7 +234,18 @@ export const usePlannerStore = defineStore('planner', () => {
         return !removed.has(code) && (!takenCodes.has(code) || here.includes(code))
       })
       here.filter((code) => !s.modules.some((m) => effectiveCode(m) === code)).forEach((code) => s.modules.push(code))
+      if (s.id < p.currentSem) {
+        s.loa = loa.includes(s.id)
+        if (s.loa) {
+          s.exchange = false
+          const displaced = s.modules.filter(m => effectiveCode(m) !== INTERNSHIP_CODE)
+          s.modules = s.modules.filter(m => effectiveCode(m) === INTERNSHIP_CODE)
+          displaced.forEach(m => addToBasket(effectiveCode(m)))
+        }
+      }
     })
+    // Keep the regular study terms when a historical term becomes LOA, without shifting planned courses.
+    for (let i = 0; i < addedLoa; i++) plan.semesters.push(sem(nextSemId(plan), []))
     const tracks = (p.tracks ?? []).map(trackCode)
     if (plan.majorId && tracks.join() !== (before.tracks ?? []).map(trackCode).join()) {
       // A plan can stay on another curriculum after the intake changes, so keep only the tracks it has
@@ -231,6 +257,8 @@ export const usePlannerStore = defineStore('planner', () => {
     () => online.value && user.onboarded && user.profile.appliedToPlans === false,
     (pending) => {
       if (!pending) return
+      const error = profileLoaError(user.profile)
+      if (error) { syncError.value = error; return }
       plans.value.forEach(applyOnboarding) // the deep watch on plans saves them
       user.profile.appliedToPlans = true
     },
@@ -690,6 +718,7 @@ export const usePlannerStore = defineStore('planner', () => {
     checklistCatalogue,
     exempted,
     load,
+    profileLoaError,
     reload,
     basket,
     basketSaving,
