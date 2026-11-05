@@ -8,7 +8,7 @@ defineProps({
 </script>
 
 <template>
-  <section class="flex flex-col gap-2 border-b border-border bg-card px-5 py-6 md:px-8 lg:px-16">
+  <section class="relative flex flex-col gap-2 border-b border-border bg-card px-5 py-6 md:px-8 lg:px-16">
     <p v-if="overline" class="text-overline text-muted-foreground">{{ overline }}</p>
     <div class="flex flex-col items-start justify-between gap-4 xl:flex-row xl:items-center">
       <div class="flex min-w-0 flex-wrap items-center gap-3">
