@@ -122,6 +122,11 @@ export const api = {
   // Owner only: remove a member and stop them rejoining (unban lets them back in)
   banRoomMember: (id, userId) => request('POST', `/parties/${id}/ban`, { userId }),
 
+ notifications: () => request('GET', '/notifications'),
+  unreadNotificationCount: () => request('GET', '/notifications/unread-count'),
+  markNotificationRead: (id) => request('PATCH', `/notifications/${id}/read`),
+  markAllNotificationsRead: () => request('PATCH', '/notifications/read-all'),
+
   // BOSS bidding
   round: () => request('GET', '/bidding/round'),
   sections: (moduleCodes, term) => request('GET', `/bidding/sections${query({ modules: moduleCodes.join(','), term })}`),
