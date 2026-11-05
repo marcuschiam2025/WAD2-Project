@@ -80,7 +80,7 @@ const saveEdit = async () => {
   // Blank or invalid input keeps the balance as it was
   const newBalance = parseBalance(balanceDraft.value);
   if (newBalance === null) {
-    balanceError.value = 'Enter a number, 0 or more';
+    balanceError.value = ''//'Enter a number, 0 or more';
     return;
   }
 
