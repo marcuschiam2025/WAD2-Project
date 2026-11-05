@@ -243,9 +243,18 @@ export async function updatePlan(req, res) {
     })
   }
 
-  Object.assign(plan, data)
-  await plan.save()
-  res.json(plan)
+  // One atomic $set rather than plan.save(): save() checks the document version, so two saves that overlap
+  // (a second tab, or a retry while the first is in flight) failed with a VersionError and a 500. Each PUT sends
+  // the whole plan, so the latest one simply wins.
+  const updated = await Plan.findOneAndUpdate(
+    { _id: plan._id, user: req.user._id },
+    { $set: data },
+    { new: true, runValidators: true },
+  )
+  if (!updated) {
+    throw httpError(404, 'Plan not found') // deleted in the meantime
+  }
+  res.json(updated)
 }
 
 // DELETE /api/plans/:id — a student always keeps at least one plan; the rest are renumbered Plan 1...n

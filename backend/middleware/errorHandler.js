@@ -8,6 +8,10 @@ export function errorHandler(err, req, res, next) {
   if (err.name === 'ValidationError' || err.name === 'CastError') {
     return res.status(400).json({ error: err.message })
   }
+  // Two saves of the same document overlapped and this one was based on an older version
+  if (err.name === 'VersionError') {
+    return res.status(409).json({ error: 'This was changed somewhere else at the same time. Please try again.' })
+  }
   if (err.code === 11000) {
     return res.status(409).json({ error: 'Duplicate value', fields: err.keyValue })
   }
