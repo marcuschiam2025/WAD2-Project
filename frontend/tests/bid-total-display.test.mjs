@@ -26,7 +26,7 @@ test('allocated credits display two decimals despite floating-point addition', a
     api.weightage = async () => []
     const bidding = useBiddingStore(); await bidding.load()
     bidding.setBid('IS216', 10.1); bidding.setBid('IS111', 10.2)
-    assert.notEqual(bidding.allocated, 20.3, 'fixture reproduces the floating-point display issue')
+    assert.equal(bidding.allocated, 20.3, 'allocated credits are summed in whole cents')
     const html = await renderToString(createSSRApp(Sidebar).use(pinia))
     assert.match(html, /e\$ 20\.30/)
     assert.doesNotMatch(html, /20\.299999/)

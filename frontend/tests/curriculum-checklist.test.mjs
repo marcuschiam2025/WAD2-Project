@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { buildCurriculumChecklist, curriculumCandidates } from '../src/core/utils/curriculumChecklist.js'
 const mods = Object.fromEntries([
   ['A', 1, ['CORE:X'], ['IS']], ['B', 0.5, [], ['IS']], ['C', 1, [], ['IS']], ['D', 1, ['GRAD:X'], []],
@@ -10,6 +11,23 @@ const bundle = { majorId: 'IS2025', requirements: [
   { _id: 'ELECT', level: 'major', label: 'IS electives', rule: 'anyFromCategory', categories: ['IS'], cuRequired: 2 },
   { _id: 'FLAG', level: 'core', label: 'Graduation', rule: 'flag', tag: 'GRAD:X', cuRequired: 0 },
 ], tracks: [] }
+
+test('Community Service exposes the completion action and follows saved and removed completion flags in both curricula', async () => {
+  const requirements = JSON.parse(await readFile(new URL('../../backend/data/requirements.json', import.meta.url), 'utf8'))
+  const community = requirements.filter(r => r.tag === 'CORE:COMMUNITY_SERVICE')
+  assert.equal(community.length, 2)
+  for (const requirement of community) {
+    const p = { ...plan, majorId: requirement.ownerId, tracks: [], semesters: [{ id: 'Y2S1', modules: [] }] }
+    const b = { majorId: requirement.ownerId, requirements: [requirement], tracks: [] }
+    const row = markedDone => buildCurriculumChecklist(p, {}, b, { markedDone }).groups[0].slots[0]
+    assert.equal(row([]).manualDoneId, 'community', 'the existing Mark as done button needs this completion key')
+    assert.equal(row([]).status, 'todo')
+    assert.equal(row(['community']).status, 'cleared')
+    assert.equal(row(['community']).marked, true)
+    assert.match(row(['community']).detail, /Marked as done/)
+    assert.equal(row(['internship', 'exposure']).status, 'todo', 'unmarking or completing another requirement must not clear Community Service')
+  }
+})
 test('live checklist follows stored labels and credit rules without counting a course twice', () => {
   const c = buildCurriculumChecklist(plan, mods, bundle)
   const rows = c.groups.flatMap(g => g.slots)

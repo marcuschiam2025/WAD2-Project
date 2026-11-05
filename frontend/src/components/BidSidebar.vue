@@ -38,6 +38,11 @@ const bid = computed({
   get: () => bidding.bids[props.code] ?? '',
   set: (v) => bidding.setBid(props.code, v === '' ? '' : Number(v)),
 })
+function onBidInput(event) {
+  const trimmed = event.target.value.replace(/(\.\d{2})\d+/, '$1')
+  if (trimmed !== event.target.value) event.target.value = trimmed
+  bid.value = trimmed
+}
 const bidTooLow = computed(() => bid.value !== '' && bid.value < MIN_BID)
 
 const history = computed(() => bidding.bidHistory[props.code] ?? [])
@@ -242,7 +247,7 @@ watch(
                 :class="bidTooLow ? 'border-destructive' : 'border-primary'"
               >
                 <span class="text-muted-foreground">e$</span>
-                <input v-model="bid" type="number" :min="MIN_BID" class="min-w-0 flex-1 bg-transparent font-medium outline-none" />
+                <input :value="bid" type="number" :min="MIN_BID" step="0.01" inputmode="decimal" aria-label="Bid amount in e$" @input="onBidInput" class="min-w-0 flex-1 bg-transparent font-medium outline-none" />
               </span>
               <span v-if="bidTooLow" class="text-[12px] text-destructive">Minimum bid is e$ {{ MIN_BID }}.</span>
             </label>
@@ -307,10 +312,13 @@ watch(
         <span class="font-mono text-[15px] font-bold">e$ {{ fmtE(bidding.allocated) }}</span>
         <span class="text-[12px] text-muted-foreground">of e$ {{ user.balance.toLocaleString() }} allocated</span>
       </p>
-      <BaseButton size="sm" :disabled="bidding.saving || !bidding.online" @click="bidding.save()">{{ bidding.saving ? 'Saving…' : 'Save plan' }}</BaseButton>
+      <BaseButton size="sm" :disabled="bidding.saving || !bidding.cartReady" @click="bidding.save()">{{ bidding.saving ? 'Saving…' : 'Save plan' }}</BaseButton>
     </div>
     <!-- Save result: the backend's error, or modules whose sections the server does not list so they can't be saved yet -->
     <p v-if="bidding.saveError" class="-mt-1.5 px-5 pb-3 text-[12px] text-destructive">{{ bidding.saveError }}</p>
+    <p v-else-if="bidding.online && !bidding.cartReady" role="status" class="-mt-1.5 px-5 pb-3 text-[12px] text-muted-foreground">
+      {{ bidding.loadError ? 'Load your saved bids using Retry before saving changes.' : 'Loading your saved bids before changes can be saved…' }}
+    </p>
     <p v-else-if="bidding.online && bidding.unsaved.length" class="-mt-1.5 px-5 pb-3 text-[12px] text-muted-foreground">
       No BOSS sections on the server for {{ bidding.unsaved.join(', ') }} yet, so {{ bidding.unsaved.length === 1 ? 'it is' : 'they are' }} not saved.
     </p>

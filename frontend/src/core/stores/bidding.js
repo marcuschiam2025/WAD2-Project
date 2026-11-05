@@ -6,6 +6,7 @@ import { usePlannerStore, effectiveCode } from './planner'
 import { useRoomsStore } from './rooms'
 import { useUserStore } from './user'
 import { findClashes, findExamClashes, sectionCode, sectionMeetings } from '../utils/clash'
+import { toCents } from '../utils/money'
 
 // The bidding timetable is the next semester of the chosen What-If plan. Pick the plan with `planId`.
 export const useBiddingStore = defineStore('bidding', () => {
@@ -101,7 +102,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     .filter(([code, id]) => !sections.some(s => s.id === id && s.module === code && liveSections.has(s.id)))
     .map(([module, sectionId]) => ({ module, sectionId, section: sectionCode(sectionId, module) ?? 'Unknown section' })))
   const archivedSelections = computed(() => bookedSections.value.filter(s => s?.archived).map(s => `${s.module} ${s.section}`))
-  const allocated = computed(() => Object.values(bids.value).reduce((a, b) => a + (Number(b) || 0), 0))
+  const allocated = computed(() => Object.values(bids.value).reduce((sum, bid) => sum + toCents(Number(bid) || 0), 0) / 100)
 
   function sectionsFor(code) {
     return sections.filter((s) => s.module === code && !s.archived && liveSections.has(s.id))
@@ -142,7 +143,8 @@ export const useBiddingStore = defineStore('bidding', () => {
   const liveSections = reactive(new Set()) // section ids that came from the backend (only these can be saved in a cart)
   const fetched = new Set() // module codes already asked for
   const cartLoads = new Map()
-  const loadedCarts = new Set() // plan ids whose saved cart has been applied
+  const loadedCarts = reactive(new Set()) // plan ids whose saved cart has been applied
+  const cartReady = computed(() => online.value && loadedCarts.has(plan.value.id))
 
   async function fetchModules(codes) {
     const version = session
@@ -254,8 +256,8 @@ export const useBiddingStore = defineStore('bidding', () => {
     const others = bookedSections.value.filter(s => s && s.module !== section.module)
     if (findClashes([section, ...others]).length || findExamClashes([section, ...others]).length) throw new Error('This section clashes with your current bidding choices. Review them first.')
     const amount = typed.value[targetPlanId]?.[section.module] ?? MIN_BID
-    const total = others.reduce((sum, s) => sum + Number(bids.value[s.module] || 0), 0) + Number(amount)
-    if (!Number.isFinite(total) || total > user.balance) throw new Error('Adding this module would exceed your available bidding balance.')
+    const totalCents = others.reduce((sum, s) => sum + toCents(bids.value[s.module] || 0), 0) + toCents(amount)
+    if (!Number.isFinite(totalCents) || totalCents > toCents(user.balance)) throw new Error('Adding this module would exceed your available bidding balance.')
     chosen.value[targetPlanId] = { ...chosen.value[targetPlanId], [section.module]: section.id }
     typed.value[targetPlanId] = { ...typed.value[targetPlanId], [section.module]: amount }
     dropped.value[targetPlanId] = (dropped.value[targetPlanId] ?? []).filter(code => code !== section.module)
@@ -285,13 +287,18 @@ export const useBiddingStore = defineStore('bidding', () => {
       saveError.value = 'Connect to the server and select a catalogue term before saving your bids.'
       return false
     }
+    if (!cartReady.value) {
+      saveError.value = loadError.value ? 'Your saved bids could not be loaded. Use Retry before saving changes.' : 'Your saved bids are still loading. Wait before saving changes.'
+      return false
+    }
     if (roomConflicts.value.length) { saveError.value = `Your rooms locked different sections for ${roomConflicts.value.join(', ')}. Ask a party admin to unlock one, or leave one of those rooms, before saving.`; return false }
     if (unavailableSelections.value.length) { saveError.value = 'A saved section is unavailable. Choose a replacement or remove its module before saving.'; return false }
     if (archivedSelections.value.length) { saveError.value = 'A selected section has been archived. Choose an active alternative or remove the module before saving.'; return false }
     if (clashes.value.size) { saveError.value = 'Resolve class or final-exam clashes before saving.'; return false }
     const items = Object.entries(booked.value).map(([code, sectionId]) => ({ module: code, sectionId, amount: Number(bids.value[code]) }))
     if (items.some(item => !Number.isFinite(item.amount) || item.amount < MIN_BID)) { saveError.value = `Bid at least e$ ${MIN_BID} for every module.`; return false }
-    if (items.reduce((sum,item) => sum + item.amount,0) > user.balance) { saveError.value = 'Your bids exceed your available balance.'; return false }
+    if (items.some(item => !/^\d+(?:\.\d{1,2})?$/.test(String(item.amount)))) { saveError.value = 'Bids must have at most 2 decimal places.'; return false }
+    if (items.reduce((sum, item) => sum + toCents(item.amount), 0) > toCents(user.balance)) { saveError.value = 'Your bids exceed your available balance.'; return false }
     const payload = { planId: plan.value.id, term: round.value.term, items }
     const snapshot = JSON.stringify(payload)
     saving.value = true
@@ -350,6 +357,7 @@ export const useBiddingStore = defineStore('bidding', () => {
     saveError,
     loadError,
     saving,
+    cartReady,
     unsaved,
     online,
     round,

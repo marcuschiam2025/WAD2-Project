@@ -35,11 +35,11 @@ function getBalance(user) {
 
 // Adds up the e$ amounts of the cart items
 function getTotal(items) {
-  let total = 0
+  let totalCents = 0
   for (const item of items) {
-    total += item.amount
+    totalCents += Math.round(item.amount * 100)
   }
-  return total
+  return totalCents / 100
 }
 
 function requirePlanId(planId) {
